@@ -11,8 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { RescheduleModal } from '@/components/RescheduleModal';
 import { dataStore, Booking, ManualBlock } from '@/services/DataStore';
 
 type ViewType = 'list' | 'calendar';
@@ -20,6 +21,7 @@ type ViewType = 'list' | 'calendar';
 export const TrainerCalendarListPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('calendar');
   const [viewType, setViewType] = useState<ViewType>('list');
@@ -31,12 +33,22 @@ export const TrainerCalendarListPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
   const [blockForm, setBlockForm] = useState({
     title: '',
     date: '',
     startTime: '',
     endTime: '',
   });
+
+  // Check if we should show pending tab by default
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'pending') {
+      setViewType('list');
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (user) {
@@ -117,12 +129,15 @@ export const TrainerCalendarListPage: React.FC = () => {
     });
   };
 
-  const handleReschedule = async (booking: Booking) => {
-    setShowRescheduleDialog(booking);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setNewDate(tomorrow.toISOString().split('T')[0]);
-    setNewTime('10:00');
+  const handleReschedule = (booking: Booking) => {
+    setRescheduleBooking(booking);
+    setIsRescheduleModalOpen(true);
+  };
+
+  const handleRescheduleComplete = () => {
+    refreshData();
+    setIsRescheduleModalOpen(false);
+    setRescheduleBooking(null);
   };
 
   const confirmReschedule = async () => {
@@ -268,7 +283,7 @@ export const TrainerCalendarListPage: React.FC = () => {
                 onClick={() => handleReschedule(booking)}
               >
                 <Clock className="h-3 w-3 mr-1" />
-                Zmień
+                Zaproponuj nowy termin
               </Button>
             </div>
           )}
@@ -624,6 +639,14 @@ export const TrainerCalendarListPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reschedule Modal */}
+      <RescheduleModal
+        isOpen={isRescheduleModalOpen}
+        onClose={() => setIsRescheduleModalOpen(false)}
+        booking={rescheduleBooking}
+        onReschedule={handleRescheduleComplete}
+      />
 
       {/* Bottom Navigation */}
       <BottomNavigation 

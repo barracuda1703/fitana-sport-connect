@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Calendar, Users, TrendingUp, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { ReviewsModal } from '@/components/ReviewsModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { dataStore, Booking } from '@/services/DataStore';
@@ -15,8 +16,9 @@ export const TrainerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (user) {
       const userBookings = dataStore.getBookings(user.id);
       setBookings(userBookings);
@@ -35,6 +37,10 @@ export const TrainerDashboard: React.FC = () => {
     if (user) {
       setBookings(dataStore.getBookings(user.id));
     }
+  };
+
+  const handlePendingClick = () => {
+    navigate('/trainer-calendar?tab=pending');
   };
 
   const todayBookings = bookings.filter(booking => {
@@ -84,13 +90,13 @@ export const TrainerDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card">
+          <Card className="bg-gradient-card shadow-card cursor-pointer hover:shadow-floating transition-all duration-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Oczekujące rezerwacje
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent onClick={handlePendingClick}>
               <div className="text-2xl font-bold text-accent">
                 {mockStats.pendingBookings}
               </div>
@@ -110,13 +116,13 @@ export const TrainerDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card">
+          <Card className="bg-gradient-card shadow-card cursor-pointer hover:shadow-floating transition-all duration-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Ocena
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent onClick={() => setIsReviewsModalOpen(true)}>
               <div className="text-2xl font-bold text-warning">
                 ⭐ {mockStats.rating}
               </div>
@@ -221,6 +227,13 @@ export const TrainerDashboard: React.FC = () => {
         userRole="trainer"
         activeTab={activeTab}
         onTabChange={setActiveTab}
+      />
+
+      {/* Reviews Modal */}
+      <ReviewsModal
+        isOpen={isReviewsModalOpen}
+        onClose={() => setIsReviewsModalOpen(false)}
+        trainerId={user?.id || ''}
       />
     </div>
   );

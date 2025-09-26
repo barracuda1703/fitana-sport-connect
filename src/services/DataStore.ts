@@ -89,6 +89,21 @@ export interface Sport {
   icon: string;
 }
 
+export interface Review {
+  id: string;
+  bookingId: string;
+  clientId: string;
+  trainerId: string;
+  rating: number;
+  comment: string;
+  photos: string[];
+  createdAt: string;
+  trainerReply?: {
+    comment: string;
+    repliedAt: string;
+  };
+}
+
 // Seed data
 const seedData = {
   sports: [
@@ -198,6 +213,39 @@ const seedData = {
     },
   ],
 
+  reviews: [
+    {
+      id: 'rev-1',
+      bookingId: 'book-1',
+      clientId: 'u-client1',
+      trainerId: 't-1',
+      rating: 5,
+      comment: 'Świetny trener! Bardzo profesjonalne podejście i indywidualne dostosowanie ćwiczeń.',
+      photos: [],
+      createdAt: '2024-01-15T10:00:00.000Z'
+    },
+    {
+      id: 'rev-2',
+      bookingId: 'book-2',
+      clientId: 'u-client2',
+      trainerId: 't-1',
+      rating: 5,
+      comment: 'Polecam! Anna potrafi zmotywować i wytłumaczyć każde ćwiczenie.',
+      photos: [],
+      createdAt: '2024-01-20T14:30:00.000Z'
+    },
+    {
+      id: 'rev-3',
+      bookingId: 'book-3',
+      clientId: 'u-client1',
+      trainerId: 't-1',
+      rating: 4,
+      comment: 'Dobry trening, ale mógłby być nieco bardziej intensywny.',
+      photos: [],
+      createdAt: '2024-01-25T16:00:00.000Z'
+    }
+  ],
+
   bookings: [
     {
       id: 'booking-1',
@@ -257,11 +305,12 @@ class DataStore {
     const savedData = localStorage.getItem(this.storageKey);
     if (savedData) {
       this.data = JSON.parse(savedData);
-      // Ensure new fields exist
-      if (!this.data.manualBlocks) this.data.manualBlocks = [];
-      if (!this.data.trainerSettings) this.data.trainerSettings = [];
+    // Ensure new fields exist
+    if (!this.data.manualBlocks) this.data.manualBlocks = [];
+    if (!(this.data as any).reviews) (this.data as any).reviews = [];
+    if (!this.data.trainerSettings) this.data.trainerSettings = [];
     } else {
-      this.data = { ...seedData };
+      this.data = { ...seedData, reviews: seedData.reviews || [] };
       this.saveData();
     }
   }
@@ -609,6 +658,34 @@ class DataStore {
     }
     
     return availableHours;
+  }
+
+  getReviews(trainerId: string): Review[] {
+    return ((this.data as any).reviews || []).filter((review: Review) => review.trainerId === trainerId);
+  }
+
+  addTrainerReply(reviewId: string, comment: string): Review | null {
+    const reviews = (this.data as any).reviews || [];
+    const review = reviews.find((r: Review) => r.id === reviewId);
+    if (review) {
+      review.trainerReply = {
+        comment,
+        repliedAt: new Date().toISOString()
+      };
+      this.saveData();  
+      return review;
+    }
+    return null;
+  }
+
+  updateBookingDateTime(bookingId: string, newDateTime: string): boolean {
+    const booking = this.data.bookings.find(b => b.id === bookingId);
+    if (booking) {
+      booking.scheduledAt = newDateTime;
+      this.saveData();
+      return true;
+    }
+    return false;
   }
 
   // Dev methods
