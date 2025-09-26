@@ -26,13 +26,14 @@ export interface Trainer {
   avatar: string;
   bio: string;
   gender: 'male' | 'female' | 'other';
-  locations: Array<{
+  locations?: Array<{
     id: string;
     name: string;
     address: string;
     coordinates: { lat: number; lng: number };
     radius: number;
   }>;
+  coordinates?: { lat: number; lng: number }; // Legacy support
   services: Service[];
   availability: AvailabilitySlot[];
   settings?: TrainerSettings;
@@ -233,7 +234,15 @@ const seedData = {
       id: 't-3', userId: 'u-trainer3', name: 'Karolina', surname: 'Zielińska', rating: 4.8, reviewCount: 156, priceFrom: 75, distance: '2.1 km',
       specialties: ['Fitness', 'Crossfit'], isVerified: true, hasVideo: true, avatar: '👩‍🎓', gender: 'female' as const,
       bio: 'Trenerka crossfit z passion. Uwielbiam intensywne treningi i motywowanie do przekraczania granic.',
-      coordinates: { lat: 52.2180, lng: 21.0040 },
+      locations: [
+        {
+          id: 'loc-t3-1',
+          name: 'CrossFit Box Warszawa',
+          address: 'ul. Złota 44, 00-120 Warszawa',
+          coordinates: { lat: 52.2180, lng: 21.0040 },
+          radius: 2.5
+        }
+      ],
       services: [
         { id: 'srv-5', name: 'Crossfit', price: 75, duration: 60, type: 'gym' as const },
         { id: 'srv-6', name: 'Trening funkcjonalny', price: 70, duration: 45, type: 'gym' as const },
@@ -250,7 +259,15 @@ const seedData = {
       id: 't-4', userId: 'u-trainer4', name: 'Tomasz', surname: 'Wójcik', rating: 4.6, reviewCount: 78, priceFrom: 85, distance: '3.5 km',
       specialties: ['Fitness', 'Rehabilitacja'], isVerified: false, hasVideo: true, avatar: '👨‍⚕️', gender: 'male' as const,
       bio: 'Fizjoterapeuta i trener personalny. Łączę wiedzę medyczną z treningiem dla maksymalnych efektów.',
-      coordinates: { lat: 52.2500, lng: 21.0200 },
+      locations: [
+        {
+          id: 'loc-t4-1',
+          name: 'Centrum Rehabilitacji SportMed',
+          address: 'al. Jerozolimskie 85, 02-001 Warszawa',
+          coordinates: { lat: 52.2500, lng: 21.0200 },
+          radius: 4
+        }
+      ],
       services: [
         { id: 'srv-7', name: 'Trening rehabilitacyjny', price: 85, duration: 60, type: 'gym' as const },
         { id: 'srv-8', name: 'Korekcja postawy', price: 95, duration: 75, type: 'gym' as const },
@@ -265,7 +282,15 @@ const seedData = {
       id: 't-5', userId: 'u-trainer5', name: 'Magdalena', surname: 'Kaczmarek', rating: 4.9, reviewCount: 203, priceFrom: 95, distance: '1.8 km',
       specialties: ['Fitness', 'TRX'], isVerified: true, hasVideo: true, avatar: '👩‍🏫', gender: 'female' as const,
       bio: 'Ekspertka TRX z międzynarodowymi certyfikatami. Tworzę wyzwania dla każdego poziomu zaawansowania.',
-      coordinates: { lat: 52.2400, lng: 21.0080 },
+      locations: [
+        {
+          id: 'loc-t5-1',
+          name: 'TRX Studio Elite',
+          address: 'ul. Foksal 3/5, 00-366 Warszawa',
+          coordinates: { lat: 52.2400, lng: 21.0080 },
+          radius: 2
+        }
+      ],
       services: [
         { id: 'srv-9', name: 'Trening TRX', price: 95, duration: 60, type: 'gym' as const },
         { id: 'srv-10', name: 'Trening z ciężarem ciała', price: 80, duration: 45, type: 'home_visit' as const },
