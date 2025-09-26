@@ -82,14 +82,18 @@ export const ClientHome: React.FC = () => {
   useEffect(() => {
     let filtered = trainers;
     if (selectedCategory) {
-      filtered = trainers.filter(trainer => 
-        trainer.specialties.some(specialty => 
-          specialty.toLowerCase().includes(selectedCategory.toLowerCase())
-        )
-      );
+      // Find the sport name from the selected category ID
+      const selectedSport = sports.find(sport => sport.id === selectedCategory);
+      if (selectedSport) {
+        filtered = trainers.filter(trainer => 
+          trainer.specialties.some(specialty => 
+            specialty.toLowerCase().includes(selectedSport.name.toLowerCase())
+          )
+        );
+      }
     }
     setFilteredTrainers(filtered);
-  }, [trainers, selectedCategory]);
+  }, [trainers, selectedCategory, sports]);
 
   const handleBookTrainer = (trainerId: string) => {
     const trainer = trainers.find(t => t.id === trainerId);
