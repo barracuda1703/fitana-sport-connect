@@ -131,18 +131,16 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentLanguage, setCurrentLanguage] = useState<Language>(languages[0]); // Default to Polish
 
   useEffect(() => {
-    // Auto-detect browser language
-    const browserLang = navigator.language.split('-')[0] as Language['code'];
-    const detectedLanguage = languages.find(lang => lang.code === browserLang);
-    
-    // Check for saved language preference
+    // Check for saved language preference first
     const savedLang = localStorage.getItem('fitana-language');
     const savedLanguage = savedLang ? languages.find(lang => lang.code === savedLang) : null;
     
     if (savedLanguage) {
       setCurrentLanguage(savedLanguage);
-    } else if (detectedLanguage) {
-      setCurrentLanguage(detectedLanguage);
+    } else {
+      // Keep Polish as default regardless of browser language
+      setCurrentLanguage(languages[0]); // Polish
+      localStorage.setItem('fitana-language', 'pl');
     }
   }, []);
 

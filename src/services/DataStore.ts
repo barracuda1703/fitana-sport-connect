@@ -439,13 +439,23 @@ const seedData = {
       createdAt: new Date().toISOString(),
     },
     {
-      id: 'b-3',
+      id: 'b-4',
+      clientId: 'u-client1', 
+      trainerId: 't-4',
+      serviceId: 'srv-7',
+      scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'pending' as const,
+      notes: 'Chciałbym zacząć trening siłowy',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'b-5',
       clientId: 'u-client1',
-      trainerId: 't-1',
-      serviceId: 'srv-2',
-      scheduledAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // next week
-      status: 'confirmed' as const,
-      notes: 'Trening jogi',
+      trainerId: 't-5', 
+      serviceId: 'srv-9',
+      scheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'pending' as const,
+      notes: 'Pierwszy raz na zumbie',
       createdAt: new Date().toISOString(),
     },
   ],
@@ -640,9 +650,15 @@ class DataStore {
           
           const bookingDate = new Date(booking.scheduledAt);
           const bookingDateStr = bookingDate.toISOString().split('T')[0];
-          const bookingTime = `${bookingDate.getHours().toString().padStart(2, '0')}:${bookingDate.getMinutes().toString().padStart(2, '0')}`;
           
-          return bookingDateStr === date && bookingTime === timeSlot;
+          // Check if booking time overlaps with this slot
+          const bookingStartMinutes = bookingDate.getHours() * 60 + bookingDate.getMinutes();
+          const slotStartMinutes = time;
+          const slotEndMinutes = time + 30; // 30-minute slots
+          
+          return bookingDateStr === date && 
+                 bookingStartMinutes < slotEndMinutes && 
+                 (bookingStartMinutes + serviceDuration) > slotStartMinutes;
         });
       
       if (!isBooked) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, TrendingUp, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { dataStore, Booking } from '@/services/DataStore';
 export const TrainerDashboard: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [bookings, setBookings] = useState<Booking[]>([]);
 
@@ -127,7 +129,11 @@ export const TrainerDashboard: React.FC = () => {
       <section className="px-4 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Dzisiejszy harmonogram</h2>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate('/trainer-calendar')}
+          >
             <Calendar className="h-4 w-4 mr-2" />
             Zobacz cały kalendarz
           </Button>

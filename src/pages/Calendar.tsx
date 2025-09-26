@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,12 +6,30 @@ import { Calendar } from '@/components/ui/calendar';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNavigate } from 'react-router-dom';
+import { dataStore, Booking } from '@/services/DataStore';
 
 export const CalendarPage: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      setBookings(dataStore.getBookings(user.id));
+    }
+  }, [user]);
+
+  const handleNavigateToFullCalendar = () => {
+    if (user?.role === 'trainer') {
+      navigate('/trainer-calendar');
+    } else {
+      navigate('/client-calendar');
+    }
+  };
 
   if (!user) return null;
 
@@ -59,15 +77,67 @@ export const CalendarPage: React.FC = () => {
 
       {/* Events for Selected Date */}
       <section className="px-4 space-y-4">
-        <h2 className="text-xl font-semibold">
-          Wydarzenia na {selectedDate?.toLocaleDateString('pl-PL')}
-        </h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">
+            Wydarzenia na {selectedDate?.toLocaleDateString('pl-PL')}
+          </h2>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleNavigateToFullCalendar}
+          >
+            Zobacz wszystkie
+          </Button>
+        </div>
         
-        <Card className="bg-gradient-card">
-          <CardContent className="p-4 text-center text-muted-foreground">
-            Brak wydarzeń na wybrany dzień
-          </CardContent>
-        </Card>
+        {/* Show bookings for selected date */}
+        {(() => {
+          const selectedDateStr = selectedDate?.toISOString().split('T')[0];
+          const dayBookings = bookings.filter(booking => {
+            const bookingDate = new Date(booking.scheduledAt).toISOString().split('T')[0];
+            return bookingDate === selectedDateStr;
+          });
+
+          return dayBookings.length > 0 ? (
+            <div className="space-y-2">
+              {dayBookings.map((booking) => (
+                <Card key={booking.id} className="bg-gradient-card">
+                  <CardContent className="p-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">
+                          {user.role === 'trainer' 
+                            ? `Klient #${booking.clientId.slice(-4)}` 
+                            : `Trening - ${booking.serviceId}`}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        booking.status === 'confirmed' ? 'bg-success/20 text-success' :
+                        booking.status === 'pending' ? 'bg-warning/20 text-warning' :
+                        'bg-muted/20 text-muted-foreground'
+                      }`}>
+                        {booking.status === 'confirmed' ? 'Potwierdzone' :
+                         booking.status === 'pending' ? 'Oczekuje' : booking.status}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="bg-gradient-card">
+              <CardContent className="p-4 text-center text-muted-foreground">
+                Brak wydarzeń na wybrany dzień
+              </CardContent>
+            </Card>
+          );
+        })()}
       </section>
 
       {/* Bottom Navigation */}

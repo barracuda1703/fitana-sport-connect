@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 export const ProfileEditPage: React.FC = () => {
   const { user, switchRole } = useAuth();
+  const { currentLanguage } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -18,7 +21,7 @@ export const ProfileEditPage: React.FC = () => {
     name: user?.name || '',
     surname: user?.surname || '',
     city: user?.city || '',
-    language: user?.language || 'pl',
+    language: user?.language || currentLanguage.code,
     email: user?.email || '',
   });
 
@@ -45,8 +48,11 @@ export const ProfileEditPage: React.FC = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-bold">Edytuj profil</h1>
-          <Button className="ml-auto" onClick={handleSave}>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold">Edytuj profil</h1>
+          </div>
+          <LanguageSelector />
+          <Button onClick={handleSave}>
             <Save className="h-4 w-4 mr-2" />
             Zapisz
           </Button>
@@ -105,17 +111,21 @@ export const ProfileEditPage: React.FC = () => {
 
             <div className="space-y-2">
               <Label htmlFor="language">Język</Label>
-              <Select value={formData.language} onValueChange={(value) => handleInputChange('language', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Wybierz język" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pl">Polski</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="uk">Українська</SelectItem>
-                  <SelectItem value="ru">Русский</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2 items-center">
+                <Select value={formData.language} onValueChange={(value) => handleInputChange('language', value)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Wybierz język" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pl">Polski</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="uk">Українська</SelectItem>
+                    <SelectItem value="ru">Русский</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">lub</span>
+                <LanguageSelector />
+              </div>
             </div>
           </CardContent>
         </Card>

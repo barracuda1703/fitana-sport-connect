@@ -6,10 +6,12 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { RoleSwitch } from "@/components/RoleSwitch";
+import { Index } from "@/pages/Index";
 import { Landing } from "@/pages/Landing";
 import { Login } from "@/pages/Login";
 import { ClientHome } from "@/pages/ClientHome";
 import { TrainerDashboard } from "@/pages/TrainerDashboard";
+import { CalendarPage } from "@/pages/Calendar";
 import { ClientCalendarPage } from "@/pages/ClientCalendar";
 import { TrainerCalendarListPage } from "@/pages/TrainerCalendarList";
 import { ProfileEditPage } from "@/pages/ProfileEdit";
@@ -40,9 +42,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={user ? (
-        user.role === 'client' ? <Navigate to="/client" replace /> : <Navigate to="/trainer" replace />
-      ) : <Landing />} />
+      <Route path="/" element={<Index />} />
       <Route path="/client" element={
         <ProtectedRoute>
           <ClientHome />
@@ -55,7 +55,17 @@ const AppRoutes: React.FC = () => {
       } />
       <Route path="/calendar" element={
         <ProtectedRoute>
-          {user?.role === 'client' ? <ClientCalendarPage /> : <TrainerCalendarListPage />}
+          <CalendarPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/client-calendar" element={
+        <ProtectedRoute>
+          <ClientCalendarPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/trainer-calendar" element={
+        <ProtectedRoute>
+          <TrainerCalendarListPage />
         </ProtectedRoute>
       } />
       <Route path="/profile/edit" element={

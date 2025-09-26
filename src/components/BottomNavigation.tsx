@@ -20,14 +20,14 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
   const clientTabs = [
     { id: 'home', icon: Home, label: t('nav.home'), route: '/client' },
-    { id: 'calendar', icon: Calendar, label: t('nav.calendar'), route: '/calendar' },
+    { id: 'calendar', icon: Calendar, label: t('nav.calendar'), route: '/client-calendar' },
     { id: 'chat', icon: MessageCircle, label: t('nav.chat'), route: '/chat' },
     { id: 'profile', icon: User, label: t('nav.profile'), route: '/profile' },
   ];
 
   const trainerTabs = [
     { id: 'dashboard', icon: BarChart3, label: t('nav.dashboard'), route: '/trainer' },
-    { id: 'calendar', icon: Calendar, label: t('nav.calendar'), route: '/calendar' },
+    { id: 'calendar', icon: Calendar, label: t('nav.calendar'), route: '/trainer-calendar' },
     { id: 'chat', icon: MessageCircle, label: t('nav.chat'), route: '/chat' },
     { id: 'profile', icon: User, label: t('nav.profile'), route: '/profile' },
   ];
