@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { RoleSelection } from '@/components/RoleSelection';
@@ -8,6 +9,7 @@ import fitnessHero from '@/assets/fitness-hero.jpg';
 
 export const Landing: React.FC = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [showRoleSelection, setShowRoleSelection] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'client' | 'trainer' | null>(null);
 
@@ -17,8 +19,14 @@ export const Landing: React.FC = () => {
 
   const handleRoleSelect = (role: 'client' | 'trainer') => {
     setSelectedRole(role);
-    // Here we would navigate to the appropriate onboarding flow
     console.log(`Selected role: ${role}`);
+    
+    // Navigate to appropriate page based on role
+    if (role === 'client') {
+      navigate('/client');
+    } else {
+      navigate('/trainer');
+    }
   };
 
   if (showRoleSelection) {
