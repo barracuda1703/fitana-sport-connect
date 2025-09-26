@@ -1,49 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Users, TrendingUp, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
-
-const mockStats = {
-  todayTrainings: 3,
-  pendingBookings: 5,
-  thisWeekEarnings: 1200,
-  rating: 4.9,
-  completedSessions: 127,
-};
-
-const todaySchedule = [
-  {
-    id: '1',
-    time: '09:00',
-    client: 'Anna Kowalska',
-    service: 'Trening personalny',
-    location: 'Siłownia Centrum',
-    status: 'confirmed' as const,
-  },
-  {
-    id: '2',
-    time: '11:30', 
-    client: 'Marek Nowak',
-    service: 'Trening boksu',
-    location: 'Klub sportowy',
-    status: 'confirmed' as const,
-  },
-  {
-    id: '3',
-    time: '16:00',
-    client: 'Ewa Wiśniewska',
-    service: 'Yoga',
-    location: 'Online',
-    status: 'pending' as const,
-  },
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { dataStore, Booking } from '@/services/DataStore';
 
 export const TrainerDashboard: React.FC = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      const userBookings = dataStore.getBookings(user.id);
+      setBookings(userBookings);
+    }
+  }, [user]);
+
+  const handleAcceptBooking = async (bookingId: string) => {
+    await dataStore.updateBookingStatus(bookingId, 'confirmed');
+    if (user) {
+      setBookings(dataStore.getBookings(user.id));
+    }
+  };
+
+  const handleDeclineBooking = async (bookingId: string) => {
+    await dataStore.updateBookingStatus(bookingId, 'declined');
+    if (user) {
+      setBookings(dataStore.getBookings(user.id));
+    }
+  };
+
+  const todayBookings = bookings.filter(booking => {
+    const bookingDate = new Date(booking.scheduledAt);
+    const today = new Date();
+    return bookingDate.toDateString() === today.toDateString();
+  });
+
+  const pendingBookings = bookings.filter(booking => booking.status === 'pending');
+  
+  const mockStats = {
+    todayTrainings: todayBookings.length,
+    pendingBookings: pendingBookings.length,
+    thisWeekEarnings: 1200,
+    rating: 4.9,
+    completedSessions: 127,
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -128,36 +134,49 @@ export const TrainerDashboard: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {todaySchedule.map((session) => (
-            <Card key={session.id} className="bg-gradient-card shadow-card hover:shadow-floating transition-all duration-200">
+          {todayBookings.length > 0 ? todayBookings.map((booking) => (
+            <Card key={booking.id} className="bg-gradient-card shadow-card hover:shadow-floating transition-all duration-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-primary">
-                        {session.time}
+                        {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">{session.client}</h3>
+                      <h3 className="font-semibold">Klient #{booking.clientId.slice(-4)}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {session.service} • {session.location}
+                        {booking.serviceId} • {booking.notes || 'Brak notatek'}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge 
-                      variant={session.status === 'confirmed' ? 'default' : 'secondary'}
-                      className={session.status === 'confirmed' ? 'bg-success/20 text-success' : ''}
+                      variant={booking.status === 'confirmed' ? 'default' : 'secondary'}
+                      className={booking.status === 'confirmed' ? 'bg-success/20 text-success' : ''}
                     >
-                      {session.status === 'confirmed' ? 'Potwierdzone' : 'Oczekuje'}
+                      {booking.status === 'confirmed' ? 'Potwierdzone' : 'Oczekuje'}
                     </Badge>
-                    {session.status === 'pending' && (
+                    {booking.status === 'pending' && (
                       <div className="flex gap-1">
-                        <Button size="sm" variant="success" className="h-7 px-2">
+                        <Button 
+                          size="sm" 
+                          variant="default" 
+                          className="h-7 px-2 bg-success hover:bg-success/80"
+                          onClick={() => handleAcceptBooking(booking.id)}
+                        >
                           ✓
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 px-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 px-2"
+                          onClick={() => handleDeclineBooking(booking.id)}
+                        >
                           ✕
                         </Button>
                       </div>
@@ -166,7 +185,13 @@ export const TrainerDashboard: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )) : (
+            <Card className="bg-gradient-card shadow-card">
+              <CardContent className="p-4 text-center text-muted-foreground">
+                Brak treningów na dziś
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 

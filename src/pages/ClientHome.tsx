@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, MapPin, List, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { dataStore, Trainer } from '@/services/DataStore';
 
 const sportsCategories = [
   { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-accent' },
@@ -60,6 +61,27 @@ export const ClientHome: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [sports] = useState(dataStore.getSports());
+
+  useEffect(() => {
+    setTrainers(dataStore.getTrainers());
+  }, []);
+
+  const handleBookTrainer = (trainerId: string) => {
+    console.log('Booking trainer:', trainerId);
+    // Navigate to booking flow
+  };
+
+  const handleViewProfile = (trainerId: string) => {
+    console.log('Viewing profile:', trainerId);
+    // Navigate to trainer profile
+  };
+
+  const handleChat = (trainerId: string) => {
+    console.log('Starting chat with:', trainerId);
+    // Navigate to chat
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -101,7 +123,7 @@ export const ClientHome: React.FC = () => {
             </Button>
           </div>
           <span className="text-sm text-muted-foreground">
-            {mockTrainers.length} trenerów w pobliżu
+            {trainers.length} trenerów w pobliżu
           </span>
         </div>
       </header>
@@ -109,20 +131,20 @@ export const ClientHome: React.FC = () => {
       {/* Sports Categories */}
       <section className="p-4">
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {sportsCategories.map((category) => (
+          {sports.map((sport) => (
             <button
-              key={category.id}
+              key={sport.id}
               onClick={() => setSelectedCategory(
-                selectedCategory === category.id ? null : category.id
+                selectedCategory === sport.id ? null : sport.id
               )}
               className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] ${
-                selectedCategory === category.id
+                selectedCategory === sport.id
                   ? 'bg-primary text-primary-foreground shadow-button'
                   : 'bg-card hover:bg-accent/50'
               }`}
             >
-              <span className="text-2xl mb-1">{category.icon}</span>
-              <span className="text-xs font-medium text-center">{category.name}</span>
+              <span className="text-2xl mb-1">{sport.icon}</span>
+              <span className="text-xs font-medium text-center">{sport.name}</span>
             </button>
           ))}
         </div>
@@ -130,7 +152,7 @@ export const ClientHome: React.FC = () => {
 
       {/* Trainers List */}
       <section className="px-4 space-y-4">
-        {mockTrainers.map((trainer) => (
+        {trainers.map((trainer) => (
           <Card key={trainer.id} className="overflow-hidden hover:shadow-card transition-all duration-200 cursor-pointer bg-gradient-card">
             <CardHeader className="pb-3">
               <div className="flex items-start gap-4">
@@ -177,13 +199,26 @@ export const ClientHome: React.FC = () => {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="flex gap-2">
-                <Button variant="default" size="sm" className="flex-1">
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => handleBookTrainer(trainer.id)}
+                >
                   Zarezerwuj
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleViewProfile(trainer.id)}
+                >
                   Profil
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => handleChat(trainer.id)}
+                >
                   💬
                 </Button>
               </div>

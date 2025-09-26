@@ -1,17 +1,27 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { RoleSelection } from '@/components/RoleSelection';
-import { useLanguage } from '@/contexts/LanguageContext';
-import fitanaLogo from '@/assets/fitana-logo.png';
 import fitnessHero from '@/assets/fitness-hero.jpg';
+import { useNavigate } from 'react-router-dom';
+import fitanaLogo from '@/assets/fitana-logo.png';
 
 export const Landing: React.FC = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [showRoleSelection, setShowRoleSelection] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'client' | 'trainer' | null>(null);
+
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (user) {
+      navigate(user.role === 'client' ? '/client' : '/trainer');
+    }
+  }, [user, navigate]);
 
   const handleGetStarted = () => {
     setShowRoleSelection(true);
