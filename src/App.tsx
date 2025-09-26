@@ -37,6 +37,27 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const RoleProtectedRoute: React.FC<{ 
+  children: React.ReactNode; 
+  allowedRole: 'client' | 'trainer' 
+}> = ({ children, allowedRole }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (user.role !== allowedRole) {
+    return <Navigate to={user.role === 'client' ? '/client' : '/trainer'} replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 const AppRoutes: React.FC = () => {
   const { user, isLoading } = useAuth();
 
@@ -52,39 +73,39 @@ const AppRoutes: React.FC = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Index />} />
       <Route path="/client" element={
-        <ProtectedRoute>
+        <RoleProtectedRoute allowedRole="client">
           <ClientHome />
-        </ProtectedRoute>
+        </RoleProtectedRoute>
       } />
       <Route path="/trainer" element={
-        <ProtectedRoute>
+        <RoleProtectedRoute allowedRole="trainer">
           <TrainerDashboard />
-        </ProtectedRoute>
+        </RoleProtectedRoute>
       } />
       <Route path="/calendar" element={
-        <ProtectedRoute>
+        <RoleProtectedRoute allowedRole="client">
           <CalendarPage />
-        </ProtectedRoute>
+        </RoleProtectedRoute>
       } />
       <Route path="/client-calendar" element={
-        <ProtectedRoute>
+        <RoleProtectedRoute allowedRole="client">
           <ClientCalendarPage />
-        </ProtectedRoute>
+        </RoleProtectedRoute>
       } />
       <Route path="/trainer-dashboard" element={
-        <ProtectedRoute>
+        <RoleProtectedRoute allowedRole="trainer">
           <TrainerDashboard />
-        </ProtectedRoute>
+        </RoleProtectedRoute>
       } />
       <Route path="/trainer-calendar" element={
-        <ProtectedRoute>
+        <RoleProtectedRoute allowedRole="trainer">
           <TrainerCalendarListPage />
-        </ProtectedRoute>
+        </RoleProtectedRoute>
       } />
       <Route path="/trainer-settings" element={
-        <ProtectedRoute>
+        <RoleProtectedRoute allowedRole="trainer">
           <TrainerSettingsPage />
-        </ProtectedRoute>
+        </RoleProtectedRoute>
       } />
       <Route path="/profile/edit" element={
         <ProtectedRoute>
