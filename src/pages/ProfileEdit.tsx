@@ -6,10 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { LocationManagement } from '@/components/LocationManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { Location } from '@/types';
 
 export const ProfileEditPage: React.FC = () => {
   const { user, switchRole } = useAuth();
@@ -25,8 +27,29 @@ export const ProfileEditPage: React.FC = () => {
     email: user?.email || '',
   });
 
+  // Mock locations data - in real app, this would come from user data
+  const [locations, setLocations] = useState<Location[]>([
+    {
+      id: 'loc-1',
+      name: 'Fitness Club Centrum',
+      address: 'ul. Marszałkowska 10, 00-001 Warszawa',
+      coordinates: { lat: 52.2297, lng: 21.0122 },
+      radius: 2
+    }
+  ]);
+
   const handleSave = () => {
     // In a real app, this would update the user in the backend
+    // For trainers, also validate that they have at least one location
+    if (user?.role === 'trainer' && locations.length === 0) {
+      toast({
+        title: "Błąd walidacji",
+        description: "Musisz mieć co najmniej jedną placówkę.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "Profil zaktualizowany",
       description: "Twoje dane zostały pomyślnie zapisane.",
@@ -165,6 +188,13 @@ export const ProfileEditPage: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {user.role === 'trainer' && (
+          <LocationManagement
+            locations={locations}
+            onLocationsChange={setLocations}
+          />
         )}
       </section>
     </div>

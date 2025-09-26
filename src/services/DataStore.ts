@@ -26,7 +26,13 @@ export interface Trainer {
   avatar: string;
   bio: string;
   gender: 'male' | 'female' | 'other';
-  coordinates: { lat: number; lng: number };
+  locations: Array<{
+    id: string;
+    name: string;
+    address: string;
+    coordinates: { lat: number; lng: number };
+    radius: number;
+  }>;
   services: Service[];
   availability: AvailabilitySlot[];
   settings?: TrainerSettings;
@@ -127,7 +133,7 @@ const seedData = {
     { id: 'u-trainer4', role: 'trainer' as const, email: 'tomasz.wojcik@fit.com', password: 'demo123', name: 'Tomasz', surname: 'Wójcik', language: 'pl' },
     { id: 'u-trainer5', role: 'trainer' as const, email: 'magdalena.kaczmarek@fit.com', password: 'demo123', name: 'Magdalena', surname: 'Kaczmarek', language: 'pl' },
     
-    // Yoga trainers
+    // Yoga trainers  
     { id: 'u-trainer6', role: 'trainer' as const, email: 'ewa.wisniowska@yoga.com', password: 'demo123', name: 'Ewa', surname: 'Wiśniowska', language: 'pl' },
     { id: 'u-trainer7', role: 'trainer' as const, email: 'patrycja.kowalczyk@yoga.com', password: 'demo123', name: 'Patrycja', surname: 'Kowalczyk', language: 'pl' },
     { id: 'u-trainer8', role: 'trainer' as const, email: 'marta.kaminska@yoga.com', password: 'demo123', name: 'Marta', surname: 'Kamińska', language: 'pl' },
@@ -169,7 +175,22 @@ const seedData = {
       id: 't-1', userId: 'u-trainer1', name: 'Anna', surname: 'Kowalska', rating: 4.9, reviewCount: 127, priceFrom: 80, distance: '0.5 km',
       specialties: ['Fitness', 'Siłownia'], isVerified: true, hasVideo: true, avatar: '👩‍🦰', gender: 'female' as const,
       bio: 'Certyfikowana trenerka fitness z 8-letnim doświadczeniem. Specjalizuję się w treningach siłowych i funkcjonalnych.',
-      coordinates: { lat: 52.2297, lng: 21.0122 },
+      locations: [
+        {
+          id: 'loc-t1-1',
+          name: 'Fitness Club Centrum',
+          address: 'ul. Marszałkowska 10, 00-001 Warszawa',
+          coordinates: { lat: 52.2297, lng: 21.0122 },
+          radius: 2
+        },
+        {
+          id: 'loc-t1-2',
+          name: 'Siłownia Premium',
+          address: 'ul. Nowy Świat 15, 00-029 Warszawa',
+          coordinates: { lat: 52.2320, lng: 21.0190 },
+          radius: 1.5
+        }
+      ],
       services: [
         { id: 'srv-1', name: 'Trening personalny', price: 80, duration: 60, type: 'gym' as const },
         { id: 'srv-2', name: 'Konsultacja online', price: 50, duration: 45, type: 'online' as const },
@@ -186,7 +207,15 @@ const seedData = {
       id: 't-2', userId: 'u-trainer2', name: 'Piotr', surname: 'Nowak', rating: 4.7, reviewCount: 95, priceFrom: 90, distance: '1.2 km',
       specialties: ['Fitness', 'Kulturystyka'], isVerified: true, hasVideo: false, avatar: '👨‍💼', gender: 'male' as const,
       bio: 'Mistrz Polski w kulturystyce. Pomagam osiągnąć wymarzoną sylwetkę poprzez spersonalizowane treningi.',
-      coordinates: { lat: 52.2350, lng: 21.0103 },
+      locations: [
+        {
+          id: 'loc-t2-1',
+          name: 'Gold Gym Warszawa',
+          address: 'ul. Krakowskie Przedmieście 5, 00-068 Warszawa',
+          coordinates: { lat: 52.2350, lng: 21.0103 },
+          radius: 3
+        }
+      ],
       services: [
         { id: 'srv-3', name: 'Trening budowania masy', price: 90, duration: 75, type: 'gym' as const },
         { id: 'srv-4', name: 'Plan treningowy', price: 120, duration: 60, type: 'online' as const },
