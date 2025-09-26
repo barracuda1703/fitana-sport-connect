@@ -260,7 +260,7 @@ export const TrainerCalendarListPage: React.FC = () => {
           </div>
 
           {showActions && booking.status === 'pending' && (
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button 
                 size="sm" 
                 className="flex-1 bg-success hover:bg-success/80"
@@ -272,6 +272,7 @@ export const TrainerCalendarListPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
+                className="flex-1"
                 onClick={() => handleDeclineBooking(booking.id)}
               >
                 <X className="h-3 w-3 mr-1" />
@@ -280,10 +281,12 @@ export const TrainerCalendarListPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
+                className="flex-1"
                 onClick={() => handleReschedule(booking)}
               >
                 <Clock className="h-3 w-3 mr-1" />
-                Zaproponuj nowy termin
+                <span className="hidden sm:inline">Zaproponuj nowy termin</span>
+                <span className="sm:hidden">Zaproponuj</span>
               </Button>
             </div>
           )}
