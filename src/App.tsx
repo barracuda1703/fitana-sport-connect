@@ -39,9 +39,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const AppRoutes: React.FC = () => {
   const { user } = useAuth();
-  
+
   return (
-    <Routes>
+    <div className="min-h-screen w-full">
+      <RoleSwitch />
+      <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Index />} />
       <Route path="/client" element={
@@ -99,8 +101,9 @@ const AppRoutes: React.FC = () => {
           <ProfilePage />
         </ProtectedRoute>
       } />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </div>
   );
 };
 
@@ -112,7 +115,6 @@ const App = () => (
       <LanguageProvider>
         <AuthProvider>
           <BrowserRouter>
-            <RoleSwitch />
             <AppRoutes />
           </BrowserRouter>
         </AuthProvider>

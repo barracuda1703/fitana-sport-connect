@@ -46,7 +46,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   // Load available dates when service is selected
   useEffect(() => {
     if (selectedService) {
-      const dates = dataStore.getAvailableDates(trainer.id, selectedService.duration);
+      const dates = dataStore.getAvailableDates(trainer.id);
       setAvailableDates(dates);
     }
   }, [selectedService, trainer.id]);
@@ -55,7 +55,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   useEffect(() => {
     if (selectedService && selectedDate) {
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const hours = dataStore.getAvailableHours(trainer.id, dateStr, selectedService.duration);
+      const hours = dataStore.getAvailableHoursWithSettings(trainer.id, dateStr, selectedService.duration);
       setAvailableHours(hours);
     }
   }, [selectedService, selectedDate, trainer.id]);
