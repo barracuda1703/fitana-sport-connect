@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Clock, Trash2, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,11 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { LocationManagement } from '@/components/LocationManagement';
+import { ServiceManagementModal } from '@/components/ServiceManagementModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { Location } from '@/types';
+import { Location, Service } from '@/types';
 
 export const ProfileEditPage: React.FC = () => {
   const { user, switchRole } = useAuth();
@@ -49,6 +50,9 @@ export const ProfileEditPage: React.FC = () => {
       radius: 2
     }
   ]);
+  
+  // Services state
+  const [services, setServices] = useState<Service[]>((user as any)?.services || []);
 
   const handleSave = () => {
     // In a real app, this would update the user in the backend
@@ -67,6 +71,15 @@ export const ProfileEditPage: React.FC = () => {
         toast({
           title: "Błąd walidacji", 
           description: "Musisz wybrać co najmniej jedną dyscyplinę sportową.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (services.length === 0) {
+        toast({
+          title: "Błąd walidacji",
+          description: "Musisz dodać co najmniej jedną usługę.",
           variant: "destructive"
         });
         return;
@@ -93,6 +106,32 @@ export const ProfileEditPage: React.FC = () => {
     } else {
       handleInputChange('specialties', [...currentSpecialties, specialty]);
     }
+  };
+
+  const handleAddService = (newService: Omit<Service, 'id'>) => {
+    const serviceWithId: Service = {
+      ...newService,
+      id: Date.now().toString()
+    };
+    setServices(prev => [...prev, serviceWithId]);
+  };
+
+  const handleRemoveService = (serviceId: string) => {
+    setServices(prev => prev.filter(service => service.id !== serviceId));
+    toast({
+      title: "Usługa usunięta",
+      description: "Usługa została usunięta z Twojej oferty.",
+    });
+  };
+
+  const getServiceTypeLabel = (type: string) => {
+    const labels = {
+      online: "Online",
+      gym: "Siłownia",
+      court: "Boisko/Kort",
+      home_visit: "Wizyta domowa"
+    };
+    return labels[type as keyof typeof labels] || type;
   };
 
   if (!user) return null;
@@ -259,6 +298,58 @@ export const ProfileEditPage: React.FC = () => {
                   <Clock className="h-4 w-4 mr-2" />
                   Ustawienia dostępności
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {user.role === 'trainer' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Moje usługi ({services.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {services.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  Nie masz jeszcze żadnych usług. Dodaj swoją pierwszą usługę, aby klienci mogli wybrać spośród Twoich treningów.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {services.map((service) => (
+                    <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{service.name}</h4>
+                        {service.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{service.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" />
+                            {service.price} {service.currency}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {service.duration} min
+                          </span>
+                          <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs">
+                            {getServiceTypeLabel(service.type)}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveService(service.id)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="pt-4">
+                <ServiceManagementModal onAddService={handleAddService} />
               </div>
             </CardContent>
           </Card>
