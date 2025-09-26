@@ -84,17 +84,17 @@ const AppRoutes: React.FC = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <LanguageProvider>
+        <AuthProvider>
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </LanguageProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </TooltipProvider>
   </QueryClientProvider>
 );
 
