@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { RoleSwitch } from "@/components/RoleSwitch";
 import { Landing } from "@/pages/Landing";
 import { Login } from "@/pages/Login";
 import { ClientHome } from "@/pages/ClientHome";
@@ -90,6 +91,7 @@ const App = () => (
       <LanguageProvider>
         <AuthProvider>
           <BrowserRouter>
+            <RoleSwitch />
             <AppRoutes />
           </BrowserRouter>
         </AuthProvider>

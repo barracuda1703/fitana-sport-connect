@@ -428,6 +428,26 @@ const seedData = {
       notes: 'Pierwszy trening',
       createdAt: new Date().toISOString(),
     },
+    {
+      id: 'b-2',
+      clientId: 'u-client1',
+      trainerId: 't-2',
+      serviceId: 'srv-3',
+      scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // day after tomorrow
+      status: 'pending' as const,
+      notes: 'Chcę zacząć treningi boksu',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'b-3',
+      clientId: 'u-client1',
+      trainerId: 't-1',
+      serviceId: 'srv-2',
+      scheduledAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // next week
+      status: 'confirmed' as const,
+      notes: 'Trening jogi',
+      createdAt: new Date().toISOString(),
+    },
   ],
 
   messages: [
@@ -509,7 +529,13 @@ class DataStore {
 
   // Bookings
   getBookings(userId: string): Booking[] {
-    return this.data.bookings.filter(b => b.clientId === userId || b.trainerId === userId);
+    if (userId.startsWith('t-')) {
+      // Trainer - get bookings where they are the trainer
+      return this.data.bookings.filter(b => b.trainerId === userId);
+    } else {
+      // Client - get bookings where they are the client
+      return this.data.bookings.filter(b => b.clientId === userId);
+    }
   }
 
   async createBooking(booking: Omit<Booking, 'id' | 'createdAt'>): Promise<Booking> {

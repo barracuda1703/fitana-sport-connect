@@ -83,7 +83,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const switchRole = (role: 'client' | 'trainer') => {
     if (user) {
-      const updatedUser = { ...user, role };
+      let updatedUser;
+      if (role === 'trainer') {
+        // Switch to trainer with trainer ID
+        updatedUser = { 
+          ...user, 
+          role, 
+          id: 't-1' // Default trainer ID for demo
+        };
+      } else {
+        // Switch to client
+        updatedUser = { 
+          ...user, 
+          role, 
+          id: 'u-client1' // Default client ID for demo
+        };
+      }
       setUser(updatedUser);
       localStorage.setItem('fitana-current-user', JSON.stringify(updatedUser));
     }
