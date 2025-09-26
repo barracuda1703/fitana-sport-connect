@@ -32,6 +32,13 @@ export const ClientHome: React.FC = () => {
   const [sports] = useState(dataStore.getSports());
 
   useEffect(() => {
+    // Force reset data if needed for development
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reset') === 'true') {
+      dataStore.resetData();
+      window.location.search = ''; // Remove reset param
+    }
+    
     setTrainers(dataStore.getTrainers());
   }, []);
 
@@ -43,18 +50,27 @@ export const ClientHome: React.FC = () => {
   useEffect(() => {
     let filtered = trainers;
     if (selectedCategory) {
-      // Find the sport name from the selected category ID
-      const selectedSport = sports.find(sport => sport.id === selectedCategory);
-      if (selectedSport) {
+      // Map DataStore sport IDs to specialty names for filtering
+      const sportIdToSpecialty: Record<string, string> = {
+        's-fitness': 'Fitness',
+        's-yoga': 'Yoga', 
+        's-running': 'Bieganie',
+        's-boxing': 'Boks',
+        's-swimming': 'Pływanie',
+        's-tennis': 'Tenis'
+      };
+      
+      const specialtyName = sportIdToSpecialty[selectedCategory];
+      if (specialtyName) {
         filtered = trainers.filter(trainer => 
           trainer.specialties.some(specialty => 
-            specialty.toLowerCase().includes(selectedSport.name.toLowerCase())
+            specialty.toLowerCase().includes(specialtyName.toLowerCase())
           )
         );
       }
     }
     setFilteredTrainers(filtered);
-  }, [trainers, selectedCategory, sports]);
+  }, [trainers, selectedCategory]);
 
   const handleBookTrainer = (trainerId: string) => {
     const trainer = trainers.find(t => t.id === trainerId);
@@ -122,27 +138,75 @@ export const ClientHome: React.FC = () => {
         </div>
       </header>
 
-      {/* Sports Categories */}
-      <section className="p-4">
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {sports.map((sport) => (
-            <button
-              key={sport.id}
-              onClick={() => setSelectedCategory(
-                selectedCategory === sport.id ? null : sport.id
-              )}
-              className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] ${
-                selectedCategory === sport.id
-                  ? 'bg-primary text-primary-foreground shadow-button'
-                  : 'bg-card hover:bg-accent/50'
-              }`}
-            >
-              <span className="text-2xl mb-1">{sport.icon}</span>
-              <span className="text-xs font-medium text-center">{sport.name}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+       {/* Sports Categories */}
+       <section className="p-4">
+         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+           {/* All Categories Button */}
+           <button
+             onClick={() => setSelectedCategory(null)}
+             className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] ${
+               selectedCategory === null
+                 ? 'bg-primary text-primary-foreground shadow-button'
+                 : 'bg-card hover:bg-accent/50'
+             }`}
+           >
+             <span className="text-2xl mb-1">🏆</span>
+             <span className="text-xs font-medium text-center">Wszystkie</span>
+             <span className="text-xs text-muted-foreground">({trainers.length})</span>
+           </button>
+           
+           {sports.map((sport) => {
+             // Map DataStore sport IDs to specialty names for counting
+             const sportIdToSpecialty: Record<string, string> = {
+               's-fitness': 'Fitness',
+               's-yoga': 'Yoga', 
+               's-running': 'Bieganie',
+               's-boxing': 'Boks',
+               's-swimming': 'Pływanie',
+               's-tennis': 'Tenis'
+             };
+             
+             const specialtyName = sportIdToSpecialty[sport.id];
+             const categoryCount = trainers.filter(trainer => 
+               trainer.specialties.some(specialty => 
+                 specialty.toLowerCase().includes(specialtyName?.toLowerCase() || '')
+               )
+             ).length;
+             
+             return (
+               <button
+                 key={sport.id}
+                 onClick={() => setSelectedCategory(
+                   selectedCategory === sport.id ? null : sport.id
+                 )}
+                 className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] ${
+                   selectedCategory === sport.id
+                     ? 'bg-primary text-primary-foreground shadow-button'
+                     : 'bg-card hover:bg-accent/50'
+                 }`}
+               >
+                 <span className="text-2xl mb-1">{sport.icon}</span>
+                 <span className="text-xs font-medium text-center">{sport.name}</span>
+                 <span className="text-xs text-muted-foreground">({categoryCount})</span>
+               </button>
+             );
+           })}
+           
+           {/* Debug Reset Button - only show in development */}
+           {process.env.NODE_ENV === 'development' && (
+             <button
+               onClick={() => {
+                 dataStore.resetData();
+                 window.location.reload();
+               }}
+               className="flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] bg-red-100 hover:bg-red-200 text-red-700"
+             >
+               <span className="text-2xl mb-1">🔄</span>
+               <span className="text-xs font-medium text-center">Reset</span>
+             </button>
+           )}
+         </div>
+       </section>
 
       {/* Trainers List */}
       <section className="px-4 space-y-4">
