@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { LocationManagement } from '@/components/LocationManagement';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +26,18 @@ export const ProfileEditPage: React.FC = () => {
     city: user?.city || '',
     language: user?.language || currentLanguage.code,
     email: user?.email || '',
+    specialties: (user?.role === 'trainer' ? (user as any)?.specialties || (user as any)?.disciplines || [] : []),
   });
+
+  // Available disciplines - synchronized with ClientHome categories
+  const availableDisciplines = [
+    'Fitness',
+    'Yoga', 
+    'Bieganie',
+    'Boks',
+    'Pływanie',
+    'Tenis'
+  ];
 
   // Mock locations data - in real app, this would come from user data
   const [locations, setLocations] = useState<Location[]>([
@@ -40,14 +52,25 @@ export const ProfileEditPage: React.FC = () => {
 
   const handleSave = () => {
     // In a real app, this would update the user in the backend
-    // For trainers, also validate that they have at least one location
-    if (user?.role === 'trainer' && locations.length === 0) {
-      toast({
-        title: "Błąd walidacji",
-        description: "Musisz mieć co najmniej jedną placówkę.",
-        variant: "destructive"
-      });
-      return;
+    // For trainers, validate that they have at least one location and one specialty
+    if (user?.role === 'trainer') {
+      if (locations.length === 0) {
+        toast({
+          title: "Błąd walidacji",
+          description: "Musisz mieć co najmniej jedną placówkę.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (formData.specialties.length === 0) {
+        toast({
+          title: "Błąd walidacji", 
+          description: "Musisz wybrać co najmniej jedną dyscyplinę sportową.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     toast({
@@ -57,8 +80,19 @@ export const ProfileEditPage: React.FC = () => {
     navigate(-1);
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSpecialtyToggle = (specialty: string) => {
+    const currentSpecialties = formData.specialties as string[];
+    const isSelected = currentSpecialties.includes(specialty);
+    
+    if (isSelected) {
+      handleInputChange('specialties', currentSpecialties.filter(s => s !== specialty));
+    } else {
+      handleInputChange('specialties', [...currentSpecialties, specialty]);
+    }
   };
 
   if (!user) return null;
@@ -152,6 +186,46 @@ export const ProfileEditPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        {user.role === 'trainer' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Dyscypliny sportowe</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <Label className="text-base">Wybierz dyscypliny, w których świadczysz usługi</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {availableDisciplines.map((discipline) => (
+                    <div key={discipline} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`discipline-${discipline}`}
+                        checked={(formData.specialties as string[]).includes(discipline)}
+                        onCheckedChange={() => handleSpecialtyToggle(discipline)}
+                      />
+                      <Label 
+                        htmlFor={`discipline-${discipline}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {discipline}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                {(formData.specialties as string[]).length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Wybierz co najmniej jedną dyscyplinę, aby klienci mogli Cię znaleźć
+                  </p>
+                )}
+                {(formData.specialties as string[]).length > 0 && (
+                  <p className="text-sm text-success">
+                    ✓ Wybrano {(formData.specialties as string[]).length} {(formData.specialties as string[]).length === 1 ? 'dyscyplinę' : 'dyscyplin'}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {user.role === 'trainer' && (
           <Card>
