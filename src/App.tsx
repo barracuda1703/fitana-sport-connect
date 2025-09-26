@@ -59,13 +59,17 @@ const RoleProtectedRoute: React.FC<{
 };
 
 const AppRoutes: React.FC = () => {
+  console.log('AppRoutes: Component rendering, about to call useAuth...');
   const { user, isLoading } = useAuth();
+  console.log('AppRoutes: useAuth successful, user:', user, 'isLoading:', isLoading);
 
   // Don't render anything until auth is initialized
   if (isLoading) {
+    console.log('AppRoutes: Still loading, showing loading screen...');
     return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
   }
 
+  console.log('AppRoutes: Rendering routes...');
   return (
     <div className="min-h-screen w-full">
       {user && <RoleSwitch />}
@@ -133,20 +137,24 @@ const AppRoutes: React.FC = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <LanguageProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
-      </LanguageProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  console.log('App: Main App component rendering...');
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <LanguageProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </AuthProvider>
+        </LanguageProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

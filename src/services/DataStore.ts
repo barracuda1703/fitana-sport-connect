@@ -298,6 +298,7 @@ class DataStore {
     messages: Message[];
     sports: Sport[];
     manualBlocks: ManualBlock[];
+    reviews: Review[];
     trainerSettings: (TrainerSettings & { trainerId: string })[];
   };
 
@@ -307,10 +308,10 @@ class DataStore {
       this.data = JSON.parse(savedData);
     // Ensure new fields exist
     if (!this.data.manualBlocks) this.data.manualBlocks = [];
-    if (!(this.data as any).reviews) (this.data as any).reviews = [];
+    if (!this.data.reviews) this.data.reviews = [];
     if (!this.data.trainerSettings) this.data.trainerSettings = [];
     } else {
-      this.data = { ...seedData, reviews: seedData.reviews || [] };
+      this.data = { ...seedData };
       this.saveData();
     }
   }
@@ -661,12 +662,11 @@ class DataStore {
   }
 
   getReviews(trainerId: string): Review[] {
-    return ((this.data as any).reviews || []).filter((review: Review) => review.trainerId === trainerId);
+    return this.data.reviews.filter(review => review.trainerId === trainerId);
   }
 
   addTrainerReply(reviewId: string, comment: string): Review | null {
-    const reviews = (this.data as any).reviews || [];
-    const review = reviews.find((r: Review) => r.id === reviewId);
+    const review = this.data.reviews.find(r => r.id === reviewId);
     if (review) {
       review.trainerReply = {
         comment,
