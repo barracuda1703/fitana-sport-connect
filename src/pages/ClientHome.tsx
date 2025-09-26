@@ -21,45 +21,6 @@ const sportsCategories = [
   { id: 'tennis', name: 'Tenis', icon: '🎾', color: 'bg-primary-light' },
 ];
 
-const mockTrainers = [
-  {
-    id: '1',
-    name: 'Anna Kowalska',
-    rating: 4.9,
-    reviewCount: 127,
-    priceFrom: 80,
-    distance: '0.5 km',
-    specialties: ['Fitness', 'Yoga'],
-    isVerified: true,
-    hasVideo: true,
-    avatar: '👩‍🦰',
-  },
-  {
-    id: '2', 
-    name: 'Marek Nowak',
-    rating: 4.8,
-    reviewCount: 89,
-    priceFrom: 90,
-    distance: '1.2 km',
-    specialties: ['Boks', 'Crossfit'],
-    isVerified: true,
-    hasVideo: false,
-    avatar: '👨‍🦲',
-  },
-  {
-    id: '3',
-    name: 'Ewa Wiśniewska', 
-    rating: 5.0,
-    reviewCount: 203,
-    priceFrom: 100,
-    distance: '2.1 km',
-    specialties: ['Pilates', 'Stretching'],
-    isVerified: true,
-    hasVideo: true,
-    avatar: '👩‍🦱',
-  },
-];
-
 export const ClientHome: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
