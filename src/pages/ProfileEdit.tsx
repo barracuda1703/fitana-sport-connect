@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -151,6 +151,17 @@ export const ProfileEditPage: React.FC = () => {
                     Następne rozliczenie: 15 lutego 2024
                   </p>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/trainer-settings')}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Ustawienia dostępności
+                </Button>
               </div>
             </CardContent>
           </Card>

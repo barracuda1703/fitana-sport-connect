@@ -29,6 +29,7 @@ export interface Trainer {
   coordinates: { lat: number; lng: number };
   services: Service[];
   availability: AvailabilitySlot[];
+  settings?: TrainerSettings;
 }
 
 export interface Service {
@@ -43,6 +44,23 @@ export interface AvailabilitySlot {
   dayOfWeek: number; // 0-6
   startTime: string; // "09:00"
   endTime: string; // "17:00"
+}
+
+export interface TrainerSettings {
+  workingDays: number[]; // [1, 2, 3, 4, 5] for Mon-Fri
+  workingHours: { [key: number]: { start: string; end: string } }; // { 1: { start: "09:00", end: "18:00" } }
+  slotDuration: number; // 15, 30, 60 minutes
+  defaultServiceDuration: number; // 60 minutes
+}
+
+export interface ManualBlock {
+  id: string;
+  trainerId: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // "10:00"
+  endTime: string; // "11:00"
+  createdAt: string;
 }
 
 export interface Booking {
@@ -88,6 +106,9 @@ const seedData = {
     { id: 'u-trainer2', role: 'trainer' as const, email: 'marek@test.com', password: 'demo123', name: 'Marek', surname: 'Nowak', language: 'pl' },
     { id: 'u-trainer3', role: 'trainer' as const, email: 'ewa@test.com', password: 'demo123', name: 'Ewa', surname: 'Wiśniewska', language: 'pl' },
   ],
+
+  manualBlocks: [] as ManualBlock[],
+  trainerSettings: [] as (TrainerSettings & { trainerId: string })[],
 
   trainers: [
     // Fitness trainers
@@ -662,6 +683,368 @@ class DataStore {
         });
       
       if (!isBooked) {
+        availableHours.push(timeSlot);
+      }
+    }
+    
+    return availableHours;
+  }
+
+  // Trainer settings methods
+  getTrainerSettings(trainerId: string): TrainerSettings | null {
+    const found = this.data.trainerSettings.find(s => s.trainerId === trainerId);
+    return found || null;
+  }
+
+  updateTrainerSettings(trainerId: string, settings: TrainerSettings): void {
+    const index = this.data.trainerSettings.findIndex(s => s.trainerId === trainerId);
+    const newSettings = { trainerId, ...settings };
+    
+    if (index >= 0) {
+      this.data.trainerSettings[index] = newSettings;
+    } else {
+      this.data.trainerSettings.push(newSettings);
+    }
+    this.saveData();
+  }
+
+  // Manual blocks methods
+  getManualBlocks(trainerId: string): ManualBlock[] {
+    return this.data.manualBlocks.filter(block => block.trainerId === trainerId);
+  }
+
+  addManualBlock(block: Omit<ManualBlock, 'id' | 'createdAt'>): ManualBlock {
+    const newBlock: ManualBlock = {
+      ...block,
+      id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+    };
+    this.data.manualBlocks.push(newBlock);
+    this.saveData();
+    return newBlock;
+  }
+
+  removeManualBlock(blockId: string): void {
+    this.data.manualBlocks = this.data.manualBlocks.filter(block => block.id !== blockId);
+    this.saveData();
+  }
+
+  // Enhanced availability with trainer settings
+  getAvailableHoursWithSettings(trainerId: string, date: string, serviceDuration: number): string[] {
+    const trainer = this.getTrainer(trainerId);
+    if (!trainer) return [];
+
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay();
+    
+    const settings = this.getTrainerSettings(trainerId) || {
+      workingDays: [1, 2, 3, 4, 5],
+      workingHours: {
+        1: { start: "09:00", end: "18:00" },
+        2: { start: "09:00", end: "18:00" },
+        3: { start: "09:00", end: "18:00" },
+        4: { start: "09:00", end: "18:00" },
+        5: { start: "09:00", end: "18:00" },
+      },
+      slotDuration: 30,
+      defaultServiceDuration: 60,
+    };
+
+    if (!settings.workingDays.includes(dayOfWeek)) return [];
+
+    const dayHours = settings.workingHours[dayOfWeek];
+    if (!dayHours) return [];
+
+    const availableHours: string[] = [];
+    const startHour = parseInt(dayHours.start.split(':')[0]);
+    const startMinute = parseInt(dayHours.start.split(':')[1]);
+    const endHour = parseInt(dayHours.end.split(':')[0]);
+    const endMinute = parseInt(dayHours.end.split(':')[1]);
+    
+    const startTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+    
+    for (let time = startTime; time < endTime - serviceDuration; time += settings.slotDuration) {
+      const hour = Math.floor(time / 60);
+      const minute = time % 60;
+      const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      const isBookingBlocked = this.data.bookings.some(booking => {
+        if (booking.trainerId !== trainerId) return false;
+        if (booking.status !== 'pending' && booking.status !== 'confirmed') return false;
+        
+        const bookingDate = new Date(booking.scheduledAt);
+        const bookingDateStr = bookingDate.toISOString().split('T')[0];
+        
+        const bookingStartMinutes = bookingDate.getHours() * 60 + bookingDate.getMinutes();
+        const slotStartMinutes = time;
+        const slotEndMinutes = time + settings.slotDuration;
+        
+        return bookingDateStr === date && 
+               bookingStartMinutes < slotEndMinutes && 
+               (bookingStartMinutes + serviceDuration) > slotStartMinutes;
+      });
+
+      const isManualBlocked = this.data.manualBlocks.some(block => {
+        if (block.trainerId !== trainerId || block.date !== date) return false;
+        
+        const blockStartHour = parseInt(block.startTime.split(':')[0]);
+        const blockStartMinute = parseInt(block.startTime.split(':')[1]);
+        const blockEndHour = parseInt(block.endTime.split(':')[0]);
+        const blockEndMinute = parseInt(block.endTime.split(':')[1]);
+        
+        const blockStartMinutes = blockStartHour * 60 + blockStartMinute;
+        const blockEndMinutes = blockEndHour * 60 + blockEndMinute;
+        const slotStartMinutes = time;
+        const slotEndMinutes = time + settings.slotDuration;
+        
+        return blockStartMinutes < slotEndMinutes && blockEndMinutes > slotStartMinutes;
+      });
+      
+      if (!isBookingBlocked && !isManualBlocked) {
+        availableHours.push(timeSlot);
+      }
+    }
+    
+    return availableHours;
+  }
+
+  updateTrainerSettings(trainerId: string, settings: Omit<TrainerSettings, 'trainerId'>): void {
+    const index = this.data.trainerSettings.findIndex(s => s.trainerId === trainerId);
+    const newSettings = { trainerId, ...settings };
+    
+    if (index >= 0) {
+      this.data.trainerSettings[index] = newSettings;
+    } else {
+      this.data.trainerSettings.push(newSettings);
+    }
+    this.saveData();
+  }
+
+  // Manual blocks methods
+  getManualBlocks(trainerId: string): ManualBlock[] {
+    return this.data.manualBlocks.filter(block => block.trainerId === trainerId);
+  }
+
+  addManualBlock(block: Omit<ManualBlock, 'id' | 'createdAt'>): ManualBlock {
+    const newBlock: ManualBlock = {
+      ...block,
+      id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+    };
+    this.data.manualBlocks.push(newBlock);
+    this.saveData();
+    return newBlock;
+  }
+
+  removeManualBlock(blockId: string): void {
+    this.data.manualBlocks = this.data.manualBlocks.filter(block => block.id !== blockId);
+    this.saveData();
+  }
+
+  // Enhanced availability methods
+  getAvailableHoursWithSettings(trainerId: string, date: string, serviceDuration: number): string[] {
+    const trainer = this.getTrainer(trainerId);
+    if (!trainer) return [];
+
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay();
+    
+    // Get trainer settings or use defaults
+    const settings = this.getTrainerSettings(trainerId) || {
+      workingDays: [1, 2, 3, 4, 5],
+      workingHours: {
+        1: { start: "09:00", end: "18:00" },
+        2: { start: "09:00", end: "18:00" },
+        3: { start: "09:00", end: "18:00" },
+        4: { start: "09:00", end: "18:00" },
+        5: { start: "09:00", end: "18:00" },
+      },
+      slotDuration: 30,
+      defaultServiceDuration: 60,
+    };
+
+    // Check if trainer works on this day
+    if (!settings.workingDays.includes(dayOfWeek)) return [];
+
+    const dayHours = settings.workingHours[dayOfWeek];
+    if (!dayHours) return [];
+
+    // Generate slots based on settings
+    const availableHours: string[] = [];
+    const startHour = parseInt(dayHours.start.split(':')[0]);
+    const startMinute = parseInt(dayHours.start.split(':')[1]);
+    const endHour = parseInt(dayHours.end.split(':')[0]);
+    const endMinute = parseInt(dayHours.end.split(':')[1]);
+    
+    const startTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+    
+    // Create slots based on trainer's preferred duration
+    for (let time = startTime; time < endTime - serviceDuration; time += settings.slotDuration) {
+      const hour = Math.floor(time / 60);
+      const minute = time % 60;
+      const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      // Check if this slot is blocked by bookings
+      const isBookingBlocked = this.data.bookings.some(booking => {
+        if (booking.trainerId !== trainerId) return false;
+        if (booking.status !== 'pending' && booking.status !== 'confirmed') return false;
+        
+        const bookingDate = new Date(booking.scheduledAt);
+        const bookingDateStr = bookingDate.toISOString().split('T')[0];
+        
+        const bookingStartMinutes = bookingDate.getHours() * 60 + bookingDate.getMinutes();
+        const slotStartMinutes = time;
+        const slotEndMinutes = time + settings.slotDuration;
+        
+        return bookingDateStr === date && 
+               bookingStartMinutes < slotEndMinutes && 
+               (bookingStartMinutes + serviceDuration) > slotStartMinutes;
+      });
+
+      // Check if this slot is blocked by manual blocks
+      const isManualBlocked = this.data.manualBlocks.some(block => {
+        if (block.trainerId !== trainerId || block.date !== date) return false;
+        
+        const blockStartHour = parseInt(block.startTime.split(':')[0]);
+        const blockStartMinute = parseInt(block.startTime.split(':')[1]);
+        const blockEndHour = parseInt(block.endTime.split(':')[0]);
+        const blockEndMinute = parseInt(block.endTime.split(':')[1]);
+        
+        const blockStartMinutes = blockStartHour * 60 + blockStartMinute;
+        const blockEndMinutes = blockEndHour * 60 + blockEndMinute;
+        const slotStartMinutes = time;
+        const slotEndMinutes = time + settings.slotDuration;
+        
+        return blockStartMinutes < slotEndMinutes && blockEndMinutes > slotStartMinutes;
+      });
+      
+      if (!isBookingBlocked && !isManualBlocked) {
+        availableHours.push(timeSlot);
+      }
+    }
+    
+    return availableHours;
+  }
+
+  // Trainer settings methods
+  getTrainerSettings(trainerId: string): TrainerSettings | null {
+    return this.data.trainerSettings.find(s => s.trainerId === trainerId) || null;
+  }
+
+  updateTrainerSettings(trainerId: string, settings: TrainerSettings): void {
+    const index = this.data.trainerSettings.findIndex(s => s.trainerId === trainerId);
+    const newSettings = { trainerId, ...settings };
+    
+    if (index >= 0) {
+      this.data.trainerSettings[index] = newSettings;
+    } else {
+      this.data.trainerSettings.push(newSettings);
+    }
+    this.saveData();
+  }
+
+  // Manual blocks methods
+  getManualBlocks(trainerId: string): ManualBlock[] {
+    return this.data.manualBlocks.filter(block => block.trainerId === trainerId);
+  }
+
+  addManualBlock(block: Omit<ManualBlock, 'id' | 'createdAt'>): ManualBlock {
+    const newBlock: ManualBlock = {
+      ...block,
+      id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+    };
+    this.data.manualBlocks.push(newBlock);
+    this.saveData();
+    return newBlock;
+  }
+
+  removeManualBlock(blockId: string): void {
+    this.data.manualBlocks = this.data.manualBlocks.filter(block => block.id !== blockId);
+    this.saveData();
+  }
+
+  // Enhanced availability methods
+  getAvailableHoursWithSettings(trainerId: string, date: string, serviceDuration: number): string[] {
+    const trainer = this.getTrainer(trainerId);
+    if (!trainer) return [];
+
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay();
+    
+    // Get trainer settings or use defaults
+    const settings = this.getTrainerSettings(trainerId) || {
+      workingDays: [1, 2, 3, 4, 5],
+      workingHours: {
+        1: { start: "09:00", end: "18:00" },
+        2: { start: "09:00", end: "18:00" },
+        3: { start: "09:00", end: "18:00" },
+        4: { start: "09:00", end: "18:00" },
+        5: { start: "09:00", end: "18:00" },
+      },
+      slotDuration: 30,
+      defaultServiceDuration: 60,
+    };
+
+    // Check if trainer works on this day
+    if (!settings.workingDays.includes(dayOfWeek)) return [];
+
+    const dayHours = settings.workingHours[dayOfWeek];
+    if (!dayHours) return [];
+
+    // Generate slots based on settings
+    const availableHours: string[] = [];
+    const startHour = parseInt(dayHours.start.split(':')[0]);
+    const startMinute = parseInt(dayHours.start.split(':')[1]);
+    const endHour = parseInt(dayHours.end.split(':')[0]);
+    const endMinute = parseInt(dayHours.end.split(':')[1]);
+    
+    const startTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+    
+    // Create slots based on trainer's preferred duration
+    for (let time = startTime; time < endTime - serviceDuration; time += settings.slotDuration) {
+      const hour = Math.floor(time / 60);
+      const minute = time % 60;
+      const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      // Check if this slot is blocked by bookings
+      const isBookingBlocked = this.data.bookings.some(booking => {
+        if (booking.trainerId !== trainerId) return false;
+        if (booking.status !== 'pending' && booking.status !== 'confirmed') return false;
+        
+        const bookingDate = new Date(booking.scheduledAt);
+        const bookingDateStr = bookingDate.toISOString().split('T')[0];
+        
+        const bookingStartMinutes = bookingDate.getHours() * 60 + bookingDate.getMinutes();
+        const slotStartMinutes = time;
+        const slotEndMinutes = time + settings.slotDuration;
+        
+        return bookingDateStr === date && 
+               bookingStartMinutes < slotEndMinutes && 
+               (bookingStartMinutes + serviceDuration) > slotStartMinutes;
+      });
+
+      // Check if this slot is blocked by manual blocks
+      const isManualBlocked = this.data.manualBlocks.some(block => {
+        if (block.trainerId !== trainerId || block.date !== date) return false;
+        
+        const blockStartHour = parseInt(block.startTime.split(':')[0]);
+        const blockStartMinute = parseInt(block.startTime.split(':')[1]);
+        const blockEndHour = parseInt(block.endTime.split(':')[0]);
+        const blockEndMinute = parseInt(block.endTime.split(':')[1]);
+        
+        const blockStartMinutes = blockStartHour * 60 + blockStartMinute;
+        const blockEndMinutes = blockEndHour * 60 + blockEndMinute;
+        const slotStartMinutes = time;
+        const slotEndMinutes = time + settings.slotDuration;
+        
+        return blockStartMinutes < slotEndMinutes && blockEndMinutes > slotStartMinutes;
+      });
+      
+      if (!isBookingBlocked && !isManualBlocked) {
         availableHours.push(timeSlot);
       }
     }

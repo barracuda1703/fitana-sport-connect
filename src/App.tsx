@@ -13,7 +13,8 @@ import { ClientHome } from "@/pages/ClientHome";
 import { TrainerDashboard } from "@/pages/TrainerDashboard";
 import { CalendarPage } from "@/pages/Calendar";
 import { ClientCalendarPage } from "@/pages/ClientCalendar";
-import { TrainerCalendarListPage } from "@/pages/TrainerCalendarList";
+import { TrainerCalendarListPage } from '@/pages/TrainerCalendarList';
+import { TrainerSettingsPage } from '@/pages/TrainerSettings';
 import { ProfileEditPage } from "@/pages/ProfileEdit";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
@@ -63,9 +64,19 @@ const AppRoutes: React.FC = () => {
           <ClientCalendarPage />
         </ProtectedRoute>
       } />
+      <Route path="/trainer-dashboard" element={
+        <ProtectedRoute>
+          <TrainerDashboard />
+        </ProtectedRoute>
+      } />
       <Route path="/trainer-calendar" element={
         <ProtectedRoute>
           <TrainerCalendarListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/trainer-settings" element={
+        <ProtectedRoute>
+          <TrainerSettingsPage />
         </ProtectedRoute>
       } />
       <Route path="/profile/edit" element={
