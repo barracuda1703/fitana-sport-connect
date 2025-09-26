@@ -1,38 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Phone, Video, MoreVertical } from 'lucide-react';
+import { Send, Phone, Video, MoreVertical, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useParams, useNavigate } from 'react-router-dom';
 import { dataStore, Message } from '@/services/DataStore';
 
 export const ChatPage: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { chatId } = useParams<{ chatId: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [selectedChatId] = useState('chat-u-client1-t-1'); // Demo chat
+
+  // Get other user info from chatId
+  const getOtherUserInfo = () => {
+    if (chatId?.includes('t-1')) return { name: 'Anna Kowalska', avatar: '👩‍🦰' };
+    if (chatId?.includes('t-2')) return { name: 'Marek Nowak', avatar: '👨‍🦲' };
+    if (chatId?.includes('t-3')) return { name: 'Ewa Wiśniewska', avatar: '👩‍🦱' };
+    return { name: 'Trener', avatar: '👤' };
+  };
+
+  const otherUser = getOtherUserInfo();
 
   useEffect(() => {
-    if (user) {
-      setMessages(dataStore.getMessages(selectedChatId));
+    if (user && chatId) {
+      setMessages(dataStore.getMessages(chatId));
     }
-  }, [user, selectedChatId]);
+  }, [user, chatId]);
 
   const handleSendMessage = async () => {
-    if (!user || !newMessage.trim()) return;
+    if (!user || !newMessage.trim() || !chatId) return;
 
     await dataStore.sendMessage({
-      chatId: selectedChatId,
+      chatId,
       senderId: user.id,
       content: newMessage,
     });
 
-    setMessages(dataStore.getMessages(selectedChatId));
+    setMessages(dataStore.getMessages(chatId));
     setNewMessage('');
   };
 
@@ -44,12 +56,15 @@ export const ChatPage: React.FC = () => {
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/chat')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <Avatar>
               <AvatarImage src="" />
-              <AvatarFallback>👩‍🦰</AvatarFallback>
+              <AvatarFallback>{otherUser.avatar}</AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="font-semibold">Anna Kowalska</h2>
+              <h2 className="font-semibold">{otherUser.name}</h2>
               <p className="text-sm text-muted-foreground">Online</p>
             </div>
           </div>

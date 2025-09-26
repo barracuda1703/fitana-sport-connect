@@ -26,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for saved session
+    // Check for saved session or auto-login as client
     const savedUser = localStorage.getItem('fitana-current-user');
     if (savedUser) {
       try {
@@ -34,6 +34,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {
         localStorage.removeItem('fitana-current-user');
       }
+    } else {
+      // Auto-login as default client
+      const defaultClient = {
+        id: 'u-client1',
+        role: 'client' as const,
+        email: 'client@test.com',
+        password: 'demo123',
+        name: 'Kasia',
+        city: 'Warszawa',
+        language: 'pl'
+      };
+      setUser(defaultClient);
+      localStorage.setItem('fitana-current-user', JSON.stringify(defaultClient));
     }
     setIsLoading(false);
   }, []);

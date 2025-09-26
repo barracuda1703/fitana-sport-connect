@@ -9,7 +9,10 @@ import { Landing } from "@/pages/Landing";
 import { Login } from "@/pages/Login";
 import { ClientHome } from "@/pages/ClientHome";
 import { TrainerDashboard } from "@/pages/TrainerDashboard";
-import { CalendarPage } from "@/pages/Calendar";
+import { ClientCalendarPage } from "@/pages/ClientCalendar";
+import { TrainerCalendarListPage } from "@/pages/TrainerCalendarList";
+import { ProfileEditPage } from "@/pages/ProfileEdit";
+import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
 import { ProfilePage } from "@/pages/Profile";
 import { DevMenu } from "@/components/DevMenu";
@@ -52,10 +55,20 @@ const AppRoutes: React.FC = () => {
       } />
       <Route path="/calendar" element={
         <ProtectedRoute>
-          <CalendarPage />
+          {user?.role === 'client' ? <ClientCalendarPage /> : <TrainerCalendarListPage />}
+        </ProtectedRoute>
+      } />
+      <Route path="/profile/edit" element={
+        <ProtectedRoute>
+          <ProfileEditPage />
         </ProtectedRoute>
       } />
       <Route path="/chat" element={
+        <ProtectedRoute>
+          <ChatListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/chat/:chatId" element={
         <ProtectedRoute>
           <ChatPage />
         </ProtectedRoute>

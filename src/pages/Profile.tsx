@@ -7,10 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNavigate } from 'react-router-dom';
 
 export const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
 
   if (!user) return null;
@@ -25,7 +27,11 @@ export const ProfilePage: React.FC = () => {
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Profil</h1>
-          <Button variant="outline" size="icon">
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => navigate('/profile/edit')}
+          >
             <Settings className="h-4 w-4" />
           </Button>
         </div>
@@ -49,7 +55,11 @@ export const ProfilePage: React.FC = () => {
                   {user.role === 'client' ? 'Klient' : 'Trener'}
                 </Badge>
               </div>
-              <Button variant="outline" size="icon">
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => navigate('/profile/edit')}
+              >
                 <Edit className="h-4 w-4" />
               </Button>
             </div>
@@ -108,11 +118,19 @@ export const ProfilePage: React.FC = () => {
             <CardTitle>Ustawienia</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate('/profile/edit')}
+            >
               <User className="h-4 w-4 mr-2" />
               Edytuj profil
             </Button>
-            <Button variant="outline" className="w-full justify-start">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => navigate('/profile/edit')}
+            >
               <Settings className="h-4 w-4 mr-2" />
               Preferencje
             </Button>

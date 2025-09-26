@@ -5,7 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { BookingModal } from '@/components/BookingModal';
+import { TrainerProfileModal } from '@/components/TrainerProfileModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { dataStore, Trainer } from '@/services/DataStore';
 
 const sportsCategories = [
@@ -58,6 +62,8 @@ const mockTrainers = [
 
 export const ClientHome: React.FC = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -68,19 +74,42 @@ export const ClientHome: React.FC = () => {
     setTrainers(dataStore.getTrainers());
   }, []);
 
+  const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [filteredTrainers, setFilteredTrainers] = useState<Trainer[]>([]);
+
+  useEffect(() => {
+    let filtered = trainers;
+    if (selectedCategory) {
+      filtered = trainers.filter(trainer => 
+        trainer.specialties.some(specialty => 
+          specialty.toLowerCase().includes(selectedCategory.toLowerCase())
+        )
+      );
+    }
+    setFilteredTrainers(filtered);
+  }, [trainers, selectedCategory]);
+
   const handleBookTrainer = (trainerId: string) => {
-    console.log('Booking trainer:', trainerId);
-    // Navigate to booking flow
+    const trainer = trainers.find(t => t.id === trainerId);
+    if (trainer) {
+      setSelectedTrainer(trainer);
+      setShowBookingModal(true);
+    }
   };
 
   const handleViewProfile = (trainerId: string) => {
-    console.log('Viewing profile:', trainerId);
-    // Navigate to trainer profile
+    const trainer = trainers.find(t => t.id === trainerId);
+    if (trainer) {
+      setSelectedTrainer(trainer);
+      setShowProfileModal(true);
+    }
   };
 
   const handleChat = (trainerId: string) => {
-    console.log('Starting chat with:', trainerId);
-    // Navigate to chat
+    const chatId = `chat-${user?.id}-${trainerId}`;
+    navigate(`/chat/${chatId}`);
   };
 
   return (
@@ -123,7 +152,7 @@ export const ClientHome: React.FC = () => {
             </Button>
           </div>
           <span className="text-sm text-muted-foreground">
-            {trainers.length} trenerów w pobliżu
+            {filteredTrainers.length} trenerów w pobliżu
           </span>
         </div>
       </header>
@@ -152,7 +181,17 @@ export const ClientHome: React.FC = () => {
 
       {/* Trainers List */}
       <section className="px-4 space-y-4">
-        {trainers.map((trainer) => (
+        {viewMode === 'map' && (
+          <Card className="bg-gradient-card h-64 flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <MapPin className="h-12 w-12 mx-auto mb-2" />
+              <p>Mapa z pinami trenerów</p>
+              <p className="text-sm">(Wymaga klucza API)</p>
+            </div>
+          </Card>
+        )}
+        
+        {viewMode === 'list' && filteredTrainers.map((trainer) => (
           <Card key={trainer.id} className="overflow-hidden hover:shadow-card transition-all duration-200 cursor-pointer bg-gradient-card">
             <CardHeader className="pb-3">
               <div className="flex items-start gap-4">
@@ -226,6 +265,36 @@ export const ClientHome: React.FC = () => {
           </Card>
         ))}
       </section>
+
+      {/* Modals */}
+      {selectedTrainer && (
+        <>
+          <BookingModal
+            trainer={selectedTrainer}
+            isOpen={showBookingModal}
+            onClose={() => {
+              setShowBookingModal(false);
+              setSelectedTrainer(null);
+            }}
+          />
+          <TrainerProfileModal
+            trainer={selectedTrainer}
+            isOpen={showProfileModal}
+            onClose={() => {
+              setShowProfileModal(false);
+              setSelectedTrainer(null);
+            }}
+            onBook={() => {
+              setShowProfileModal(false);
+              setShowBookingModal(true);
+            }}
+            onChat={() => {
+              setShowProfileModal(false);
+              handleChat(selectedTrainer.id);
+            }}
+          />
+        </>
+      )}
 
       {/* Bottom Navigation */}
       <BottomNavigation 
