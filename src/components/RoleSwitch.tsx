@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const RoleSwitch: React.FC = () => {
   const { user, switchRole } = useAuth();
 
+  // Don't render if no user or in loading state
   if (!user) return null;
 
   return (

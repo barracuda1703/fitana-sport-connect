@@ -38,11 +38,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const AppRoutes: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  // Don't render anything until auth is initialized
+  if (isLoading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen w-full">
-      <RoleSwitch />
+      {user && <RoleSwitch />}
       <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Index />} />
