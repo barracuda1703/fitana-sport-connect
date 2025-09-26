@@ -2,95 +2,142 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Fitana Design System - Nature-inspired fitness app
+All colors MUST be HSL. Based on the beautiful olive green logo gradient.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Base colors - Clean whites and soft grays */
+    --background: 0 0% 98%;
+    --foreground: 84 8% 15%;
 
+    /* Card and surface colors */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 84 8% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 84 8% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Fitana Brand Colors - Olive green gradient system */
+    --primary: 84 32% 35%;           /* Deep olive green from logo */
+    --primary-light: 84 25% 45%;     /* Lighter olive */
+    --primary-dark: 84 40% 25%;      /* Darker olive */
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary colors - Complementary fitness tones */
+    --secondary: 84 15% 92%;
+    --secondary-foreground: 84 8% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted colors for subtle elements */
+    --muted: 84 10% 95%;
+    --muted-foreground: 84 8% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent colors for highlights and CTAs */
+    --accent: 140 35% 45%;           /* Fresh fitness green */
+    --accent-light: 140 30% 55%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Success color for confirmations */
+    --success: 140 50% 45%;
+    --success-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Warning and error states */
+    --warning: 35 85% 55%;
+    --warning-foreground: 0 0% 98%;
+    
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 98%;
 
-    --radius: 0.5rem;
+    /* UI element colors */
+    --border: 84 15% 88%;
+    --input: 84 10% 94%;
+    --ring: 84 32% 35%;
 
+    /* Fitana gradients for beautiful effects */
+    --gradient-primary: linear-gradient(135deg, hsl(84 40% 30%), hsl(84 32% 35%), hsl(84 25% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(140 35% 45%), hsl(120 35% 50%));
+    --gradient-hero: linear-gradient(135deg, hsl(84 40% 25%) 0%, hsl(84 32% 35%) 50%, hsl(84 25% 45%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(84 10% 98%) 100%);
+
+    /* Shadows for depth */
+    --shadow-card: 0 4px 20px -2px hsl(84 32% 35% / 0.1);
+    --shadow-button: 0 2px 8px hsl(84 32% 35% / 0.2);
+    --shadow-floating: 0 8px 32px hsl(84 32% 35% / 0.15);
+
+    /* Border radius for modern look */
+    --radius: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+
+    /* Sidebar colors */
     --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
+    --sidebar-foreground: 84 8% 25%;
+    --sidebar-primary: 84 32% 35%;
     --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 84 15% 92%;
+    --sidebar-accent-foreground: 84 8% 15%;
+    --sidebar-border: 84 15% 88%;
+    --sidebar-ring: 84 32% 35%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode for Fitana - Darker olive tones */
+    --background: 84 20% 8%;
+    --foreground: 84 5% 92%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 84 15% 12%;
+    --card-foreground: 84 5% 92%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 84 15% 12%;
+    --popover-foreground: 84 5% 92%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 84 25% 65%;
+    --primary-light: 84 20% 75%;
+    --primary-dark: 84 30% 55%;
+    --primary-foreground: 84 20% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 84 10% 18%;
+    --secondary-foreground: 84 5% 92%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 84 8% 15%;
+    --muted-foreground: 84 5% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 140 30% 55%;
+    --accent-light: 140 25% 65%;
+    --accent-foreground: 84 20% 8%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 140 40% 55%;
+    --success-foreground: 84 20% 8%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --warning: 35 75% 65%;
+    --warning-foreground: 84 20% 8%;
+    
+    --destructive: 0 65% 65%;
+    --destructive-foreground: 84 20% 8%;
+
+    --border: 84 10% 20%;
+    --input: 84 8% 15%;
+    --ring: 84 25% 65%;
+
+    /* Dark gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(84 30% 20%), hsl(84 25% 25%), hsl(84 20% 35%));
+    --gradient-accent: linear-gradient(135deg, hsl(140 30% 35%), hsl(120 30% 40%));
+    --gradient-hero: linear-gradient(135deg, hsl(84 30% 15%) 0%, hsl(84 25% 20%) 50%, hsl(84 20% 30%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(84 15% 12%) 0%, hsl(84 10% 15%) 100%);
+
+    --shadow-card: 0 4px 20px -2px hsl(84 40% 5% / 0.3);
+    --shadow-button: 0 2px 8px hsl(84 40% 5% / 0.4);
+    --shadow-floating: 0 8px 32px hsl(84 40% 5% / 0.5);
+
+    --sidebar-background: 84 20% 8%;
+    --sidebar-foreground: 84 5% 92%;
+    --sidebar-primary: 84 25% 65%;
+    --sidebar-primary-foreground: 84 20% 8%;
+    --sidebar-accent: 84 10% 18%;
+    --sidebar-accent-foreground: 84 5% 92%;
+    --sidebar-border: 84 10% 20%;
+    --sidebar-ring: 84 25% 65%;
   }
 }
 
