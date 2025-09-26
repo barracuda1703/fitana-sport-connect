@@ -11,10 +11,7 @@ import { z } from 'zod';
 
 const locationSchema = z.object({
   name: z.string().min(2, 'Nazwa placówki musi mieć co najmniej 2 znaki'),
-  address: z.string().min(5, 'Adres musi mieć co najmniej 5 znaków'),
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
-  radius: z.number().min(0.5).max(50).default(2)
+  address: z.string().min(5, 'Adres musi mieć co najmniej 5 znaków')
 });
 
 interface LocationManagementProps {
@@ -30,10 +27,7 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    address: '',
-    lat: 52.2297,
-    lng: 21.0122,
-    radius: 2
+    address: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -41,10 +35,7 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
   const resetForm = () => {
     setFormData({
       name: '',
-      address: '',
-      lat: 52.2297,
-      lng: 21.0122,
-      radius: 2
+      address: ''
     });
     setErrors({});
   };
@@ -57,10 +48,10 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
         name: validatedData.name,
         address: validatedData.address,
         coordinates: {
-          lat: validatedData.lat,
-          lng: validatedData.lng
+          lat: 52.2297, // Default Warsaw coordinates
+          lng: 21.0122
         },
-        radius: validatedData.radius
+        radius: 2 // Default radius
       };
 
       onLocationsChange([...locations, newLocation]);
@@ -87,10 +78,7 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
     setEditingLocation(location);
     setFormData({
       name: location.name,
-      address: location.address,
-      lat: location.coordinates.lat,
-      lng: location.coordinates.lng,
-      radius: location.radius
+      address: location.address
     });
     setIsAddDialogOpen(true);
   };
@@ -103,12 +91,8 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
       const updatedLocation: Location = {
         ...editingLocation,
         name: validatedData.name,
-        address: validatedData.address,
-        coordinates: {
-          lat: validatedData.lat,
-          lng: validatedData.lng
-        },
-        radius: validatedData.radius
+        address: validatedData.address
+        // Keep existing coordinates and radius
       };
 
       const updatedLocations = locations.map(loc => 
@@ -202,45 +186,6 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
                   {errors.address && <p className="text-sm text-destructive">{errors.address}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="location-lat">Szerokość geograficzna</Label>
-                    <Input
-                      id="location-lat"
-                      type="number"
-                      step="0.000001"
-                      value={formData.lat}
-                      onChange={(e) => setFormData(prev => ({ ...prev, lat: parseFloat(e.target.value) || 0 }))}
-                    />
-                    {errors.lat && <p className="text-sm text-destructive">{errors.lat}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location-lng">Długość geograficzna</Label>
-                    <Input
-                      id="location-lng"
-                      type="number"
-                      step="0.000001"
-                      value={formData.lng}
-                      onChange={(e) => setFormData(prev => ({ ...prev, lng: parseFloat(e.target.value) || 0 }))}
-                    />
-                    {errors.lng && <p className="text-sm text-destructive">{errors.lng}</p>}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location-radius">Zasięg (km)</Label>
-                  <Input
-                    id="location-radius"
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    max="50"
-                    value={formData.radius}
-                    onChange={(e) => setFormData(prev => ({ ...prev, radius: parseFloat(e.target.value) || 2 }))}
-                  />
-                  {errors.radius && <p className="text-sm text-destructive">{errors.radius}</p>}
-                </div>
-
                 <div className="flex justify-end space-x-2">
                   <Button 
                     variant="outline" 
@@ -270,9 +215,6 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
                 <div>
                   <h4 className="font-medium">{location.name}</h4>
                   <p className="text-sm text-muted-foreground">{location.address}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Zasięg: {location.radius}km
-                  </p>
                 </div>
               </div>
               <div className="flex space-x-2">
