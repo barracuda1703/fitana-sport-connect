@@ -15,7 +15,6 @@ import { ProfileEditPage } from "@/pages/ProfileEdit";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
 import { ProfilePage } from "@/pages/Profile";
-import { DevMenu } from "@/components/DevMenu";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -92,7 +91,6 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <AppRoutes />
-            <DevMenu />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

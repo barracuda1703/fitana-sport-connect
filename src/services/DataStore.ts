@@ -90,6 +90,7 @@ const seedData = {
   ],
 
   trainers: [
+    // Fitness trainers
     {
       id: 't-1',
       userId: 'u-trainer1',
@@ -106,7 +107,7 @@ const seedData = {
       bio: 'Certyfikowana trenerka fitness z 8-letnim doświadczeniem.',
       gender: 'female' as const,
       coordinates: { lat: 52.2297, lng: 21.0122 },
-  services: [
+      services: [
         { id: 'srv-1', name: 'Trening personalny', price: 80, duration: 60, type: 'gym' as const },
         { id: 'srv-2', name: 'Yoga', price: 70, duration: 90, type: 'online' as const },
       ],
@@ -118,6 +119,92 @@ const seedData = {
         { dayOfWeek: 5, startTime: '09:00', endTime: '18:00' },
       ],
     },
+    {
+      id: 't-4',
+      userId: 'u-trainer4',
+      name: 'Tomasz Zieliński',
+      surname: 'Zieliński',
+      rating: 4.7,
+      reviewCount: 95,
+      priceFrom: 75,
+      distance: '0.8 km',
+      specialties: ['Fitness', 'Siłownia'],
+      isVerified: true,
+      hasVideo: false,
+      avatar: '👨‍💪',
+      bio: 'Trener siłowy z 5-letnim doświadczeniem.',
+      gender: 'male' as const,
+      coordinates: { lat: 52.2320, lng: 21.0140 },
+      services: [
+        { id: 'srv-7', name: 'Trening siłowy', price: 75, duration: 60, type: 'gym' as const },
+        { id: 'srv-8', name: 'Plan treningowy', price: 50, duration: 30, type: 'online' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '07:00', endTime: '19:00' },
+        { dayOfWeek: 2, startTime: '07:00', endTime: '19:00' },
+        { dayOfWeek: 3, startTime: '07:00', endTime: '19:00' },
+        { dayOfWeek: 4, startTime: '07:00', endTime: '19:00' },
+        { dayOfWeek: 5, startTime: '07:00', endTime: '19:00' },
+        { dayOfWeek: 6, startTime: '08:00', endTime: '16:00' },
+      ],
+    },
+    {
+      id: 't-5',
+      userId: 'u-trainer5',
+      name: 'Magdalena Wójcik',
+      surname: 'Wójcik',
+      rating: 4.8,
+      reviewCount: 143,
+      priceFrom: 85,
+      distance: '1.5 km',
+      specialties: ['Fitness', 'Zumba'],
+      isVerified: true,
+      hasVideo: true,
+      avatar: '👩‍🎯',
+      bio: 'Instruktor fitness i zumby.',
+      gender: 'female' as const,
+      coordinates: { lat: 52.2380, lng: 21.0090 },
+      services: [
+        { id: 'srv-9', name: 'Fitness grupowy', price: 85, duration: 60, type: 'gym' as const },
+        { id: 'srv-10', name: 'Zumba', price: 70, duration: 45, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '10:00', endTime: '20:00' },
+        { dayOfWeek: 2, startTime: '10:00', endTime: '20:00' },
+        { dayOfWeek: 3, startTime: '10:00', endTime: '20:00' },
+        { dayOfWeek: 4, startTime: '10:00', endTime: '20:00' },
+        { dayOfWeek: 5, startTime: '10:00', endTime: '20:00' },
+      ],
+    },
+    {
+      id: 't-6',
+      userId: 'u-trainer6',
+      name: 'Kamil Lewandowski',
+      surname: 'Lewandowski',
+      rating: 4.6,
+      reviewCount: 76,
+      priceFrom: 70,
+      distance: '2.0 km',
+      specialties: ['Fitness', 'Funkcjonalny'],
+      isVerified: false,
+      hasVideo: true,
+      avatar: '👨‍🏋️',
+      bio: 'Trener treningów funkcjonalnych.',
+      gender: 'male' as const,
+      coordinates: { lat: 52.2250, lng: 21.0180 },
+      services: [
+        { id: 'srv-11', name: 'Trening funkcjonalny', price: 70, duration: 60, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 3, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 4, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 5, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 6, startTime: '09:00', endTime: '17:00' },
+        { dayOfWeek: 0, startTime: '09:00', endTime: '17:00' },
+      ],
+    },
+    // Boxing trainers
     {
       id: 't-2',
       userId: 'u-trainer2',
@@ -148,6 +235,36 @@ const seedData = {
       ],
     },
     {
+      id: 't-7',
+      userId: 'u-trainer7',
+      name: 'Paweł Kowalczyk',
+      surname: 'Kowalczyk',
+      rating: 4.9,
+      reviewCount: 112,
+      priceFrom: 95,
+      distance: '1.8 km',
+      specialties: ['Boks', 'MMA'],
+      isVerified: true,
+      hasVideo: true,
+      avatar: '🥊',
+      bio: 'Mistrz Polski w boksie, trener MMA.',
+      gender: 'male' as const,
+      coordinates: { lat: 52.2420, lng: 21.0200 },
+      services: [
+        { id: 'srv-12', name: 'Boks sportowy', price: 95, duration: 60, type: 'gym' as const },
+        { id: 'srv-13', name: 'MMA dla początkujących', price: 100, duration: 90, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 2, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 3, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 4, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 5, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 6, startTime: '10:00', endTime: '18:00' },
+      ],
+    },
+    // Yoga trainers  
+    {
       id: 't-3',
       userId: 'u-trainer3',
       name: 'Ewa Wiśniewska',
@@ -173,6 +290,129 @@ const seedData = {
         { dayOfWeek: 3, startTime: '08:00', endTime: '16:00' },
         { dayOfWeek: 4, startTime: '08:00', endTime: '16:00' },
         { dayOfWeek: 5, startTime: '08:00', endTime: '16:00' },
+      ],
+    },
+    {
+      id: 't-8',
+      userId: 'u-trainer8',
+      name: 'Joanna Mazur',
+      surname: 'Mazur',
+      rating: 4.9,
+      reviewCount: 156,
+      priceFrom: 90,
+      distance: '1.7 km',
+      specialties: ['Yoga', 'Medytacja'],
+      isVerified: true,
+      hasVideo: true,
+      avatar: '🧘‍♀️',
+      bio: 'Certyfikowana instruktor jogi z 10-letnim doświadczeniem.',
+      gender: 'female' as const,
+      coordinates: { lat: 52.2340, lng: 21.0070 },
+      services: [
+        { id: 'srv-14', name: 'Hatha Yoga', price: 90, duration: 90, type: 'online' as const },
+        { id: 'srv-15', name: 'Vinyasa Yoga', price: 95, duration: 75, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 2, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 3, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 4, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 5, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 6, startTime: '07:00', endTime: '14:00' },
+        { dayOfWeek: 0, startTime: '07:00', endTime: '14:00' },
+      ],
+    },
+    // Running trainers
+    {
+      id: 't-9',
+      userId: 'u-trainer9',
+      name: 'Michał Dąbrowski',
+      surname: 'Dąbrowski',
+      rating: 4.7,
+      reviewCount: 88,
+      priceFrom: 60,
+      distance: '1.0 km',
+      specialties: ['Bieganie', 'Maraton'],
+      isVerified: true,
+      hasVideo: false,
+      avatar: '🏃‍♂️',
+      bio: 'Maratończyk, trener biegowy.',
+      gender: 'male' as const,
+      coordinates: { lat: 52.2280, lng: 21.0160 },
+      services: [
+        { id: 'srv-16', name: 'Trening biegowy', price: 60, duration: 60, type: 'home_visit' as const },
+        { id: 'srv-17', name: 'Plan treningowy na maraton', price: 150, duration: 120, type: 'online' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '06:00', endTime: '10:00' },
+        { dayOfWeek: 2, startTime: '06:00', endTime: '10:00' },
+        { dayOfWeek: 3, startTime: '06:00', endTime: '10:00' },
+        { dayOfWeek: 4, startTime: '06:00', endTime: '10:00' },
+        { dayOfWeek: 5, startTime: '06:00', endTime: '10:00' },
+        { dayOfWeek: 6, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 0, startTime: '06:00', endTime: '12:00' },
+      ],
+    },
+    // Tennis trainers
+    {
+      id: 't-10',
+      userId: 'u-trainer10',
+      name: 'Agnieszka Król',
+      surname: 'Król',
+      rating: 4.8,
+      reviewCount: 134,
+      priceFrom: 120,
+      distance: '2.5 km',
+      specialties: ['Tenis', 'Kort'],
+      isVerified: true,
+      hasVideo: true,
+      avatar: '🎾',
+      bio: 'Była zawodniczka tenisa, trenuje od 12 lat.',
+      gender: 'female' as const,
+      coordinates: { lat: 52.2450, lng: 21.0220 },
+      services: [
+        { id: 'srv-18', name: 'Lekcja tenisa', price: 120, duration: 60, type: 'court' as const },
+        { id: 'srv-19', name: 'Tenis dla dzieci', price: 100, duration: 45, type: 'court' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 2, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 3, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 4, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 5, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 6, startTime: '08:00', endTime: '16:00' },
+        { dayOfWeek: 0, startTime: '08:00', endTime: '16:00' },
+      ],
+    },
+    // Swimming trainers
+    {
+      id: 't-11',
+      userId: 'u-trainer11',
+      name: 'Łukasz Górski',
+      surname: 'Górski',
+      rating: 4.9,
+      reviewCount: 167,
+      priceFrom: 110,
+      distance: '3.0 km',
+      specialties: ['Pływanie', 'Basen'],
+      isVerified: true,
+      hasVideo: false,
+      avatar: '🏊‍♂️',
+      bio: 'Były pływak reprezentacyjny, trener pływania.',
+      gender: 'male' as const,
+      coordinates: { lat: 52.2180, lng: 21.0050 },
+      services: [
+        { id: 'srv-20', name: 'Nauka pływania', price: 110, duration: 60, type: 'gym' as const },
+        { id: 'srv-21', name: 'Pływanie sportowe', price: 130, duration: 90, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '07:00', endTime: '21:00' },
+        { dayOfWeek: 2, startTime: '07:00', endTime: '21:00' },
+        { dayOfWeek: 3, startTime: '07:00', endTime: '21:00' },
+        { dayOfWeek: 4, startTime: '07:00', endTime: '21:00' },
+        { dayOfWeek: 5, startTime: '07:00', endTime: '21:00' },
+        { dayOfWeek: 6, startTime: '08:00', endTime: '20:00' },
+        { dayOfWeek: 0, startTime: '08:00', endTime: '20:00' },
       ],
     },
   ],
@@ -308,6 +548,83 @@ class DataStore {
     this.data.messages.push(newMessage);
     this.saveData();
     return newMessage;
+  }
+
+  // Availability methods
+  getAvailableDates(trainerId: string, serviceDuration: number): string[] {
+    const trainer = this.getTrainer(trainerId);
+    if (!trainer) return [];
+
+    const availableDates: string[] = [];
+    const today = new Date();
+    
+    // Check next 30 days
+    for (let i = 1; i <= 30; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dayOfWeek = date.getDay();
+      
+      // Check if trainer is available on this day
+      const hasAvailability = trainer.availability.some(slot => 
+        slot.dayOfWeek === dayOfWeek
+      );
+      
+      if (hasAvailability) {
+        availableDates.push(date.toISOString().split('T')[0]);
+      }
+    }
+    
+    return availableDates;
+  }
+
+  getAvailableHours(trainerId: string, date: string, serviceDuration: number): string[] {
+    const trainer = this.getTrainer(trainerId);
+    if (!trainer) return [];
+
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay();
+    
+    // Get trainer's availability for this day
+    const dayAvailability = trainer.availability.find(slot => 
+      slot.dayOfWeek === dayOfWeek
+    );
+    
+    if (!dayAvailability) return [];
+
+    // Generate 30-minute slots between start and end time
+    const availableHours: string[] = [];
+    const startHour = parseInt(dayAvailability.startTime.split(':')[0]);
+    const startMinute = parseInt(dayAvailability.startTime.split(':')[1]);
+    const endHour = parseInt(dayAvailability.endTime.split(':')[0]);
+    const endMinute = parseInt(dayAvailability.endTime.split(':')[1]);
+    
+    const startTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+    
+    // Create 30-minute slots
+    for (let time = startTime; time < endTime - serviceDuration; time += 30) {
+      const hour = Math.floor(time / 60);
+      const minute = time % 60;
+      const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+        // Check if this slot is already booked (only blocked by confirmed/pending bookings)
+        const isBooked = this.data.bookings.some(booking => {
+          if (booking.trainerId !== trainerId) return false;
+          if (booking.status !== 'pending' && booking.status !== 'confirmed') return false;
+          
+          const bookingDate = new Date(booking.scheduledAt);
+          const bookingDateStr = bookingDate.toISOString().split('T')[0];
+          const bookingTime = `${bookingDate.getHours().toString().padStart(2, '0')}:${bookingDate.getMinutes().toString().padStart(2, '0')}`;
+          
+          return bookingDateStr === date && bookingTime === timeSlot;
+        });
+      
+      if (!isBooked) {
+        availableHours.push(timeSlot);
+      }
+    }
+    
+    return availableHours;
   }
 
   // Dev methods
