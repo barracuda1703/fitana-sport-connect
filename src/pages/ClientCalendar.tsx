@@ -31,7 +31,7 @@ export const ClientCalendarPage: React.FC = () => {
 
   // Get pending reschedule requests for this client
   const pendingRescheduleRequests = bookings.flatMap(booking => 
-    booking.rescheduleRequests
+    (booking.rescheduleRequests || [])
       .filter(request => request.status === 'pending' && request.requestedBy === 'trainer')
       .map(request => ({ booking, request }))
   );

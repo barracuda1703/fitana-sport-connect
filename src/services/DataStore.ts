@@ -1393,6 +1393,14 @@ class DataStore {
     if (!this.data.manualBlocks) this.data.manualBlocks = [];
     if (!this.data.reviews) this.data.reviews = [];
     if (!this.data.trainerSettings) this.data.trainerSettings = [];
+    // Ensure rescheduleRequests field exists for all bookings
+    if (this.data.bookings) {
+      this.data.bookings.forEach(booking => {
+        if (!booking.rescheduleRequests) {
+          booking.rescheduleRequests = [];
+        }
+      });
+    }
     } else {
       this.data = { ...seedData };
       this.saveData();
