@@ -10,6 +10,7 @@ import { LanguageSelector } from '@/components/LanguageSelector';
 import { LocationManagement } from '@/components/LocationManagement';
 import { ServiceManagementModal } from '@/components/ServiceManagementModal';
 import { PhotoUploader } from '@/components/PhotoUploader';
+import { dataStore } from '@/services/DataStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -60,7 +61,17 @@ export const ProfileEditPage: React.FC = () => {
   const [gallery, setGallery] = useState<string[]>([]);
 
   const handleSave = () => {
-    // In a real app, this would update the user in the backend
+    // Update user data in dataStore
+    const updatedUserData = {
+      ...user,
+      ...formData
+    };
+
+    if (user?.role === 'trainer') {
+      // Sync trainer profile if user is a trainer
+      dataStore.syncTrainerProfile(user.id, updatedUserData);
+    }
+
     // For trainers, validate that they have at least one location and one specialty
     if (user?.role === 'trainer') {
       if (locations.length === 0) {

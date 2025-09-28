@@ -98,18 +98,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       let updatedUser;
       if (role === 'trainer') {
-        // Switch to trainer with trainer ID
+        // Create or update trainer profile
+        const trainerProfile = dataStore.createOrUpdateTrainerProfile(user.id, user);
         updatedUser = { 
           ...user, 
           role, 
-          id: 't-1' // Default trainer ID for demo
+          id: trainerProfile.userId // Use the original user ID
         };
       } else {
-        // Switch to client
+        // Switch back to client
         updatedUser = { 
           ...user, 
           role, 
-          id: 'u-client1' // Default client ID for demo
+          id: user.id.startsWith('u-') ? user.id : 'u-client1' // Keep original client ID or default
         };
       }
       setUser(updatedUser);

@@ -168,6 +168,48 @@ const seedData = {
     { id: 'u-trainer28', role: 'trainer' as const, email: 'marcin.sikora@tennis.com', password: 'demo123', name: 'Marcin', surname: 'Sikora', language: 'pl' },
     { id: 'u-trainer29', role: 'trainer' as const, email: 'izabela.baran@tennis.com', password: 'demo123', name: 'Izabela', surname: 'Baran', language: 'pl' },
     { id: 'u-trainer30', role: 'trainer' as const, email: 'kamil.rutkowski@tennis.com', password: 'demo123', name: 'Kamil', surname: 'Rutkowski', language: 'pl' },
+    
+    // Additional Fitness trainers (5 more)
+    { id: 'u-trainer31', role: 'trainer' as const, email: 'robert.wozniak@fit.com', password: 'demo123', name: 'Robert', surname: 'Woźniak', language: 'pl' },
+    { id: 'u-trainer32', role: 'trainer' as const, email: 'agata.szewczyk@fit.com', password: 'demo123', name: 'Agata', surname: 'Szewczyk', language: 'pl' },
+    { id: 'u-trainer33', role: 'trainer' as const, email: 'daniel.kowalczyk@fit.com', password: 'demo123', name: 'Daniel', surname: 'Kowalczyk', language: 'pl' },
+    { id: 'u-trainer34', role: 'trainer' as const, email: 'natalia.piotrowski@fit.com', password: 'demo123', name: 'Natalia', surname: 'Piotrowski', language: 'pl' },
+    { id: 'u-trainer35', role: 'trainer' as const, email: 'filip.gorski@fit.com', password: 'demo123', name: 'Filip', surname: 'Górski', language: 'pl' },
+    
+    // Additional Yoga trainers (5 more)
+    { id: 'u-trainer36', role: 'trainer' as const, email: 'karina.urbanska@yoga.com', password: 'demo123', name: 'Karina', surname: 'Urbańska', language: 'pl' },
+    { id: 'u-trainer37', role: 'trainer' as const, email: 'adam.kowalewski@yoga.com', password: 'demo123', name: 'Adam', surname: 'Kowalewski', language: 'pl' },
+    { id: 'u-trainer38', role: 'trainer' as const, email: 'sylwia.malinowska@yoga.com', password: 'demo123', name: 'Sylwia', surname: 'Malinowska', language: 'pl' },
+    { id: 'u-trainer39', role: 'trainer' as const, email: 'michal.borkowski@yoga.com', password: 'demo123', name: 'Michał', surname: 'Borkowski', language: 'pl' },
+    { id: 'u-trainer40', role: 'trainer' as const, email: 'ola.czarnecka@yoga.com', password: 'demo123', name: 'Ola', surname: 'Czarnecka', language: 'pl' },
+    
+    // Additional Running trainers (5 more)
+    { id: 'u-trainer41', role: 'trainer' as const, email: 'przemek.zalewski@run.com', password: 'demo123', name: 'Przemek', surname: 'Zalewski', language: 'pl' },
+    { id: 'u-trainer42', role: 'trainer' as const, email: 'beata.sobczak@run.com', password: 'demo123', name: 'Beata', surname: 'Sobczak', language: 'pl' },
+    { id: 'u-trainer43', role: 'trainer' as const, email: 'grzegorz.witkowski@run.com', password: 'demo123', name: 'Grzegorz', surname: 'Witkowski', language: 'pl' },
+    { id: 'u-trainer44', role: 'trainer' as const, email: 'anna.krol@run.com', password: 'demo123', name: 'Anna', surname: 'Król', language: 'pl' },
+    { id: 'u-trainer45', role: 'trainer' as const, email: 'tomek.szczepanski@run.com', password: 'demo123', name: 'Tomek', surname: 'Szczepański', language: 'pl' },
+    
+    // Additional Boxing trainers (5 more)
+    { id: 'u-trainer46', role: 'trainer' as const, email: 'kamila.nowacka@box.com', password: 'demo123', name: 'Kamila', surname: 'Nowacka', language: 'pl' },
+    { id: 'u-trainer47', role: 'trainer' as const, email: 'pawel.grabowski@box.com', password: 'demo123', name: 'Paweł', surname: 'Grabowski', language: 'pl' },
+    { id: 'u-trainer48', role: 'trainer' as const, email: 'monika.zawadzka@box.com', password: 'demo123', name: 'Monika', surname: 'Zawadzka', language: 'pl' },
+    { id: 'u-trainer49', role: 'trainer' as const, email: 'artur.chmielewski@box.com', password: 'demo123', name: 'Artur', surname: 'Chmielewski', language: 'pl' },
+    { id: 'u-trainer50', role: 'trainer' as const, email: 'justyna.sadowska@box.com', password: 'demo123', name: 'Justyna', surname: 'Sadowska', language: 'pl' },
+    
+    // Additional Swimming trainers (5 more)
+    { id: 'u-trainer51', role: 'trainer' as const, email: 'marcin.wierzbicki@swim.com', password: 'demo123', name: 'Marcin', surname: 'Wierzbicki', language: 'pl' },
+    { id: 'u-trainer52', role: 'trainer' as const, email: 'katarzyna.marciniak@swim.com', password: 'demo123', name: 'Katarzyna', surname: 'Marciniak', language: 'pl' },
+    { id: 'u-trainer53', role: 'trainer' as const, email: 'jakub.pietrzak@swim.com', password: 'demo123', name: 'Jakub', surname: 'Pietrzak', language: 'pl' },
+    { id: 'u-trainer54', role: 'trainer' as const, email: 'ewa.glowacka@swim.com', password: 'demo123', name: 'Ewa', surname: 'Głowacka', language: 'pl' },
+    { id: 'u-trainer55', role: 'trainer' as const, email: 'bartlomiej.kaczor@swim.com', password: 'demo123', name: 'Bartłomiej', surname: 'Kaczor', language: 'pl' },
+    
+    // Additional Tennis trainers (5 more)
+    { id: 'u-trainer56', role: 'trainer' as const, email: 'alicja.jasinska@tennis.com', password: 'demo123', name: 'Alicja', surname: 'Jasińska', language: 'pl' },
+    { id: 'u-trainer57', role: 'trainer' as const, email: 'mateusz.krawczyk@tennis.com', password: 'demo123', name: 'Mateusz', surname: 'Krawczyk', language: 'pl' },
+    { id: 'u-trainer58', role: 'trainer' as const, email: 'dorota.sokolowska@tennis.com', password: 'demo123', name: 'Dorota', surname: 'Sokołowska', language: 'pl' },
+    { id: 'u-trainer59', role: 'trainer' as const, email: 'krzysztof.mazur@tennis.com', password: 'demo123', name: 'Krzysztof', surname: 'Mazur', language: 'pl' },
+    { id: 'u-trainer60', role: 'trainer' as const, email: 'magdalena.cybulska@tennis.com', password: 'demo123', name: 'Magdalena', surname: 'Cybulska', language: 'pl' },
   ],
 
   trainers: [
@@ -719,6 +761,480 @@ const seedData = {
         { dayOfWeek: 6, startTime: '09:00', endTime: '17:00' },
       ],
     },
+
+    // ADDITIONAL FITNESS TRAINERS (5 more - t-31 to t-35)
+    {
+      id: 't-31', userId: 'u-trainer31', name: 'Robert', surname: 'Woźniak', rating: 4.7, reviewCount: 89, priceFrom: 85, distance: '2.3 km',
+      specialties: ['Fitness', 'Strongman'], isVerified: true, hasVideo: true, avatar: '👨‍💪', gender: 'male' as const,
+      bio: 'Trener strongman z passion do siły funkcjonalnej. Pomogę Ci odkryć prawdziwą moc Twojego ciała.',
+      coordinates: { lat: 52.2150, lng: 21.0320 },
+      services: [
+        { id: 'srv-61', name: 'Trening strongman', price: 85, duration: 75, type: 'gym' as const },
+        { id: 'srv-62', name: 'Siła funkcjonalna', price: 80, duration: 60, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 3, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 5, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 6, startTime: '10:00', endTime: '16:00' },
+      ],
+    },
+    {
+      id: 't-32', userId: 'u-trainer32', name: 'Agata', surname: 'Szewczyk', rating: 4.9, reviewCount: 156, priceFrom: 75, distance: '1.9 km',
+      specialties: ['Fitness', 'Zumba'], isVerified: true, hasVideo: true, avatar: '👩‍💃', gender: 'female' as const,
+      bio: 'Instruktorka fitness z miłością do tańca. Zumba i cardio dance to moja specjalność!',
+      coordinates: { lat: 52.2380, lng: 21.0140 },
+      services: [
+        { id: 'srv-63', name: 'Zumba fitness', price: 75, duration: 60, type: 'gym' as const },
+        { id: 'srv-64', name: 'Cardio dance', price: 70, duration: 45, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '17:00', endTime: '21:00' },
+        { dayOfWeek: 4, startTime: '17:00', endTime: '21:00' },
+        { dayOfWeek: 6, startTime: '09:00', endTime: '15:00' },
+        { dayOfWeek: 0, startTime: '10:00', endTime: '14:00' },
+      ],
+    },
+    {
+      id: 't-33', userId: 'u-trainer33', name: 'Daniel', surname: 'Kowalczyk', rating: 4.6, reviewCount: 112, priceFrom: 90, distance: '3.1 km',
+      specialties: ['Fitness', 'Calisthenics'], isVerified: false, hasVideo: false, avatar: '👨‍🤸', gender: 'male' as const,
+      bio: 'Miłośnik calisthenics i treningu z własnym ciężarem ciała. Siła bez granic!',
+      coordinates: { lat: 52.2050, lng: 21.0280 },
+      services: [
+        { id: 'srv-65', name: 'Calisthenics', price: 90, duration: 60, type: 'home_visit' as const },
+        { id: 'srv-66', name: 'Street workout', price: 85, duration: 75, type: 'home_visit' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '16:00', endTime: '20:00' },
+        { dayOfWeek: 3, startTime: '16:00', endTime: '20:00' },
+        { dayOfWeek: 5, startTime: '16:00', endTime: '20:00' },
+        { dayOfWeek: 0, startTime: '09:00', endTime: '13:00' },
+      ],
+    },
+    {
+      id: 't-34', userId: 'u-trainer34', name: 'Natalia', surname: 'Piotrowski', rating: 4.8, reviewCount: 145, priceFrom: 80, distance: '2.7 km',
+      specialties: ['Fitness', 'Kettlebell'], isVerified: true, hasVideo: true, avatar: '👩‍🏋️', gender: 'female' as const,
+      bio: 'Certyfikowana instruktorka kettlebell. Trenuj smart, trenuj z kettlebell!',
+      coordinates: { lat: 52.2450, lng: 21.0090 },
+      services: [
+        { id: 'srv-67', name: 'Kettlebell training', price: 80, duration: 60, type: 'gym' as const },
+        { id: 'srv-68', name: 'HIIT kettlebell', price: 85, duration: 45, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '07:00', endTime: '15:00' },
+        { dayOfWeek: 4, startTime: '07:00', endTime: '15:00' },
+        { dayOfWeek: 6, startTime: '08:00', endTime: '14:00' },
+      ],
+    },
+    {
+      id: 't-35', userId: 'u-trainer35', name: 'Filip', surname: 'Górski', rating: 4.7, reviewCount: 98, priceFrom: 95, distance: '1.4 km',
+      specialties: ['Fitness', 'Powerlifting'], isVerified: true, hasVideo: true, avatar: '👨‍🏋️', gender: 'male' as const,
+      bio: 'Powerlifter z międzynarodowym doświadczeniem. Naucz się podnosić ciężary bezpiecznie i skutecznie.',
+      coordinates: { lat: 52.2330, lng: 21.0160 },
+      services: [
+        { id: 'srv-69', name: 'Powerlifting', price: 95, duration: 90, type: 'gym' as const },
+        { id: 'srv-70', name: 'Technika martwego ciągu', price: 100, duration: 75, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '05:00', endTime: '13:00' },
+        { dayOfWeek: 3, startTime: '05:00', endTime: '13:00' },
+        { dayOfWeek: 5, startTime: '05:00', endTime: '13:00' },
+      ],
+    },
+
+    // ADDITIONAL YOGA TRAINERS (5 more - t-36 to t-40)
+    {
+      id: 't-36', userId: 'u-trainer36', name: 'Karina', surname: 'Urbańska', rating: 4.9, reviewCount: 167, priceFrom: 85, distance: '2.2 km',
+      specialties: ['Yoga', 'Ashtanga'], isVerified: true, hasVideo: true, avatar: '👩‍🧘', gender: 'female' as const,
+      bio: 'Specjalistka Ashtanga Yoga z certyfikatem z Indii. Tradycyjna praktyka w nowoczesnym wydaniu.',
+      coordinates: { lat: 52.2200, lng: 21.0180 },
+      services: [
+        { id: 'srv-71', name: 'Ashtanga Yoga', price: 85, duration: 90, type: 'gym' as const },
+        { id: 'srv-72', name: 'Yoga flow', price: 80, duration: 75, type: 'online' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '06:00', endTime: '14:00' },
+        { dayOfWeek: 3, startTime: '06:00', endTime: '14:00' },
+        { dayOfWeek: 5, startTime: '06:00', endTime: '14:00' },
+        { dayOfWeek: 0, startTime: '08:00', endTime: '16:00' },
+      ],
+    },
+    {
+      id: 't-37', userId: 'u-trainer37', name: 'Adam', surname: 'Kowalewski', rating: 4.5, reviewCount: 89, priceFrom: 70, distance: '3.5 km',
+      specialties: ['Yoga', 'Breathwork'], isVerified: false, hasVideo: true, avatar: '👨‍🧘', gender: 'male' as const,
+      bio: 'Instruktor jogi i oddechów. Męska perspektywa w jodze i technikach oddechowych.',
+      coordinates: { lat: 52.1980, lng: 21.0300 },
+      services: [
+        { id: 'srv-73', name: 'Yoga dla mężczyzn', price: 70, duration: 60, type: 'gym' as const },
+        { id: 'srv-74', name: 'Breathwork session', price: 65, duration: 45, type: 'online' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 4, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 6, startTime: '15:00', endTime: '20:00' },
+      ],
+    },
+    {
+      id: 't-38', userId: 'u-trainer38', name: 'Sylwia', surname: 'Malinowska', rating: 4.8, reviewCount: 134, priceFrom: 75, distance: '2.8 km',
+      specialties: ['Yoga', 'Prenatal'], isVerified: true, hasVideo: true, avatar: '👩‍👶', gender: 'female' as const,
+      bio: 'Specjalistka od jogi prenatalnej i postnatalnej. Bezpieczna praktyka dla mam.',
+      coordinates: { lat: 52.2350, lng: 21.0250 },
+      services: [
+        { id: 'srv-75', name: 'Yoga prenatalna', price: 75, duration: 60, type: 'gym' as const },
+        { id: 'srv-76', name: 'Yoga z dzieckiem', price: 70, duration: 45, type: 'home_visit' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '10:00', endTime: '16:00' },
+        { dayOfWeek: 3, startTime: '10:00', endTime: '16:00' },
+        { dayOfWeek: 5, startTime: '10:00', endTime: '16:00' },
+      ],
+    },
+    {
+      id: 't-39', userId: 'u-trainer39', name: 'Michał', surname: 'Borkowski', rating: 4.6, reviewCount: 76, priceFrom: 80, distance: '1.7 km',
+      specialties: ['Yoga', 'Hot Yoga'], isVerified: true, hasVideo: false, avatar: '👨‍🔥', gender: 'male' as const,
+      bio: 'Instruktor hot yoga i bikram yoga. Intensywna praktyka w wysokiej temperaturze.',
+      coordinates: { lat: 52.2420, lng: 21.0120 },
+      services: [
+        { id: 'srv-77', name: 'Hot Yoga', price: 80, duration: 90, type: 'gym' as const },
+        { id: 'srv-78', name: 'Bikram Yoga', price: 85, duration: 90, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '19:00', endTime: '22:00' },
+        { dayOfWeek: 4, startTime: '19:00', endTime: '22:00' },
+        { dayOfWeek: 0, startTime: '17:00', endTime: '21:00' },
+      ],
+    },
+    {
+      id: 't-40', userId: 'u-trainer40', name: 'Ola', surname: 'Czarnecka', rating: 4.9, reviewCount: 189, priceFrom: 90, distance: '2.1 km',
+      specialties: ['Yoga', 'Terapeutyczna'], isVerified: true, hasVideo: true, avatar: '👩‍⚕️', gender: 'female' as const,
+      bio: 'Jogaterapeutka z wykształceniem fizjoterapeutycznym. Yoga jako droga do zdrowia.',
+      coordinates: { lat: 52.2310, lng: 21.0200 },
+      services: [
+        { id: 'srv-79', name: 'Jogaterapia', price: 90, duration: 75, type: 'gym' as const },
+        { id: 'srv-80', name: 'Yoga dla bólu kręgosłupa', price: 95, duration: 60, type: 'home_visit' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '14:00', endTime: '20:00' },
+        { dayOfWeek: 3, startTime: '14:00', endTime: '20:00' },
+        { dayOfWeek: 5, startTime: '14:00', endTime: '20:00' },
+      ],
+    },
+
+    // ADDITIONAL RUNNING TRAINERS (5 more - t-41 to t-45)
+    {
+      id: 't-41', userId: 'u-trainer41', name: 'Przemek', surname: 'Zalewski', rating: 4.8, reviewCount: 123, priceFrom: 65, distance: '2.9 km',
+      specialties: ['Bieganie', 'Trail running'], isVerified: true, hasVideo: true, avatar: '👨‍🏔️', gender: 'male' as const,
+      bio: 'Pasjonat biegów górskich i trail running. Odkryj piękno biegania w terenie!',
+      coordinates: { lat: 52.2080, lng: 21.0340 },
+      services: [
+        { id: 'srv-81', name: 'Trail running', price: 65, duration: 90, type: 'home_visit' as const },
+        { id: 'srv-82', name: 'Technika biegu górskiego', price: 70, duration: 75, type: 'home_visit' as const },
+      ],
+      availability: [
+        { dayOfWeek: 6, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 0, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 2, startTime: '17:00', endTime: '20:00' },
+        { dayOfWeek: 4, startTime: '17:00', endTime: '20:00' },
+      ],
+    },
+    {
+      id: 't-42', userId: 'u-trainer42', name: 'Beata', surname: 'Sobczak', rating: 4.7, reviewCount: 145, priceFrom: 60, distance: '1.8 km',
+      specialties: ['Bieganie', 'Nordic walking'], isVerified: true, hasVideo: false, avatar: '👩‍🚶', gender: 'female' as const,
+      bio: 'Instruktorka nordic walking i biegania rekreacyjnego. Aktywność dla każdego wieku!',
+      coordinates: { lat: 52.2390, lng: 21.0150 },
+      services: [
+        { id: 'srv-83', name: 'Nordic walking', price: 60, duration: 60, type: 'home_visit' as const },
+        { id: 'srv-84', name: 'Bieganie dla seniorów', price: 55, duration: 45, type: 'home_visit' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '08:00', endTime: '12:00' },
+        { dayOfWeek: 3, startTime: '08:00', endTime: '12:00' },
+        { dayOfWeek: 5, startTime: '08:00', endTime: '12:00' },
+        { dayOfWeek: 6, startTime: '14:00', endTime: '18:00' },
+      ],
+    },
+    {
+      id: 't-43', userId: 'u-trainer43', name: 'Grzegorz', surname: 'Witkowski', rating: 4.9, reviewCount: 167, priceFrom: 70, distance: '3.2 km',
+      specialties: ['Bieganie', 'Ultramaraton'], isVerified: true, hasVideo: true, avatar: '👨‍🏃‍➡️', gender: 'male' as const,
+      bio: 'Ultramaratończyk z doświadczeniem w biegach 100km+. Przygotowanie do najtrudniejszych wyzwań.',
+      coordinates: { lat: 52.1950, lng: 21.0290 },
+      services: [
+        { id: 'srv-85', name: 'Trening ultramaratonu', price: 70, duration: 120, type: 'home_visit' as const },
+        { id: 'srv-86', name: 'Wytrzymałość mentalna', price: 80, duration: 60, type: 'online' as const },
+      ],
+      availability: [
+        { dayOfWeek: 6, startTime: '05:00', endTime: '10:00' },
+        { dayOfWeek: 0, startTime: '05:00', endTime: '10:00' },
+        { dayOfWeek: 3, startTime: '18:00', endTime: '21:00' },
+      ],
+    },
+    {
+      id: 't-44', userId: 'u-trainer44', name: 'Anna', surname: 'Król', rating: 4.6, reviewCount: 98, priceFrom: 65, distance: '2.4 km',
+      specialties: ['Bieganie', 'Interwały'], isVerified: false, hasVideo: true, avatar: '👩‍💨', gender: 'female' as const,
+      bio: 'Specjalistka od treningów interwałowych i speed work. Szybkość to moja pasja!',
+      coordinates: { lat: 52.2270, lng: 21.0220 },
+      services: [
+        { id: 'srv-87', name: 'Trening interwałowy', price: 65, duration: 60, type: 'home_visit' as const },
+        { id: 'srv-88', name: 'Speed work', price: 70, duration: 45, type: 'home_visit' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '06:00', endTime: '09:00' },
+        { dayOfWeek: 4, startTime: '06:00', endTime: '09:00' },
+        { dayOfWeek: 6, startTime: '16:00', endTime: '19:00' },
+      ],
+    },
+    {
+      id: 't-45', userId: 'u-trainer45', name: 'Tomek', surname: 'Szczepański', rating: 4.8, reviewCount: 156, priceFrom: 75, distance: '1.5 km',
+      specialties: ['Bieganie', 'Triathlon'], isVerified: true, hasVideo: true, avatar: '👨‍🏊‍♂️', gender: 'male' as const,
+      bio: 'Triathlonista z wieloletnim doświadczeniem. Kompleksowe przygotowanie do triatlonu.',
+      coordinates: { lat: 52.2340, lng: 21.0170 },
+      services: [
+        { id: 'srv-89', name: 'Przygotowanie do triatlonu', price: 75, duration: 90, type: 'gym' as const },
+        { id: 'srv-90', name: 'Brick training', price: 80, duration: 75, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '05:30', endTime: '08:30' },
+        { dayOfWeek: 3, startTime: '05:30', endTime: '08:30' },
+        { dayOfWeek: 5, startTime: '05:30', endTime: '08:30' },
+        { dayOfWeek: 0, startTime: '15:00', endTime: '19:00' },
+      ],
+    },
+
+    // ADDITIONAL BOXING TRAINERS (5 more - t-46 to t-50)
+    {
+      id: 't-46', userId: 'u-trainer46', name: 'Kamila', surname: 'Nowacka', rating: 4.9, reviewCount: 145, priceFrom: 85, distance: '2.6 km',
+      specialties: ['Boks', 'Kickboxing'], isVerified: true, hasVideo: true, avatar: '👩‍🥊', gender: 'female' as const,
+      bio: 'Mistrzyni kickboxingu i instruktorka samoobrony kobiet. Siła i pewność siebie w jednym!',
+      coordinates: { lat: 52.2170, lng: 21.0310 },
+      services: [
+        { id: 'srv-91', name: 'Kickboxing kobiet', price: 85, duration: 60, type: 'gym' as const },
+        { id: 'srv-92', name: 'Samoobrona dla kobiet', price: 90, duration: 75, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 4, startTime: '18:00', endTime: '22:00' },
+        { dayOfWeek: 6, startTime: '10:00', endTime: '16:00' },
+        { dayOfWeek: 0, startTime: '12:00', endTime: '18:00' },
+      ],
+    },
+    {
+      id: 't-47', userId: 'u-trainer47', name: 'Paweł', surname: 'Grabowski', rating: 4.7, reviewCount: 112, priceFrom: 80, distance: '3.4 km',
+      specialties: ['Boks', 'MMA'], isVerified: true, hasVideo: false, avatar: '👨‍🤼', gender: 'male' as const,
+      bio: 'Fighter MMA z doświadczeniem w klatkach. Naucz się walczyć jak prawdziwy wojownik.',
+      coordinates: { lat: 52.1930, lng: 21.0350 },
+      services: [
+        { id: 'srv-93', name: 'Podstawy MMA', price: 80, duration: 75, type: 'gym' as const },
+        { id: 'srv-94', name: 'Grappling', price: 85, duration: 60, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '19:00', endTime: '23:00' },
+        { dayOfWeek: 3, startTime: '19:00', endTime: '23:00' },
+        { dayOfWeek: 5, startTime: '19:00', endTime: '23:00' },
+      ],
+    },
+    {
+      id: 't-48', userId: 'u-trainer48', name: 'Monika', surname: 'Zawadzka', rating: 4.6, reviewCount: 89, priceFrom: 75, distance: '2.2 km',
+      specialties: ['Boks', 'Fitness boxing'], isVerified: false, hasVideo: true, avatar: '👩‍💪', gender: 'female' as const,
+      bio: 'Fitness boxing i cardio boxing - spalaj kalorie w rytmie uderzeń!',
+      coordinates: { lat: 52.2300, lng: 21.0190 },
+      services: [
+        { id: 'srv-95', name: 'Fitness boxing', price: 75, duration: 60, type: 'gym' as const },
+        { id: 'srv-96', name: 'Cardio boxing', price: 70, duration: 45, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '17:00', endTime: '20:00' },
+        { dayOfWeek: 3, startTime: '17:00', endTime: '20:00' },
+        { dayOfWeek: 5, startTime: '17:00', endTime: '20:00' },
+        { dayOfWeek: 6, startTime: '11:00', endTime: '15:00' },
+      ],
+    },
+    {
+      id: 't-49', userId: 'u-trainer49', name: 'Artur', surname: 'Chmielewski', rating: 4.8, reviewCount: 134, priceFrom: 90, distance: '1.9 km',
+      specialties: ['Boks', 'Boks olimpijski'], isVerified: true, hasVideo: true, avatar: '👨‍🏆', gender: 'male' as const,
+      bio: 'Były reprezentant Polski w boksie olimpijskim. Technika i taktyka na najwyższym poziomie.',
+      coordinates: { lat: 52.2370, lng: 21.0130 },
+      services: [
+        { id: 'srv-97', name: 'Boks olimpijski', price: 90, duration: 75, type: 'gym' as const },
+        { id: 'srv-98', name: 'Technika boksu', price: 95, duration: 60, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 4, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 6, startTime: '08:00', endTime: '14:00' },
+      ],
+    },
+    {
+      id: 't-50', userId: 'u-trainer50', name: 'Justyna', surname: 'Sadowska', rating: 4.7, reviewCount: 98, priceFrom: 80, distance: '2.8 km',
+      specialties: ['Boks', 'Tajski boks'], isVerified: true, hasVideo: true, avatar: '👩‍🥋', gender: 'female' as const,
+      bio: 'Instruktorka muay thai z certyfikatem z Tajlandii. Tradycyjne sztuki walki w kobiecym wydaniu.',
+      coordinates: { lat: 52.2120, lng: 21.0270 },
+      services: [
+        { id: 'srv-99', name: 'Muay Thai', price: 80, duration: 75, type: 'gym' as const },
+        { id: 'srv-100', name: 'Clinch work', price: 85, duration: 60, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '18:30', endTime: '21:30' },
+        { dayOfWeek: 3, startTime: '18:30', endTime: '21:30' },
+        { dayOfWeek: 0, startTime: '14:00', endTime: '18:00' },
+      ],
+    },
+
+    // ADDITIONAL SWIMMING TRAINERS (5 more - t-51 to t-55)
+    {
+      id: 't-51', userId: 'u-trainer51', name: 'Marcin', surname: 'Wierzbicki', rating: 4.8, reviewCount: 167, priceFrom: 90, distance: '2.3 km',
+      specialties: ['Pływanie', 'Pływanie synchroniczne'], isVerified: true, hasVideo: true, avatar: '👨‍🏊', gender: 'male' as const,
+      bio: 'Były trener pływania synchronicznego. Elegancja i precyzja w wodzie.',
+      coordinates: { lat: 52.2190, lng: 21.0210 },
+      services: [
+        { id: 'srv-101', name: 'Pływanie synchroniczne', price: 90, duration: 75, type: 'gym' as const },
+        { id: 'srv-102', name: 'Choreografia w wodzie', price: 95, duration: 60, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '14:00', endTime: '19:00' },
+        { dayOfWeek: 3, startTime: '14:00', endTime: '19:00' },
+        { dayOfWeek: 5, startTime: '14:00', endTime: '19:00' },
+      ],
+    },
+    {
+      id: 't-52', userId: 'u-trainer52', name: 'Katarzyna', surname: 'Marciniak', rating: 4.6, reviewCount: 123, priceFrom: 85, distance: '3.1 km',
+      specialties: ['Pływanie', 'Aqua fitness'], isVerified: false, hasVideo: true, avatar: '👩‍🏊‍♀️', gender: 'female' as const,
+      bio: 'Instruktorka aqua fitness z miłością do aktywności w wodzie. Trening bez obciążenia stawów!',
+      coordinates: { lat: 52.2050, lng: 21.0320 },
+      services: [
+        { id: 'srv-103', name: 'Aqua fitness', price: 85, duration: 60, type: 'gym' as const },
+        { id: 'srv-104', name: 'Aqua jogging', price: 80, duration: 45, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '09:00', endTime: '15:00' },
+        { dayOfWeek: 4, startTime: '09:00', endTime: '15:00' },
+        { dayOfWeek: 6, startTime: '11:00', endTime: '17:00' },
+      ],
+    },
+    {
+      id: 't-53', userId: 'u-trainer53', name: 'Jakub', surname: 'Pietrzak', rating: 4.9, reviewCount: 189, priceFrom: 95, distance: '1.6 km',
+      specialties: ['Pływanie', 'Open water'], isVerified: true, hasVideo: true, avatar: '👨‍🌊', gender: 'male' as const,
+      bio: 'Specjalista od pływania w wodach otwartych. Przygotowanie do zawodów na jeziorach i morzach.',
+      coordinates: { lat: 52.2360, lng: 21.0160 },
+      services: [
+        { id: 'srv-105', name: 'Open water swimming', price: 95, duration: 90, type: 'home_visit' as const },
+        { id: 'srv-106', name: 'Technika w wodach otwartych', price: 100, duration: 75, type: 'home_visit' as const },
+      ],
+      availability: [
+        { dayOfWeek: 6, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 0, startTime: '06:00', endTime: '12:00' },
+        { dayOfWeek: 3, startTime: '17:00', endTime: '20:00' },
+      ],
+    },
+    {
+      id: 't-54', userId: 'u-trainer54', name: 'Ewa', surname: 'Głowacka', rating: 4.7, reviewCount: 145, priceFrom: 80, distance: '2.7 km',
+      specialties: ['Pływanie', 'Pływanie dla dzieci'], isVerified: true, hasVideo: false, avatar: '👩‍👧‍👦', gender: 'female' as const,
+      bio: 'Specjalistka od nauki pływania dla dzieci. Bezpieczna zabawa w wodzie od najmłodszych lat.',
+      coordinates: { lat: 52.2450, lng: 21.0100 },
+      services: [
+        { id: 'srv-107', name: 'Pływanie dla dzieci', price: 80, duration: 45, type: 'gym' as const },
+        { id: 'srv-108', name: 'Rodzice z dziećmi w wodzie', price: 75, duration: 30, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '15:00', endTime: '19:00' },
+        { dayOfWeek: 4, startTime: '15:00', endTime: '19:00' },
+        { dayOfWeek: 6, startTime: '09:00', endTime: '15:00' },
+        { dayOfWeek: 0, startTime: '10:00', endTime: '14:00' },
+      ],
+    },
+    {
+      id: 't-55', userId: 'u-trainer55', name: 'Bartłomiej', surname: 'Kaczor', rating: 4.8, reviewCount: 156, priceFrom: 100, distance: '2.0 km',
+      specialties: ['Pływanie', 'Coaching pływacki'], isVerified: true, hasVideo: true, avatar: '👨‍🏊‍♂️', gender: 'male' as const,
+      bio: 'Trener pływacki z wieloletnim doświadczeniem. Przygotowanie zawodników na każdym poziomie.',
+      coordinates: { lat: 52.2320, lng: 21.0180 },
+      services: [
+        { id: 'srv-109', name: 'Coaching pływacki', price: 100, duration: 75, type: 'gym' as const },
+        { id: 'srv-110', name: 'Analiza techniki pływania', price: 110, duration: 60, type: 'gym' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '05:00', endTime: '12:00' },
+        { dayOfWeek: 3, startTime: '05:00', endTime: '12:00' },
+        { dayOfWeek: 5, startTime: '05:00', endTime: '12:00' },
+      ],
+    },
+
+    // ADDITIONAL TENNIS TRAINERS (5 more - t-56 to t-60)
+    {
+      id: 't-56', userId: 'u-trainer56', name: 'Alicja', surname: 'Jasińska', rating: 4.9, reviewCount: 178, priceFrom: 105, distance: '2.4 km',
+      specialties: ['Tenis', 'Tenis dla kobiet'], isVerified: true, hasVideo: true, avatar: '👩‍🎾', gender: 'female' as const,
+      bio: 'Była zawodniczka WTA z międzynarodowym doświadczeniem. Specjalizacja w treningu kobiet.',
+      coordinates: { lat: 52.2220, lng: 21.0230 },
+      services: [
+        { id: 'srv-111', name: 'Tenis dla kobiet', price: 105, duration: 60, type: 'court' as const },
+        { id: 'srv-112', name: 'Taktyka gry kobiet', price: 110, duration: 75, type: 'court' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '09:00', endTime: '16:00' },
+        { dayOfWeek: 3, startTime: '09:00', endTime: '16:00' },
+        { dayOfWeek: 5, startTime: '09:00', endTime: '16:00' },
+        { dayOfWeek: 6, startTime: '10:00', endTime: '18:00' },
+      ],
+    },
+    {
+      id: 't-57', userId: 'u-trainer57', name: 'Mateusz', surname: 'Krawczyk', rating: 4.6, reviewCount: 134, priceFrom: 90, distance: '3.0 km',
+      specialties: ['Tenis', 'Tenis stołowy'], isVerified: false, hasVideo: true, avatar: '👨‍🏓', gender: 'male' as const,
+      bio: 'Mistrz w tenisie stołowym, który przeniósł swoją precyzję na kort tenisowy.',
+      coordinates: { lat: 52.2090, lng: 21.0280 },
+      services: [
+        { id: 'srv-113', name: 'Tenis z elementami ping-ponga', price: 90, duration: 60, type: 'court' as const },
+        { id: 'srv-114', name: 'Refleks i timing', price: 85, duration: 45, type: 'court' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 4, startTime: '16:00', endTime: '21:00' },
+        { dayOfWeek: 0, startTime: '12:00', endTime: '18:00' },
+      ],
+    },
+    {
+      id: 't-58', userId: 'u-trainer58', name: 'Dorota', surname: 'Sokołowska', rating: 4.8, reviewCount: 156, priceFrom: 95, distance: '1.8 km',
+      specialties: ['Tenis', 'Tenis rekreacyjny'], isVerified: true, hasVideo: true, avatar: '👩‍😊', gender: 'female' as const,
+      bio: 'Specjalistka od tenisa rekreacyjnego. Gra to przede wszystkim przyjemność!',
+      coordinates: { lat: 52.2380, lng: 21.0140 },
+      services: [
+        { id: 'srv-115', name: 'Tenis rekreacyjny', price: 95, duration: 60, type: 'court' as const },
+        { id: 'srv-116', name: 'Tenis towarzyski', price: 90, duration: 90, type: 'court' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '10:00', endTime: '18:00' },
+        { dayOfWeek: 3, startTime: '10:00', endTime: '18:00' },
+        { dayOfWeek: 6, startTime: '08:00', endTime: '16:00' },
+        { dayOfWeek: 0, startTime: '09:00', endTime: '15:00' },
+      ],
+    },
+    {
+      id: 't-59', userId: 'u-trainer59', name: 'Krzysztof', surname: 'Mazur', rating: 4.7, reviewCount: 123, priceFrom: 100, distance: '2.5 km',
+      specialties: ['Tenis', 'Tenis zawodowy'], isVerified: true, hasVideo: false, avatar: '👨‍🏆', gender: 'male' as const,
+      bio: 'Trener przygotowujący zawodników do profesjonalnych rozgrywek. Wysoki poziom gwarantowany.',
+      coordinates: { lat: 52.2160, lng: 21.0250 },
+      services: [
+        { id: 'srv-117', name: 'Przygotowanie zawodowe', price: 100, duration: 90, type: 'court' as const },
+        { id: 'srv-118', name: 'Analiza przeciwnika', price: 120, duration: 75, type: 'online' as const },
+      ],
+      availability: [
+        { dayOfWeek: 2, startTime: '08:00', endTime: '15:00' },
+        { dayOfWeek: 4, startTime: '08:00', endTime: '15:00' },
+        { dayOfWeek: 6, startTime: '07:00', endTime: '13:00' },
+      ],
+    },
+    {
+      id: 't-60', userId: 'u-trainer60', name: 'Magdalena', surname: 'Cybulska', rating: 4.9, reviewCount: 189, priceFrom: 110, distance: '1.7 km',
+      specialties: ['Tenis', 'Mental coaching'], isVerified: true, hasVideo: true, avatar: '👩‍🧠', gender: 'female' as const,
+      bio: 'Psycholog sportu i trenerka tenisa. Mentalność to klucz do sukcesu na korcie.',
+      coordinates: { lat: 52.2400, lng: 21.0120 },
+      services: [
+        { id: 'srv-119', name: 'Mental coaching tenis', price: 110, duration: 60, type: 'online' as const },
+        { id: 'srv-120', name: 'Praca nad koncentracją', price: 120, duration: 75, type: 'court' as const },
+      ],
+      availability: [
+        { dayOfWeek: 1, startTime: '14:00', endTime: '19:00' },
+        { dayOfWeek: 3, startTime: '14:00', endTime: '19:00' },
+        { dayOfWeek: 5, startTime: '14:00', endTime: '19:00' },
+      ],
+    },
   ],
 
   reviews: [
@@ -1244,6 +1760,74 @@ class DataStore {
       return true;
     }
     return false;
+  }
+
+  // Trainer profile management methods
+  createOrUpdateTrainerProfile(userId: string, userData: User): Trainer {
+    const existingTrainer = this.getTrainerByUserId(userId);
+    
+    if (existingTrainer) {
+      // Update existing trainer
+      existingTrainer.name = userData.name;
+      existingTrainer.surname = userData.surname || '';
+      this.saveData();
+      return existingTrainer;
+    } else {
+      // Create new trainer profile
+      const trainerId = `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const newTrainer: Trainer = {
+        id: trainerId,
+        userId: userId,
+        name: userData.name,
+        surname: userData.surname || '',
+        rating: 4.5,
+        reviewCount: 0,
+        priceFrom: 80,
+        distance: '0.0 km',
+        specialties: ['Fitness'], // Default specialty
+        isVerified: false,
+        hasVideo: false,
+        avatar: '👤',
+        bio: 'Nowy trener w Fitana',
+        gender: 'other' as const,
+        locations: [],
+        services: [
+          {
+            id: `srv-${Date.now()}`,
+            name: 'Trening personalny',
+            price: 80,
+            duration: 60,
+            type: 'gym' as const
+          }
+        ],
+        availability: [
+          { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' },
+          { dayOfWeek: 2, startTime: '09:00', endTime: '17:00' },
+          { dayOfWeek: 3, startTime: '09:00', endTime: '17:00' },
+          { dayOfWeek: 4, startTime: '09:00', endTime: '17:00' },
+          { dayOfWeek: 5, startTime: '09:00', endTime: '17:00' },
+        ],
+        coordinates: { lat: 52.2297, lng: 21.0122 }
+      };
+      
+      this.data.trainers.push(newTrainer);
+      this.saveData();
+      return newTrainer;
+    }
+  }
+
+  getTrainerByUserId(userId: string): Trainer | undefined {
+    return this.data.trainers.find(trainer => trainer.userId === userId);
+  }
+
+  syncTrainerProfile(userId: string, userData: User): void {
+    const trainer = this.getTrainerByUserId(userId);
+    if (trainer) {
+      trainer.name = userData.name;
+      trainer.surname = userData.surname || '';
+      // Sync other relevant fields as needed
+      this.saveData();
+    }
   }
 
   // Dev methods
