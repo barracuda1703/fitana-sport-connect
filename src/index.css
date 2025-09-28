@@ -150,3 +150,46 @@ All colors MUST be HSL. Based on the beautiful olive green logo gradient.
     @apply bg-background text-foreground;
   }
 }
+
+/* Additional utility classes for common patterns */
+@layer utilities {
+  .button-grid {
+    @apply grid grid-cols-2 gap-2;
+  }
+  
+  .button-stack {
+    @apply flex flex-col gap-2;
+  }
+  
+  .button-row {
+    @apply flex gap-2;
+  }
+  
+  .card-actions {
+    @apply mt-3 pt-3 border-t space-y-2;
+  }
+  
+  .booking-card {
+    @apply bg-gradient-card hover:shadow-card transition-all duration-200;
+  }
+  
+  .status-pending {
+    @apply bg-warning/20 text-warning;
+  }
+  
+  .status-confirmed {
+    @apply bg-success/20 text-success;
+  }
+  
+  .status-declined {
+    @apply bg-destructive/20 text-destructive;
+  }
+  
+  .status-completed {
+    @apply bg-primary/20 text-primary;
+  }
+  
+  .status-cancelled {
+    @apply bg-muted/20 text-muted-foreground;
+  }
+}

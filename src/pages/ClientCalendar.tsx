@@ -165,7 +165,7 @@ export const ClientCalendarPage: React.FC = () => {
     const { date, time } = formatDateTime(booking.scheduledAt);
     
     return (
-      <Card className="bg-gradient-card hover:shadow-card transition-all duration-200">
+      <Card className="booking-card">
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
@@ -193,17 +193,16 @@ export const ClientCalendarPage: React.FC = () => {
           </div>
 
           {(booking.status === 'pending' || booking.status === 'confirmed') && (
-            <div className="mt-3 pt-3 border-t flex gap-2">
+            <div className="card-actions">
               {booking.status === 'confirmed' && (
-                <>
-                  <Button variant="outline" size="sm" className="flex-1">
+                <div className="button-grid">
+                  <Button variant="outline" size="sm">
                     <MapPin className="h-3 w-3 mr-1" />
                     Mapa
                   </Button>
                   <Button 
                     variant="outline" 
-                    size="sm" 
-                    className="flex-1"
+                    size="sm"
                     onClick={() => {
                       const chatId = `chat-u-${booking.clientId}-t-${booking.trainerId}`;
                       window.location.href = `/chat/${chatId}`;
@@ -211,12 +210,12 @@ export const ClientCalendarPage: React.FC = () => {
                   >
                     💬 Chat
                   </Button>
-                </>
+                </div>
               )}
               <Button 
                 variant="outline" 
                 size="sm" 
-                className={booking.status === 'confirmed' ? "w-full mt-2" : "flex-1"}
+                className="w-full"
                 onClick={() => {
                   setSelectedBookingForReschedule(booking);
                   setClientRescheduleModalOpen(true);

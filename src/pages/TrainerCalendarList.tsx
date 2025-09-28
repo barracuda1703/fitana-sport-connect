@@ -307,7 +307,7 @@ export const TrainerCalendarListPage: React.FC = () => {
     const statusInfo = getBookingStatusInfo();
     
     return (
-      <Card className="bg-gradient-card hover:shadow-card transition-all duration-200">
+      <Card className="booking-card">
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
@@ -359,11 +359,11 @@ export const TrainerCalendarListPage: React.FC = () => {
           </div>
 
           {showActions && booking.status === 'pending' && (
-            <div className="space-y-2">
-              <div className="flex gap-2">
+            <div className="card-actions">
+              <div className="button-grid">
                 <Button 
                   size="sm" 
-                  className="flex-1 bg-success hover:bg-success/80"
+                  className="bg-success hover:bg-success/80"
                   onClick={() => handleAcceptBooking(booking.id)}
                 >
                   <CheckCircle className="h-3 w-3 mr-1" />
@@ -372,7 +372,6 @@ export const TrainerCalendarListPage: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="flex-1"
                   onClick={() => handleDeclineBooking(booking.id)}
                 >
                   <X className="h-3 w-3 mr-1" />
@@ -386,8 +385,7 @@ export const TrainerCalendarListPage: React.FC = () => {
                 onClick={() => handleReschedule(booking)}
               >
                 <Clock className="h-3 w-3 mr-1" />
-                <span className="sm:hidden">Zaproponuj</span>
-                <span className="hidden sm:inline">Zaproponuj nowy termin</span>
+                Zaproponuj nowy termin
               </Button>
             </div>
           )}

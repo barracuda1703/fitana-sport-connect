@@ -1400,6 +1400,7 @@ class DataStore {
           booking.rescheduleRequests = [];
         }
       });
+      this.saveData();
     }
     } else {
       this.data = { ...seedData };
@@ -1457,11 +1458,12 @@ class DataStore {
   }
 
   // Booking methods
-  createBooking(bookingData: Omit<Booking, 'id' | 'createdAt'>): Booking {
+  createBooking(bookingData: Omit<Booking, 'id' | 'createdAt' | 'rescheduleRequests'>): Booking {
     const booking: Booking = {
       ...bookingData,
       id: `booking-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date().toISOString(),
+      rescheduleRequests: [],
     };
     this.data.bookings.push(booking);
     this.saveData();
