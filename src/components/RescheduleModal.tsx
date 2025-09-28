@@ -79,11 +79,11 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       const [hours, minutes] = selectedTime.split(':').map(Number);
       newScheduledAt.setHours(hours, minutes, 0, 0);
 
-      await dataStore.updateBookingDateTime(booking.id, newScheduledAt.toISOString());
+      await dataStore.addRescheduleRequest(booking.id, 'trainer', newScheduledAt.toISOString());
       
       toast({
-        title: "Nowy termin zaproponowany",
-        description: `Zaproponowano nowy termin: ${newScheduledAt.toLocaleDateString('pl-PL')} o ${selectedTime}`,
+        title: "Propozycja wysłana",
+        description: `Zaproponowano nowy termin: ${newScheduledAt.toLocaleDateString('pl-PL')} o ${selectedTime}. Oczekuj na odpowiedź klienta.`,
       });
 
       onReschedule();

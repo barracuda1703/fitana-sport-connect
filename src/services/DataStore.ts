@@ -70,6 +70,14 @@ export interface ManualBlock {
   createdAt: string;
 }
 
+export interface RescheduleRequest {
+  id: string;
+  requestedAt: string; // ISO date
+  requestedBy: 'client' | 'trainer';
+  newTime: string; // ISO date
+  status: 'pending' | 'accepted' | 'declined';
+}
+
 export interface Booking {
   id: string;
   clientId: string;
@@ -79,6 +87,7 @@ export interface Booking {
   status: 'pending' | 'confirmed' | 'declined' | 'completed' | 'cancelled';
   notes?: string;
   createdAt: string;
+  rescheduleRequests: RescheduleRequest[];
 }
 
 export interface Message {
@@ -1283,14 +1292,14 @@ const seedData = {
 
   bookings: [
     // Pending bookings for testing
-    { id: 'booking-1', clientId: 'u-client1', trainerId: 'u-trainer1', serviceId: 'srv-1', scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), status: 'pending' as const, notes: 'Jestem początkujący, proszę o łagodne podejście', createdAt: new Date().toISOString() },
-    { id: 'booking-2', clientId: 'u-client2', trainerId: 'u-trainer6', serviceId: 'srv-11', scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), status: 'pending' as const, notes: 'Pierwszy raz z jogą', createdAt: new Date().toISOString() },
-    { id: 'booking-3', clientId: 'u-client3', trainerId: 'u-trainer16', serviceId: 'srv-31', scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), status: 'pending' as const, notes: 'Interesuje mnie samoobrona', createdAt: new Date().toISOString() },
+    { id: 'booking-1', clientId: 'u-client1', trainerId: 'u-trainer1', serviceId: 'srv-1', scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), status: 'pending' as const, notes: 'Jestem początkujący, proszę o łagodne podejście', createdAt: new Date().toISOString(), rescheduleRequests: [] },
+    { id: 'booking-2', clientId: 'u-client2', trainerId: 'u-trainer6', serviceId: 'srv-11', scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), status: 'pending' as const, notes: 'Pierwszy raz z jogą', createdAt: new Date().toISOString(), rescheduleRequests: [] },
+    { id: 'booking-3', clientId: 'u-client3', trainerId: 'u-trainer16', serviceId: 'srv-31', scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), status: 'pending' as const, notes: 'Interesuje mnie samoobrona', createdAt: new Date().toISOString(), rescheduleRequests: [] },
     
     // Confirmed bookings
-    { id: 'booking-4', clientId: 'u-client1', trainerId: 'u-trainer2', serviceId: 'srv-3', scheduledAt: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(), status: 'confirmed' as const, createdAt: new Date().toISOString() },
-    { id: 'booking-5', clientId: 'u-client2', trainerId: 'u-trainer11', serviceId: 'srv-21', scheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), status: 'confirmed' as const, notes: 'Przygotowanie do 10K', createdAt: new Date().toISOString() },
-    { id: 'booking-6', clientId: 'u-client3', trainerId: 'u-trainer21', serviceId: 'srv-41', scheduledAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(), status: 'confirmed' as const, notes: 'Nauka pływania od podstaw', createdAt: new Date().toISOString() },
+    { id: 'booking-4', clientId: 'u-client1', trainerId: 'u-trainer2', serviceId: 'srv-3', scheduledAt: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(), status: 'confirmed' as const, createdAt: new Date().toISOString(), rescheduleRequests: [] },
+    { id: 'booking-5', clientId: 'u-client2', trainerId: 'u-trainer11', serviceId: 'srv-21', scheduledAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), status: 'confirmed' as const, notes: 'Przygotowanie do 10K', createdAt: new Date().toISOString(), rescheduleRequests: [] },
+    { id: 'booking-6', clientId: 'u-client3', trainerId: 'u-trainer21', serviceId: 'srv-41', scheduledAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(), status: 'confirmed' as const, notes: 'Nauka pływania od podstaw', createdAt: new Date().toISOString(), rescheduleRequests: [] },
   ],
 
   messages: [
@@ -1828,6 +1837,74 @@ class DataStore {
       // Sync other relevant fields as needed
       this.saveData();
     }
+  }
+
+  // Reschedule request methods
+  addRescheduleRequest(bookingId: string, requestedBy: 'client' | 'trainer', newTime: string): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const booking = this.data.bookings.find(b => b.id === bookingId);
+        if (booking) {
+          const rescheduleRequest: RescheduleRequest = {
+            id: `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            requestedAt: new Date().toISOString(),
+            requestedBy,
+            newTime,
+            status: 'pending'
+          };
+          booking.rescheduleRequests.push(rescheduleRequest);
+          this.saveData();
+        }
+        resolve();
+      }, 300);
+    });
+  }
+
+  acceptRescheduleRequest(bookingId: string, requestId: string): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const booking = this.data.bookings.find(b => b.id === bookingId);
+        if (booking) {
+          const request = booking.rescheduleRequests.find(r => r.id === requestId);
+          if (request && request.status === 'pending') {
+            request.status = 'accepted';
+            booking.scheduledAt = request.newTime;
+            this.saveData();
+          }
+        }
+        resolve();
+      }, 300);
+    });
+  }
+
+  declineRescheduleRequest(bookingId: string, requestId: string): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const booking = this.data.bookings.find(b => b.id === bookingId);
+        if (booking) {
+          const request = booking.rescheduleRequests.find(r => r.id === requestId);
+          if (request && request.status === 'pending') {
+            request.status = 'declined';
+            this.saveData();
+          }
+        }
+        resolve();
+      }, 300);
+    });
+  }
+
+  getRescheduleRequests(userId: string): RescheduleRequest[] {
+    const requests: RescheduleRequest[] = [];
+    this.data.bookings.forEach(booking => {
+      if (booking.clientId === userId || booking.trainerId === userId) {
+        booking.rescheduleRequests.forEach(request => {
+          if (request.status === 'pending') {
+            requests.push(request);
+          }
+        });
+      }
+    });
+    return requests;
   }
 
   // Dev methods

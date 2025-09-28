@@ -184,6 +184,7 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
       scheduledAt: scheduledAt.toISOString(),
       status: 'confirmed', // Trainer-created bookings are automatically confirmed
       notes: notes.trim() || undefined,
+      rescheduleRequests: []
     });
 
     toast({

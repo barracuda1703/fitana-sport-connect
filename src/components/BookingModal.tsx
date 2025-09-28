@@ -96,6 +96,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
       scheduledAt: scheduledAt.toISOString(),
       status: 'pending',
       notes: notes.trim() || undefined,
+      rescheduleRequests: []
     });
 
     toast({

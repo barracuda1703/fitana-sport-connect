@@ -5,21 +5,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { RescheduleNotificationModal } from '@/components/RescheduleNotificationModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { dataStore, Booking } from '@/services/DataStore';
+import { dataStore, Booking, RescheduleRequest } from '@/services/DataStore';
+import { useToast } from '@/hooks/use-toast';
 
 export const ClientCalendarPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('calendar');
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [selectedRescheduleRequest, setSelectedRescheduleRequest] = useState<{
+    booking: Booking;
+    request: RescheduleRequest;
+  } | null>(null);
 
   useEffect(() => {
     if (user) {
       setBookings(dataStore.getBookings(user.id));
     }
   }, [user]);
+
+  // Get pending reschedule requests for this client
+  const pendingRescheduleRequests = bookings.flatMap(booking => 
+    booking.rescheduleRequests
+      .filter(request => request.status === 'pending' && request.requestedBy === 'trainer')
+      .map(request => ({ booking, request }))
+  );
 
   const upcomingBookings = bookings.filter(booking => {
     const bookingDate = new Date(booking.scheduledAt);
@@ -82,6 +97,50 @@ export const ClientCalendarPage: React.FC = () => {
         minute: '2-digit' 
       })
     };
+  };
+
+  const handleAcceptReschedule = async (bookingId: string, requestId: string) => {
+    try {
+      await dataStore.acceptRescheduleRequest(bookingId, requestId);
+      toast({
+        title: "Termin zaakceptowany",
+        description: "Nowy termin został potwierdzony",
+      });
+      // Refresh bookings
+      if (user) {
+        setBookings(dataStore.getBookings(user.id));
+      }
+      setRescheduleModalOpen(false);
+      setSelectedRescheduleRequest(null);
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaakceptować nowego terminu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeclineReschedule = async (bookingId: string, requestId: string) => {
+    try {
+      await dataStore.declineRescheduleRequest(bookingId, requestId);
+      toast({
+        title: "Termin odrzucony",
+        description: "Propozycja nowego terminu została odrzucona",
+      });
+      // Refresh bookings
+      if (user) {
+        setBookings(dataStore.getBookings(user.id));
+      }
+      setRescheduleModalOpen(false);
+      setSelectedRescheduleRequest(null);
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się odrzucić propozycji",
+        variant: "destructive",
+      });
+    }
   };
 
   const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
@@ -156,6 +215,58 @@ export const ClientCalendarPage: React.FC = () => {
         </div>
       </header>
 
+      {/* Reschedule Requests */}
+      {pendingRescheduleRequests.length > 0 && (
+        <section className="p-4 space-y-4">
+          <h2 className="text-xl font-semibold text-warning">Propozycje nowych terminów ({pendingRescheduleRequests.length})</h2>
+          {pendingRescheduleRequests.map(({ booking, request }) => (
+            <Card key={request.id} className="bg-warning/10 border-warning/30">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                    <p className="text-sm text-muted-foreground">{getTrainerName(booking.trainerId)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
+                      {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                    <p className="text-xs font-medium text-warning mt-1">
+                      Nowy termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
+                      {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="bg-warning/20 text-warning">Nowa propozycja</Badge>
+                </div>
+                
+                <div className="mt-3 pt-3 border-t flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleDeclineReschedule(booking.id, request.id)}
+                  >
+                    Odrzuć
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleAcceptReschedule(booking.id, request.id)}
+                  >
+                    Zaakceptuj
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
+
       {/* Upcoming Bookings */}
       <section className="p-4 space-y-4">
         <h2 className="text-xl font-semibold">Nadchodzące ({upcomingBookings.length})</h2>
@@ -195,6 +306,19 @@ export const ClientCalendarPage: React.FC = () => {
         userRole={user.role}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+      />
+
+      {/* Reschedule Modal */}
+      <RescheduleNotificationModal
+        isOpen={rescheduleModalOpen}
+        onClose={() => {
+          setRescheduleModalOpen(false);
+          setSelectedRescheduleRequest(null);
+        }}
+        booking={selectedRescheduleRequest?.booking || null}
+        rescheduleRequest={selectedRescheduleRequest?.request || null}
+        onAccept={(bookingId, requestId) => handleAcceptReschedule(bookingId, requestId)}
+        onDecline={(bookingId, requestId) => handleDeclineReschedule(bookingId, requestId)}
       />
     </div>
   );

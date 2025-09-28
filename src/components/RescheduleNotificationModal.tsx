@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Booking, RescheduleRequest } from '@/types';
+import { Booking, RescheduleRequest } from '@/services/DataStore';
 
 interface RescheduleNotificationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  booking: Booking;
-  rescheduleRequest: RescheduleRequest;
-  onAccept: () => void;
-  onDecline: () => void;
+  booking: Booking | null;
+  rescheduleRequest: RescheduleRequest | null;
+  onAccept: (bookingId: string, requestId: string) => void;
+  onDecline: (bookingId: string, requestId: string) => void;
 }
 
 export const RescheduleNotificationModal: React.FC<RescheduleNotificationModalProps> = ({
@@ -25,6 +25,10 @@ export const RescheduleNotificationModal: React.FC<RescheduleNotificationModalPr
   onDecline
 }) => {
   const { toast } = useToast();
+
+  if (!booking || !rescheduleRequest) {
+    return null;
+  }
 
   // Mock trainer names - in real app would come from database
   const getTrainerName = (trainerId: string) => {
@@ -69,7 +73,8 @@ export const RescheduleNotificationModal: React.FC<RescheduleNotificationModalPr
   const newTime = formatDateTime(rescheduleRequest.newTime);
 
   const handleAccept = () => {
-    onAccept();
+    if (!booking || !rescheduleRequest) return;
+    onAccept(booking.id, rescheduleRequest.id);
     toast({
       title: "Zmiana terminu zaakceptowana",
       description: "Termin treningu został pomyślnie zmieniony.",
@@ -78,7 +83,8 @@ export const RescheduleNotificationModal: React.FC<RescheduleNotificationModalPr
   };
 
   const handleDecline = () => {
-    onDecline();
+    if (!booking || !rescheduleRequest) return;
+    onDecline(booking.id, rescheduleRequest.id);
     toast({
       title: "Zmiana terminu odrzucona",
       description: "Propozycja zmiany terminu została odrzucona. Trening pozostaje w pierwotnym terminie.",
