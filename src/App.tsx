@@ -62,20 +62,8 @@ const RoleProtectedRoute: React.FC<{
 };
 
 const AppRoutes: React.FC = () => {
-  console.log('AppRoutes: Component rendering, about to call useAuth...');
-  const { user, isLoading } = useAuth();
-  console.log('AppRoutes: useAuth successful, user:', user, 'isLoading:', isLoading);
-
-  // Don't render anything until auth is initialized
-  if (isLoading) {
-    console.log('AppRoutes: Still loading, showing loading screen...');
-    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
-  }
-
-  console.log('AppRoutes: Rendering routes...');
   return (
     <div className="min-h-screen w-full">
-      {user && <RoleSwitch />}
       <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Index />} />
@@ -155,9 +143,22 @@ const AppRoutes: React.FC = () => {
   );
 };
 
-const App = () => {
-  console.log('App: Main App component rendering...');
+const AuthenticatedApp: React.FC = () => {
+  const { user, isLoading } = useAuth();
   
+  if (isLoading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  }
+
+  return (
+    <>
+      {user && <RoleSwitch />}
+      <AppRoutes />
+    </>
+  );
+};
+
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -166,7 +167,7 @@ const App = () => {
         <LanguageProvider>
           <AuthProvider>
             <BrowserRouter>
-              <AppRoutes />
+              <AuthenticatedApp />
             </BrowserRouter>
           </AuthProvider>
         </LanguageProvider>
