@@ -103,7 +103,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   };
 
   const getClientName = (clientId: string) => {
-    return dataStore.getClientName(clientId);
+    return `Klient ${clientId.slice(-4)}`;
   };
 
   const getServiceName = (serviceId: string) => {

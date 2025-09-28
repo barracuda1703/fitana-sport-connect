@@ -55,7 +55,13 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ isOpen, onClose, tra
   };
 
   const getClientName = (clientId: string) => {
-    return dataStore.getClientName(clientId);
+    // Mock client names based on ID
+    const names: { [key: string]: string } = {
+      'u-client1': 'Marcin K.',
+      'u-client2': 'Agata S.',
+      'u-client3': 'Tomasz L.'
+    };
+    return names[clientId] || `Klient ${clientId.slice(-4)}`;
   };
 
   const averageRating = reviews.length > 0 

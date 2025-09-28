@@ -286,7 +286,7 @@ export const TrainerDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">{dataStore.getClientName(booking.clientId)}</h3>
+                      <h3 className="font-semibold">Klient #{booking.clientId.slice(-4)}</h3>
                       <p className="text-sm text-muted-foreground">
                         {booking.serviceId} • {booking.notes || 'Brak notatek'}
                       </p>
