@@ -14,35 +14,27 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
-  console.log('useAuth called - checking context...');
   const context = useContext(AuthContext);
   
   if (context === undefined) {
-    console.error('useAuth: Context is undefined! AuthProvider not found in component tree.');
-    console.error('Current component stack:', new Error().stack);
     throw new Error('useAuth must be used within an AuthProvider');
   }
   
-  console.log('useAuth: Context found successfully');
   return context;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  console.log('AuthProvider: Component rendering...');
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log('AuthProvider: useEffect initializing...');
     // Check for saved session or auto-login as client
     const savedUser = localStorage.getItem('fitana-current-user');
     if (savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);
-        console.log('AuthProvider: Restored user from localStorage:', parsedUser);
         setUser(parsedUser);
       } catch {
-        console.log('AuthProvider: Failed to parse saved user, removing from localStorage');
         localStorage.removeItem('fitana-current-user');
       }
     } else {
@@ -56,12 +48,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         city: 'Warszawa',
         language: 'pl'
       };
-      console.log('AuthProvider: Auto-logging in as default client:', defaultClient);
       setUser(defaultClient);
       localStorage.setItem('fitana-current-user', JSON.stringify(defaultClient));
     }
     setIsLoading(false);
-    console.log('AuthProvider: Initialization complete');
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -119,15 +109,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const value = React.useMemo(
-    () => {
-      const contextValue = { user, isLoading, login, register, logout, switchRole };
-      console.log('AuthProvider: Creating context value:', contextValue);
-      return contextValue;
-    },
+    () => ({ user, isLoading, login, register, logout, switchRole }),
     [user, isLoading]
   );
-
-  console.log('AuthProvider: Rendering Provider with value:', value);
 
   return (
     <AuthContext.Provider value={value}>
