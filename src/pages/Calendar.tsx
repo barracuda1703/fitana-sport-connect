@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, List, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -16,6 +16,7 @@ export const CalendarPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [calendarView, setCalendarView] = useState<'list' | 'month'>('list');
 
   useEffect(() => {
     if (user) {
@@ -44,35 +45,88 @@ export const CalendarPage: React.FC = () => {
               {user.role === 'client' ? 'Twoje treningi' : 'Harmonogram pracy'}
             </p>
           </div>
-          {user.role === 'trainer' && (
-            <Button variant="outline" size="icon">
-              <Plus className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                variant={calendarView === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setCalendarView('list')}
+                className="h-7 px-2"
+              >
+                <List className="h-3 w-3 mr-1" />
+                Lista
+              </Button>
+              <Button
+                variant={calendarView === 'month' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setCalendarView('month')}
+                className="h-7 px-2"
+              >
+                <Grid3X3 className="h-3 w-3 mr-1" />
+                Kalendarz
+              </Button>
+            </div>
+            
+            {user.role === 'trainer' && (
+              <Button variant="outline" size="icon">
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Calendar */}
       <section className="p-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              {selectedDate?.toLocaleDateString('pl-PL', { 
-                month: 'long', 
-                year: 'numeric' 
-              })}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md border"
-            />
-          </CardContent>
-        </Card>
+        {calendarView === 'month' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5" />
+                {selectedDate?.toLocaleDateString('pl-PL', { 
+                  month: 'long', 
+                  year: 'numeric' 
+                })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="rounded-md border"
+                modifiers={{
+                  hasBooking: (date) => {
+                    const dateStr = date.toISOString().split('T')[0];
+                    return bookings.some(booking => {
+                      const bookingDate = new Date(booking.scheduledAt).toISOString().split('T')[0];
+                      return bookingDate === dateStr;
+                    });
+                  }
+                }}
+                modifiersStyles={{
+                  hasBooking: { 
+                    backgroundColor: 'hsl(var(--primary))',
+                    color: 'hsl(var(--primary-foreground))',
+                    borderRadius: '50%'
+                  }
+                }}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <List className="h-5 w-5" />
+                  Lista wydarzeń
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
       </section>
 
       {/* Events for Selected Date */}

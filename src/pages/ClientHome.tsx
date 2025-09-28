@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { BookingModal } from '@/components/BookingModal';
 import { TrainerProfileModal } from '@/components/TrainerProfileModal';
+import { FavoriteButton } from '@/components/FavoriteButton';
+import { FilterModal, FilterOptions } from '@/components/FilterModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -30,6 +32,16 @@ export const ClientHome: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [sports] = useState(dataStore.getSports());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<FilterOptions>({
+    maxDistance: 50,
+    priceRange: [0, 500],
+    minRating: 0,
+    availableToday: false,
+    showFavoritesOnly: false,
+    trainerGender: 'all',
+    serviceTypes: []
+  });
 
   useEffect(() => {
     // Force reset data if needed for development
@@ -49,8 +61,9 @@ export const ClientHome: React.FC = () => {
 
   useEffect(() => {
     let filtered = trainers;
+    
+    // Apply category filter
     if (selectedCategory) {
-      // Map DataStore sport IDs to specialty names for filtering
       const sportIdToSpecialty: Record<string, string> = {
         's-fitness': 'Fitness',
         's-yoga': 'Yoga', 
@@ -62,15 +75,52 @@ export const ClientHome: React.FC = () => {
       
       const specialtyName = sportIdToSpecialty[selectedCategory];
       if (specialtyName) {
-        filtered = trainers.filter(trainer => 
+        filtered = filtered.filter(trainer => 
           trainer.specialties.some(specialty => 
             specialty.toLowerCase().includes(specialtyName.toLowerCase())
           )
         );
       }
     }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(trainer => 
+        trainer.name.toLowerCase().includes(query) ||
+        trainer.specialties.some(specialty => 
+          specialty.toLowerCase().includes(query)
+        ) ||
+        // Search in mock facility names
+        'fitness club centrum siłownia'.includes(query)
+      );
+    }
+
+    // Apply advanced filters
+    if (filters.showFavoritesOnly) {
+      // Mock favorites - in real app would check user's favoriteTrainers
+      const mockFavorites = ['t-1', 't-3'];
+      filtered = filtered.filter(trainer => mockFavorites.includes(trainer.id));
+    }
+
+    if (filters.minRating > 0) {
+      filtered = filtered.filter(trainer => trainer.rating >= filters.minRating);
+    }
+
+    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 500) {
+      filtered = filtered.filter(trainer => 
+        trainer.priceFrom >= filters.priceRange[0] && 
+        trainer.priceFrom <= filters.priceRange[1]
+      );
+    }
+
+    // Mock distance filter (in real app would use GPS coordinates)
+    if (filters.maxDistance < 50) {
+      // Keep all trainers for demo - in real app would filter by actual distance
+    }
+
     setFilteredTrainers(filtered);
-  }, [trainers, selectedCategory]);
+  }, [trainers, selectedCategory, searchQuery, filters]);
 
   const handleBookTrainer = (trainerId: string) => {
     const trainer = trainers.find(t => t.id === trainerId);
@@ -101,13 +151,25 @@ export const ClientHome: React.FC = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Szukaj trenerów, sportów..."
+              placeholder="Wyszukaj trenera lub placówkę"
               className="w-full pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
+          <FilterModal 
+            filters={filters}
+            onFiltersChange={setFilters}
+            onReset={() => setFilters({
+              maxDistance: 50,
+              priceRange: [0, 500],
+              minRating: 0,
+              availableToday: false,
+              showFavoritesOnly: false,
+              trainerGender: 'all',
+              serviceTypes: []
+            })}
+          />
         </div>
 
         {/* View Toggle */}
@@ -230,6 +292,7 @@ export const ClientHome: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-lg">{trainer.name}</h3>
+                    <FavoriteButton trainerId={trainer.id} size="sm" />
                     {trainer.isVerified && (
                       <Badge variant="secondary" className="bg-success/20 text-success">
                         ✓

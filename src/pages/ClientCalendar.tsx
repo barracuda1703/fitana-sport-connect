@@ -121,7 +121,15 @@ export const ClientCalendarPage: React.FC = () => {
                 <MapPin className="h-3 w-3 mr-1" />
                 Mapa
               </Button>
-              <Button variant="outline" size="sm" className="flex-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => {
+                  const chatId = `chat-u-${booking.clientId}-t-${booking.trainerId}`;
+                  window.location.href = `/chat/${chatId}`;
+                }}
+              >
                 💬 Chat
               </Button>
             </div>

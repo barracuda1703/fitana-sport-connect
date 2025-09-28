@@ -15,6 +15,7 @@ export interface Client extends User {
   city: string;
   sports: string[];
   achievements: Achievement[];
+  favoriteTrainers: string[];
 }
 
 export interface Trainer extends User {

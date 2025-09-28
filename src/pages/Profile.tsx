@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { AchievementsCard } from '@/components/AchievementsCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -71,25 +72,7 @@ export const ProfilePage: React.FC = () => {
         </Card>
 
         {/* Stats for Client */}
-        {user.role === 'client' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Twoje osiągnięcia</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">12</div>
-                  <div className="text-sm text-muted-foreground">Treningów</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-accent">3</div>
-                  <div className="text-sm text-muted-foreground">Dyscypliny</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {user.role === 'client' && <AchievementsCard />}
 
         {/* Stats for Trainer */}
         {user.role === 'trainer' && (
