@@ -135,7 +135,7 @@ export const TrainerDashboard: React.FC = () => {
   const todayBookings = bookings.filter(booking => {
     const bookingDate = new Date(booking.scheduledAt);
     const today = new Date();
-    return bookingDate.toDateString() === today.toDateString();
+    return bookingDate.toDateString() === today.toDateString() && booking.status === 'confirmed';
   });
 
   const pendingBookings = bookings.filter(booking => booking.status === 'pending');
