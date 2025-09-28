@@ -19,6 +19,9 @@ import { ProfileEditPage } from "@/pages/ProfileEdit";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
 import { ProfilePage } from "@/pages/Profile";
+import { ClientManagement } from "@/pages/ClientManagement";
+import { TrainerStatistics } from "@/pages/TrainerStatistics";
+import { TrainerPreferences } from "@/pages/TrainerPreferences";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -130,6 +133,21 @@ const AppRoutes: React.FC = () => {
         <ProtectedRoute>
           <ProfilePage />
         </ProtectedRoute>
+      } />
+      <Route path="/trainer/clients" element={
+        <RoleProtectedRoute allowedRole="trainer">
+          <ClientManagement />
+        </RoleProtectedRoute>
+      } />
+      <Route path="/trainer/statistics" element={
+        <RoleProtectedRoute allowedRole="trainer">
+          <TrainerStatistics />
+        </RoleProtectedRoute>
+      } />
+      <Route path="/trainer/preferences" element={
+        <RoleProtectedRoute allowedRole="trainer">
+          <TrainerPreferences />
+        </RoleProtectedRoute>
       } />
         <Route path="*" element={<NotFound />} />
       </Routes>

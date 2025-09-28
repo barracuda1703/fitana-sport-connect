@@ -126,14 +126,16 @@ export const ProfilePage: React.FC = () => {
               <User className="h-4 w-4 mr-2" />
               Edytuj profil
             </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => navigate('/profile/edit')}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Preferencje
-            </Button>
+            {user.role === 'trainer' && (
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => navigate('/trainer/preferences')}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Preferencje
+              </Button>
+            )}
             <Button 
               variant="outline" 
               className="w-full justify-start text-red-600 hover:text-red-700"

@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { LocationManagement } from '@/components/LocationManagement';
 import { ServiceManagementModal } from '@/components/ServiceManagementModal';
+import { PhotoUploader } from '@/components/PhotoUploader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -53,6 +54,10 @@ export const ProfileEditPage: React.FC = () => {
   
   // Services state
   const [services, setServices] = useState<Service[]>((user as any)?.services || []);
+  
+  // Photo state
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.avatarUrl || null);
+  const [gallery, setGallery] = useState<string[]>([]);
 
   const handleSave = () => {
     // In a real app, this would update the user in the backend
@@ -301,6 +306,15 @@ export const ProfileEditPage: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {user.role === 'trainer' && (
+          <PhotoUploader
+            profilePhoto={profilePhoto}
+            gallery={gallery}
+            onProfilePhotoChange={setProfilePhoto}
+            onGalleryChange={setGallery}
+          />
         )}
 
         {user.role === 'trainer' && (

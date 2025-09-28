@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Send, MoreVertical, ArrowLeft } from 'lucide-react';
+import { Send, MoreVertical, ArrowLeft, MessageSquareOff, Flag, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import { dataStore, Message } from '@/services/DataStore';
 
 export const ChatPage: React.FC = () => {
@@ -15,6 +17,7 @@ export const ChatPage: React.FC = () => {
   const { t } = useLanguage();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('chat');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -69,9 +72,27 @@ export const ChatPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => toast({ title: "Chat zakończony" })}>
+                  <MessageSquareOff className="h-4 w-4 mr-2" />
+                  Zakończ czat
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast({ title: "Problem zgłoszony" })}>
+                  <Flag className="h-4 w-4 mr-2" />
+                  Zgłoś problem
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast({ title: "Szczegóły klienta" })}>
+                  <User className="h-4 w-4 mr-2" />
+                  Pokaż szczegóły klienta
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
