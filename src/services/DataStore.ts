@@ -1877,6 +1877,17 @@ class DataStore {
           if (request && request.status === 'pending') {
             request.status = 'accepted';
             booking.scheduledAt = request.newTime;
+            
+            // Create feedback notification for the other party
+            const feedbackRequest: RescheduleRequest = {
+              id: `feedback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              requestedAt: new Date().toISOString(),
+              requestedBy: request.requestedBy === 'client' ? 'trainer' : 'client',
+              newTime: request.newTime,
+              status: 'accepted'
+            };
+            booking.rescheduleRequests.push(feedbackRequest);
+            
             this.saveData();
           }
         }
@@ -1893,6 +1904,17 @@ class DataStore {
           const request = booking.rescheduleRequests.find(r => r.id === requestId);
           if (request && request.status === 'pending') {
             request.status = 'declined';
+            
+            // Create feedback notification for the other party
+            const feedbackRequest: RescheduleRequest = {
+              id: `feedback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              requestedAt: new Date().toISOString(),
+              requestedBy: request.requestedBy === 'client' ? 'trainer' : 'client',
+              newTime: request.newTime,
+              status: 'declined'
+            };
+            booking.rescheduleRequests.push(feedbackRequest);
+            
             this.saveData();
           }
         }

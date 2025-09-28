@@ -14,8 +14,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { RescheduleModal } from '@/components/RescheduleModal';
+import { RescheduleNotificationModal } from '@/components/RescheduleNotificationModal';
 import { TrainerBookingModal } from '@/components/TrainerBookingModal';
-import { dataStore, Booking, ManualBlock } from '@/services/DataStore';
+import { dataStore, Booking, ManualBlock, RescheduleRequest } from '@/services/DataStore';
 
 type ViewType = 'list' | 'calendar';
 
@@ -37,6 +38,11 @@ export const TrainerCalendarListPage: React.FC = () => {
   const [newTime, setNewTime] = useState('');
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
+  const [rescheduleNotificationModalOpen, setRescheduleNotificationModalOpen] = useState(false);
+  const [selectedRescheduleRequest, setSelectedRescheduleRequest] = useState<{
+    booking: Booking;
+    request: RescheduleRequest;
+  } | null>(null);
   const [blockForm, setBlockForm] = useState({
     title: '',
     date: '',
@@ -71,6 +77,20 @@ export const TrainerCalendarListPage: React.FC = () => {
     const bookingDate = new Date(booking.scheduledAt);
     return bookingDate > new Date() && booking.status === 'confirmed';
   });
+
+  // Get pending reschedule requests from clients
+  const pendingClientRescheduleRequests = bookings.flatMap(booking => 
+    (booking.rescheduleRequests || [])
+      .filter(request => request.status === 'pending' && request.requestedBy === 'client')
+      .map(request => ({ booking, request }))
+  );
+
+  // Get trainer's own reschedule requests with responses
+  const trainerRescheduleResponses = bookings.flatMap(booking => 
+    (booking.rescheduleRequests || [])
+      .filter(request => request.requestedBy === 'trainer' && request.status !== 'pending')
+      .map(request => ({ booking, request }))
+  );
 
   // Calendar helper functions
   const getBookingsForDate = (date: Date) => {
@@ -140,6 +160,44 @@ export const TrainerCalendarListPage: React.FC = () => {
     refreshData();
     setIsRescheduleModalOpen(false);
     setRescheduleBooking(null);
+  };
+
+  const handleAcceptClientReschedule = async (bookingId: string, requestId: string) => {
+    try {
+      await dataStore.acceptRescheduleRequest(bookingId, requestId);
+      toast({
+        title: "Termin zaakceptowany",
+        description: "Nowy termin został potwierdzony",
+      });
+      refreshData();
+      setRescheduleNotificationModalOpen(false);
+      setSelectedRescheduleRequest(null);
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaakceptować nowego terminu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeclineClientReschedule = async (bookingId: string, requestId: string) => {
+    try {
+      await dataStore.declineRescheduleRequest(bookingId, requestId);
+      toast({
+        title: "Termin odrzucony",
+        description: "Propozycja nowego terminu została odrzucona",
+      });
+      refreshData();
+      setRescheduleNotificationModalOpen(false);
+      setSelectedRescheduleRequest(null);
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się odrzucić propozycji",
+        variant: "destructive",
+      });
+    }
   };
 
   const confirmReschedule = async () => {
@@ -487,6 +545,90 @@ export const TrainerCalendarListPage: React.FC = () => {
       {/* Content */}
       {viewType === 'list' ? (
         <div className="space-y-4">
+          {/* Client Reschedule Requests Section */}
+          {pendingClientRescheduleRequests.length > 0 && (
+            <section className="p-4 space-y-4">
+              <h2 className="text-xl font-semibold text-warning">Propozycje nowych terminów od klientów ({pendingClientRescheduleRequests.length})</h2>
+              {pendingClientRescheduleRequests.map(({ booking, request }) => (
+                <Card key={request.id} className="bg-warning/10 border-warning/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </p>
+                        <p className="text-xs font-medium text-warning mt-1">
+                          Nowy termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="bg-warning/20 text-warning">Nowa propozycja</Badge>
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleDeclineClientReschedule(booking.id, request.id)}
+                      >
+                        Odrzuć
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleAcceptClientReschedule(booking.id, request.id)}
+                      >
+                        Zaakceptuj
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </section>
+          )}
+
+          {/* Trainer Reschedule Responses */}
+          {trainerRescheduleResponses.length > 0 && (
+            <section className="p-4 space-y-4">
+              <h2 className="text-xl font-semibold">Odpowiedzi na Twoje propozycje ({trainerRescheduleResponses.length})</h2>
+              {trainerRescheduleResponses.map(({ booking, request }) => (
+                <Card key={request.id} className={request.status === 'accepted' ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Zaproponowany termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </p>
+                      </div>
+                      <Badge 
+                        variant="secondary" 
+                        className={request.status === 'accepted' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}
+                      >
+                        {request.status === 'accepted' ? 'Zaakceptowane' : 'Odrzucone'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </section>
+          )}
+
           {/* Pending Bookings */}
           <section className="p-4 space-y-4">
             <h2 className="text-xl font-semibold text-warning">
@@ -696,6 +838,18 @@ export const TrainerCalendarListPage: React.FC = () => {
           onReschedule={handleRescheduleComplete}
         />
       )}
+
+      <RescheduleNotificationModal
+        isOpen={rescheduleNotificationModalOpen}
+        onClose={() => {
+          setRescheduleNotificationModalOpen(false);
+          setSelectedRescheduleRequest(null);
+        }}
+        booking={selectedRescheduleRequest?.booking || null}
+        rescheduleRequest={selectedRescheduleRequest?.request || null}
+        onAccept={(bookingId, requestId) => handleAcceptClientReschedule(bookingId, requestId)}
+        onDecline={(bookingId, requestId) => handleDeclineClientReschedule(bookingId, requestId)}
+      />
 
       {/* Trainer Booking Modal */}
       <TrainerBookingModal

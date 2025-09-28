@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { RescheduleNotificationModal } from '@/components/RescheduleNotificationModal';
+import { ClientRescheduleModal } from '@/components/ClientRescheduleModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { dataStore, Booking, RescheduleRequest } from '@/services/DataStore';
@@ -18,6 +19,8 @@ export const ClientCalendarPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('calendar');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [clientRescheduleModalOpen, setClientRescheduleModalOpen] = useState(false);
+  const [selectedBookingForReschedule, setSelectedBookingForReschedule] = useState<Booking | null>(null);
   const [selectedRescheduleRequest, setSelectedRescheduleRequest] = useState<{
     booking: Booking;
     request: RescheduleRequest;
@@ -29,10 +32,17 @@ export const ClientCalendarPage: React.FC = () => {
     }
   }, [user]);
 
-  // Get pending reschedule requests for this client
-  const pendingRescheduleRequests = bookings.flatMap(booking => 
+  // Get pending reschedule requests from trainers for this client
+  const pendingTrainerRescheduleRequests = bookings.flatMap(booking => 
     (booking.rescheduleRequests || [])
       .filter(request => request.status === 'pending' && request.requestedBy === 'trainer')
+      .map(request => ({ booking, request }))
+  );
+
+  // Get client's own reschedule requests with responses
+  const clientRescheduleResponses = bookings.flatMap(booking => 
+    (booking.rescheduleRequests || [])
+      .filter(request => request.requestedBy === 'client' && request.status !== 'pending')
       .map(request => ({ booking, request }))
   );
 
@@ -143,6 +153,14 @@ export const ClientCalendarPage: React.FC = () => {
     }
   };
 
+  const handleClientReschedule = () => {
+    if (user) {
+      setBookings(dataStore.getBookings(user.id));
+    }
+    setClientRescheduleModalOpen(false);
+    setSelectedBookingForReschedule(null);
+  };
+
   const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
     const { date, time } = formatDateTime(booking.scheduledAt);
     
@@ -174,22 +192,38 @@ export const ClientCalendarPage: React.FC = () => {
             )}
           </div>
 
-          {booking.status === 'confirmed' && (
+          {(booking.status === 'pending' || booking.status === 'confirmed') && (
             <div className="mt-3 pt-3 border-t flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1">
-                <MapPin className="h-3 w-3 mr-1" />
-                Mapa
-              </Button>
+              {booking.status === 'confirmed' && (
+                <>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    Mapa
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => {
+                      const chatId = `chat-u-${booking.clientId}-t-${booking.trainerId}`;
+                      window.location.href = `/chat/${chatId}`;
+                    }}
+                  >
+                    💬 Chat
+                  </Button>
+                </>
+              )}
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1"
+                className={booking.status === 'confirmed' ? "w-full mt-2" : "flex-1"}
                 onClick={() => {
-                  const chatId = `chat-u-${booking.clientId}-t-${booking.trainerId}`;
-                  window.location.href = `/chat/${chatId}`;
+                  setSelectedBookingForReschedule(booking);
+                  setClientRescheduleModalOpen(true);
                 }}
               >
-                💬 Chat
+                <CalendarIcon className="h-3 w-3 mr-1" />
+                Nowy termin
               </Button>
             </div>
           )}
@@ -215,11 +249,11 @@ export const ClientCalendarPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Reschedule Requests */}
-      {pendingRescheduleRequests.length > 0 && (
+      {/* Trainer Reschedule Requests */}
+      {pendingTrainerRescheduleRequests.length > 0 && (
         <section className="p-4 space-y-4">
-          <h2 className="text-xl font-semibold text-warning">Propozycje nowych terminów ({pendingRescheduleRequests.length})</h2>
-          {pendingRescheduleRequests.map(({ booking, request }) => (
+          <h2 className="text-xl font-semibold text-warning">Propozycje nowych terminów od trenerów ({pendingTrainerRescheduleRequests.length})</h2>
+          {pendingTrainerRescheduleRequests.map(({ booking, request }) => (
             <Card key={request.id} className="bg-warning/10 border-warning/30">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -260,6 +294,38 @@ export const ClientCalendarPage: React.FC = () => {
                   >
                     Zaakceptuj
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
+
+      {/* Client Reschedule Responses */}
+      {clientRescheduleResponses.length > 0 && (
+        <section className="p-4 space-y-4">
+          <h2 className="text-xl font-semibold">Odpowiedzi na Twoje propozycje ({clientRescheduleResponses.length})</h2>
+          {clientRescheduleResponses.map(({ booking, request }) => (
+            <Card key={request.id} className={request.status === 'accepted' ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                    <p className="text-sm text-muted-foreground">{getTrainerName(booking.trainerId)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Zaproponowany termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
+                      {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                  <Badge 
+                    variant="secondary" 
+                    className={request.status === 'accepted' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}
+                  >
+                    {request.status === 'accepted' ? 'Zaakceptowane' : 'Odrzucone'}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -308,7 +374,7 @@ export const ClientCalendarPage: React.FC = () => {
         onTabChange={setActiveTab}
       />
 
-      {/* Reschedule Modal */}
+      {/* Reschedule Modals */}
       <RescheduleNotificationModal
         isOpen={rescheduleModalOpen}
         onClose={() => {
@@ -319,6 +385,16 @@ export const ClientCalendarPage: React.FC = () => {
         rescheduleRequest={selectedRescheduleRequest?.request || null}
         onAccept={(bookingId, requestId) => handleAcceptReschedule(bookingId, requestId)}
         onDecline={(bookingId, requestId) => handleDeclineReschedule(bookingId, requestId)}
+      />
+      
+      <ClientRescheduleModal
+        isOpen={clientRescheduleModalOpen}
+        onClose={() => {
+          setClientRescheduleModalOpen(false);
+          setSelectedBookingForReschedule(null);
+        }}
+        booking={selectedBookingForReschedule}
+        onReschedule={handleClientReschedule}
       />
     </div>
   );
