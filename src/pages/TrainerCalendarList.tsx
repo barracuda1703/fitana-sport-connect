@@ -223,6 +223,31 @@ export const TrainerCalendarListPage: React.FC = () => {
   const BookingCard: React.FC<{ booking: Booking; showActions?: boolean }> = ({ booking, showActions = false }) => {
     const { date, time } = formatDateTime(booking.scheduledAt);
     
+    // Check if trainer has proposed a reschedule
+    const trainerRescheduleRequest = (booking.rescheduleRequests || []).find(
+      request => request.requestedBy === 'trainer' && request.status === 'pending'
+    );
+    
+    const getBookingStatusInfo = () => {
+      if (booking.status !== 'pending') return null;
+      
+      if (trainerRescheduleRequest) {
+        return {
+          label: 'Zaproponowano nowy termin',
+          variant: 'default' as const,
+          className: 'bg-blue-500/20 text-blue-600 border-blue-500/30'
+        };
+      }
+      
+      return {
+        label: 'Oczekuje',
+        variant: 'secondary' as const,
+        className: 'bg-warning/20 text-warning'
+      };
+    };
+
+    const statusInfo = getBookingStatusInfo();
+    
     return (
       <Card className="bg-gradient-card hover:shadow-card transition-all duration-200">
         <CardContent className="p-4">
@@ -234,9 +259,12 @@ export const TrainerCalendarListPage: React.FC = () => {
                 {getClientName(booking.clientId)}
               </p>
             </div>
-            {booking.status === 'pending' && (
-              <Badge variant="secondary" className="bg-warning/20 text-warning">
-                Oczekuje
+            {statusInfo && (
+              <Badge variant={statusInfo.variant} className={statusInfo.className}>
+                <div className="flex items-center gap-1">
+                  {trainerRescheduleRequest && <CalendarIcon className="h-3 w-3" />}
+                  {statusInfo.label}
+                </div>
               </Badge>
             )}
           </div>
@@ -250,6 +278,20 @@ export const TrainerCalendarListPage: React.FC = () => {
               <Clock className="h-4 w-4" />
               <span>{time}</span>
             </div>
+            
+            {/* Show proposed new time if trainer has made a reschedule request */}
+            {trainerRescheduleRequest && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mt-2">
+                <p className="text-xs font-medium text-blue-700 mb-1">Zaproponowany nowy termin:</p>
+                <div className="flex items-center gap-2 text-blue-600">
+                  <CalendarIcon className="h-3 w-3" />
+                  <span className="text-xs font-medium">
+                    {formatDateTime(trainerRescheduleRequest.newTime.toString()).date} o {formatDateTime(trainerRescheduleRequest.newTime.toString()).time}
+                  </span>
+                </div>
+              </div>
+            )}
+            
             {booking.notes && (
               <div className="flex items-start gap-2">
                 <span className="text-xs">💬</span>
