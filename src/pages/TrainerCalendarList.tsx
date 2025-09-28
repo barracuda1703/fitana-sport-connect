@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { RescheduleModal } from '@/components/RescheduleModal';
+import { TrainerBookingModal } from '@/components/TrainerBookingModal';
 import { dataStore, Booking, ManualBlock } from '@/services/DataStore';
 
 type ViewType = 'list' | 'calendar';
@@ -29,6 +30,7 @@ export const TrainerCalendarListPage: React.FC = () => {
   const [manualBlocks, setManualBlocks] = useState<ManualBlock[]>([]);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState<Booking | null>(null);
   const [showManualBlockDialog, setShowManualBlockDialog] = useState(false);
+  const [showTrainerBookingDialog, setShowTrainerBookingDialog] = useState(false);
   const [showDayDetails, setShowDayDetails] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [newDate, setNewDate] = useState('');
@@ -150,16 +152,13 @@ export const TrainerCalendarListPage: React.FC = () => {
     setShowRescheduleDialog(null);
   };
 
-  const handleAddManualBlock = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setBlockForm({
-      title: '',
-      date: tomorrow.toISOString().split('T')[0],
-      startTime: '10:00',
-      endTime: '11:00',
-    });
-    setShowManualBlockDialog(true);
+  const handleAddTraining = () => {
+    setShowTrainerBookingDialog(true);
+  };
+
+  const handleTrainingAdded = () => {
+    refreshData();
+    setShowTrainerBookingDialog(false);
   };
 
   const confirmAddManualBlock = () => {
@@ -429,8 +428,8 @@ export const TrainerCalendarListPage: React.FC = () => {
                 <Calendar className="h-4 w-4" />
               </Button>
             </div>
-            {/* Add Block Button */}
-            <Button variant="outline" size="sm" onClick={handleAddManualBlock}>
+            {/* Add Training Button */}
+            <Button variant="outline" size="sm" onClick={handleAddTraining}>
               <Plus className="h-4 w-4 mr-2" />
               Dodaj trening do kalendarza
             </Button>
@@ -641,12 +640,21 @@ export const TrainerCalendarListPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule Modal */}
-      <RescheduleModal
-        isOpen={isRescheduleModalOpen}
-        onClose={() => setIsRescheduleModalOpen(false)}
-        booking={rescheduleBooking}
-        onReschedule={handleRescheduleComplete}
+      {/* Modals */}
+      {rescheduleBooking && (
+        <RescheduleModal
+          isOpen={isRescheduleModalOpen}
+          onClose={() => setIsRescheduleModalOpen(false)}
+          booking={rescheduleBooking}
+          onReschedule={handleRescheduleComplete}
+        />
+      )}
+
+      {/* Trainer Booking Modal */}
+      <TrainerBookingModal
+        isOpen={showTrainerBookingDialog}
+        onClose={() => setShowTrainerBookingDialog(false)}
+        onBookingCreated={handleTrainingAdded}
       />
 
       {/* Bottom Navigation */}
