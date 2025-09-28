@@ -161,7 +161,7 @@ export const CalendarPage: React.FC = () => {
                       <div>
                         <p className="font-medium">
                           {user.role === 'trainer' 
-                            ? `Klient #${booking.clientId.slice(-4)}` 
+                            ? dataStore.getClientName(booking.clientId)
                             : `Trening - ${booking.serviceId}`}
                         </p>
                         <p className="text-sm text-muted-foreground">

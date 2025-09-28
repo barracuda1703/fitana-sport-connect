@@ -1426,6 +1426,14 @@ class DataStore {
     return this.data.trainers.find(t => t.id === id || t.userId === id) || null;
   }
 
+  getClientName(clientId: string): string {
+    const user = this.getUser(clientId);
+    if (user) {
+      return user.surname ? `${user.name} ${user.surname}` : user.name;
+    }
+    return `Klient #${clientId.slice(-4)}`;
+  }
+
   getTrainersBySport(sportId: string): Trainer[] {
     return this.data.trainers.filter(trainer => 
       trainer.specialties.some(specialty => 
