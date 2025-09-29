@@ -89,6 +89,7 @@ export interface RescheduleRequest {
   requestedBy: 'client' | 'trainer';
   newTime: Date;
   status: 'pending' | 'accepted' | 'declined';
+  awaitingDecisionBy: 'client' | 'trainer';
 }
 
 export interface Review {

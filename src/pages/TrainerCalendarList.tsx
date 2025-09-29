@@ -16,7 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { RescheduleModal } from '@/components/RescheduleModal';
 import { RescheduleNotificationModal } from '@/components/RescheduleNotificationModal';
 import { TrainerBookingModal } from '@/components/TrainerBookingModal';
-import { dataStore, Booking, ManualBlock, RescheduleRequest } from '@/services/DataStore';
+import { TimeOffModal } from '@/components/TimeOffModal';
+import { CalendarViewSwitcher, CalendarGrid, useCalendarEvents, CalendarEvent } from '@/components/calendar';
+import { dataStore, Booking, ManualBlock, RescheduleRequest, TimeOff } from '@/services/DataStore';
 
 type ViewType = 'list' | 'calendar';
 
@@ -29,9 +31,11 @@ export const TrainerCalendarListPage: React.FC = () => {
   const [viewType, setViewType] = useState<ViewType>('list');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [manualBlocks, setManualBlocks] = useState<ManualBlock[]>([]);
+  const [timeOffs, setTimeOffs] = useState<TimeOff[]>([]);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState<Booking | null>(null);
   const [showManualBlockDialog, setShowManualBlockDialog] = useState(false);
   const [showTrainerBookingDialog, setShowTrainerBookingDialog] = useState(false);
+  const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
   const [showDayDetails, setShowDayDetails] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [newDate, setNewDate] = useState('');
@@ -62,6 +66,7 @@ export const TrainerCalendarListPage: React.FC = () => {
     if (user) {
       setBookings(dataStore.getBookings(user.id));
       setManualBlocks(dataStore.getManualBlocks(user.id));
+      setTimeOffs(dataStore.getTimeOffs(user.id));
     }
   }, [user]);
 
@@ -69,6 +74,7 @@ export const TrainerCalendarListPage: React.FC = () => {
     if (user) {
       setBookings(dataStore.getBookings(user.id));
       setManualBlocks(dataStore.getManualBlocks(user.id));
+      setTimeOffs(dataStore.getTimeOffs(user.id));
     }
   };
 
@@ -78,10 +84,17 @@ export const TrainerCalendarListPage: React.FC = () => {
     return bookingDate > new Date() && booking.status === 'confirmed';
   });
 
-  // Get pending reschedule requests from clients
-  const pendingClientRescheduleRequests = bookings.flatMap(booking => 
+  // Get requests awaiting trainer's decision
+  const awaitingTrainerDecision = bookings.flatMap(booking => 
     (booking.rescheduleRequests || [])
-      .filter(request => request.status === 'pending' && request.requestedBy === 'client')
+      .filter(request => request.status === 'pending' && request.awaitingDecisionBy === 'trainer')
+      .map(request => ({ booking, request }))
+  );
+
+  // Get requests awaiting client's decision (trainer's proposals)
+  const awaitingClientDecision = bookings.flatMap(booking => 
+    (booking.rescheduleRequests || [])
+      .filter(request => request.status === 'pending' && request.awaitingDecisionBy === 'client')
       .map(request => ({ booking, request }))
   );
 
@@ -531,11 +544,17 @@ export const TrainerCalendarListPage: React.FC = () => {
                 <Calendar className="h-4 w-4" />
               </Button>
             </div>
-            {/* Add Training Button */}
-            <Button variant="outline" size="sm" onClick={handleAddTraining}>
-              <Plus className="h-4 w-4 mr-2" />
-              Dodaj trening do kalendarza
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleAddTraining}>
+                <Plus className="h-4 w-4 mr-2" />
+                Dodaj trening
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowTimeOffDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Wolne / Urlop
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -543,11 +562,11 @@ export const TrainerCalendarListPage: React.FC = () => {
       {/* Content */}
       {viewType === 'list' ? (
         <div className="space-y-4">
-          {/* Client Reschedule Requests Section */}
-          {pendingClientRescheduleRequests.length > 0 && (
+          {/* Requests Awaiting Trainer's Decision */}
+          {awaitingTrainerDecision.length > 0 && (
             <section className="p-4 space-y-4">
-              <h2 className="text-xl font-semibold text-warning">Propozycje nowych terminów od klientów ({pendingClientRescheduleRequests.length})</h2>
-              {pendingClientRescheduleRequests.map(({ booking, request }) => (
+              <h2 className="text-xl font-semibold text-warning">Oczekuje na Twoją decyzję ({awaitingTrainerDecision.length})</h2>
+              {awaitingTrainerDecision.map(({ booking, request }) => (
                 <Card key={request.id} className="bg-warning/10 border-warning/30">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
@@ -620,6 +639,80 @@ export const TrainerCalendarListPage: React.FC = () => {
                       >
                         {request.status === 'accepted' ? 'Zaakceptowane' : 'Odrzucone'}
                       </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </section>
+          )}
+
+          {/* Requests Awaiting Client's Decision */}
+          {awaitingClientDecision.length > 0 && (
+            <section className="p-4 space-y-4">
+              <h2 className="text-xl font-semibold text-info">Oczekuje na decyzję klienta ({awaitingClientDecision.length})</h2>
+              {awaitingClientDecision.map(({ booking, request }) => (
+                <Card key={request.id} className="bg-info/10 border-info/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </p>
+                        <p className="text-xs font-medium text-info mt-1">
+                          Zaproponowany termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="bg-info/20 text-info">Oczekuje na decyzję klienta</Badge>
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t flex gap-2">
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // TODO: Implement edit proposal
+                          toast({
+                            title: "Funkcja w trakcie rozwoju",
+                            description: "Edycja propozycji będzie dostępna wkrótce",
+                          });
+                        }}
+                        className="flex-1"
+                      >
+                        Edytuj propozycję
+                      </Button>
+                      <Button 
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await dataStore.withdrawRescheduleRequest(booking.id, request.id);
+                            refreshData();
+                            toast({
+                              title: "Propozycja wycofana",
+                              description: "Propozycja nowego terminu została wycofana",
+                            });
+                          } catch (error) {
+                            toast({
+                              title: "Błąd",
+                              description: "Nie udało się wycofać propozycji",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        className="flex-1"
+                      >
+                        Wycofaj propozycję
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -854,6 +947,14 @@ export const TrainerCalendarListPage: React.FC = () => {
         isOpen={showTrainerBookingDialog}
         onClose={() => setShowTrainerBookingDialog(false)}
         onBookingCreated={handleTrainingAdded}
+      />
+
+      {/* Time Off Modal */}
+      <TimeOffModal
+        isOpen={showTimeOffDialog}
+        onClose={() => setShowTimeOffDialog(false)}
+        onTimeOffAdded={refreshData}
+        trainerId={user?.id || ''}
       />
 
       {/* Bottom Navigation */}

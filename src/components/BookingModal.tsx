@@ -360,3 +360,5 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
     </Dialog>
   );
 };
+
+export default BookingModal;

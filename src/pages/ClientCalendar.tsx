@@ -4,19 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { RescheduleNotificationModal } from '@/components/RescheduleNotificationModal';
 import { ClientRescheduleModal } from '@/components/ClientRescheduleModal';
+import { CalendarViewSwitcher } from '@/components/calendar';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { dataStore, Booking, RescheduleRequest } from '@/services/DataStore';
 import { useToast } from '@/hooks/use-toast';
+
+type ViewType = 'list' | 'calendar';
 
 export const ClientCalendarPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('calendar');
+  const [viewType, setViewType] = useState<ViewType>('list');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [clientRescheduleModalOpen, setClientRescheduleModalOpen] = useState(false);
@@ -25,6 +33,25 @@ export const ClientCalendarPage: React.FC = () => {
     booking: Booking;
     request: RescheduleRequest;
   } | null>(null);
+  const [showDayDetails, setShowDayDetails] = useState<Date | null>(null);
+
+  // Calendar helper functions
+  const getBookingsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return bookings.filter(booking => {
+      try {
+        const bookingDate = new Date(booking.scheduledAt).toISOString().split('T')[0];
+        return bookingDate === dateStr;
+      } catch (error) {
+        console.warn('Error parsing booking date:', booking.scheduledAt, error);
+        return false;
+      }
+    });
+  };
+
+  const isDayBusy = (date: Date) => {
+    return getBookingsForDate(date).length > 0;
+  };
 
   useEffect(() => {
     if (user) {
@@ -32,10 +59,52 @@ export const ClientCalendarPage: React.FC = () => {
     }
   }, [user]);
 
-  // Get pending reschedule requests from trainers for this client
-  const pendingTrainerRescheduleRequests = bookings.flatMap(booking => 
+  // Handle URL params for view type
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const viewParam = urlParams.get('view');
+    if (viewParam === 'calendar' || viewParam === 'list') {
+      setViewType(viewParam);
+    }
+  }, [location.search]);
+
+  // Save view preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('clientCalendarView', viewType);
+  }, [viewType]);
+
+  // Load view preference from localStorage on mount
+  useEffect(() => {
+    const savedView = localStorage.getItem('clientCalendarView') as ViewType;
+    if (savedView && (savedView === 'list' || savedView === 'calendar')) {
+      setViewType(savedView);
+    }
+  }, []);
+
+  const handleViewChange = (newView: ViewType) => {
+    setViewType(newView);
+    // Update URL without page reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', newView);
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    setShowDayDetails(date);
+  };
+
+  // Get requests awaiting client's decision
+  const awaitingClientDecision = bookings.flatMap(booking => 
     (booking.rescheduleRequests || [])
-      .filter(request => request.status === 'pending' && request.requestedBy === 'trainer')
+      .filter(request => request.status === 'pending' && request.awaitingDecisionBy === 'client')
+      .map(request => ({ booking, request }))
+  );
+
+  // Get requests awaiting trainer's decision
+  const awaitingTrainerDecision = bookings.flatMap(booking => 
+    (booking.rescheduleRequests || [])
+      .filter(request => request.status === 'pending' && request.awaitingDecisionBy === 'trainer')
       .map(request => ({ booking, request }))
   );
 
@@ -237,22 +306,28 @@ export const ClientCalendarPage: React.FC = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Kalendarz</h1>
-            <p className="text-muted-foreground">Twoje treningi</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">Kalendarz</h1>
+              <p className="text-muted-foreground">Twoje treningi</p>
+            </div>
           </div>
+          <CalendarViewSwitcher
+            viewType={viewType}
+            onViewChange={handleViewChange}
+          />
         </div>
       </header>
 
-      {/* Trainer Reschedule Requests */}
-      {pendingTrainerRescheduleRequests.length > 0 && (
+      {/* Requests Awaiting Client's Decision */}
+      {awaitingClientDecision.length > 0 && (
         <section className="p-4 space-y-4">
-          <h2 className="text-xl font-semibold text-warning">Propozycje nowych terminów od trenerów ({pendingTrainerRescheduleRequests.length})</h2>
-          {pendingTrainerRescheduleRequests.map(({ booking, request }) => (
+          <h2 className="text-xl font-semibold text-warning">Oczekuje na Twoją decyzję ({awaitingClientDecision.length})</h2>
+          {awaitingClientDecision.map(({ booking, request }) => (
             <Card key={request.id} className="bg-warning/10 border-warning/30">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -332,38 +407,193 @@ export const ClientCalendarPage: React.FC = () => {
         </section>
       )}
 
-      {/* Upcoming Bookings */}
-      <section className="p-4 space-y-4">
-        <h2 className="text-xl font-semibold">Nadchodzące ({upcomingBookings.length})</h2>
-        {upcomingBookings.length > 0 ? (
-          <div className="space-y-3">
-            {upcomingBookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
-            ))}
-          </div>
-        ) : (
-          <Card className="bg-gradient-card">
-            <CardContent className="p-4 text-center text-muted-foreground">
-              Brak nadchodzących treningów
+      {/* Requests Awaiting Trainer's Decision */}
+      {awaitingTrainerDecision.length > 0 && (
+        <section className="p-4 space-y-4">
+          <h2 className="text-xl font-semibold text-info">Oczekuje na decyzję trenera ({awaitingTrainerDecision.length})</h2>
+          {awaitingTrainerDecision.map(({ booking, request }) => (
+            <Card key={request.id} className="bg-info/10 border-info/30">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                    <p className="text-sm text-muted-foreground">{getTrainerName(booking.trainerId)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
+                      {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                    <p className="text-xs font-medium text-info mt-1">
+                      Zaproponowany termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
+                      {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="bg-info/20 text-info">Oczekuje na decyzję trenera</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
+
+      {/* Main Content - List or Calendar View */}
+      {viewType === 'list' ? (
+        <>
+          {/* Upcoming Bookings */}
+          <section className="p-4 space-y-4">
+            <h2 className="text-xl font-semibold">Nadchodzące ({upcomingBookings.length})</h2>
+            {upcomingBookings.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingBookings.map((booking) => (
+                  <BookingCard key={booking.id} booking={booking} />
+                ))}
+              </div>
+            ) : (
+              <Card className="bg-gradient-card">
+                <CardContent className="p-4 text-center text-muted-foreground">
+                  Brak nadchodzących treningów
+                </CardContent>
+              </Card>
+            )}
+          </section>
+
+          {/* Past Bookings - only in list view */}
+          {pastBookings.length > 0 && (
+            <>
+              <Separator className="mx-4" />
+              <section className="p-4 space-y-4">
+                <h2 className="text-xl font-semibold">Historia ({pastBookings.length})</h2>
+                <div className="space-y-3">
+                  {pastBookings.slice(0, 5).map((booking) => (
+                    <BookingCard key={booking.id} booking={booking} />
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+        </>
+      ) : (
+        /* Calendar View */
+        <div className="p-4">
+          <Card>
+            <CardContent className="p-4">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                className="w-full"
+                modifiers={{
+                  busy: (date) => isDayBusy(date),
+                }}
+                modifiersStyles={{
+                  busy: {
+                    backgroundColor: 'hsl(var(--warning) / 0.2)',
+                    color: 'hsl(var(--warning))',
+                    fontWeight: 'bold',
+                  },
+                }}
+                onDayClick={handleDayClick}
+              />
+              <div className="mt-4 flex gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-warning/20 border border-warning/50"></div>
+                  <span>Dni z treningami</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-muted border"></div>
+                  <span>Wolne dni</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        )}
-      </section>
+        </div>
+      )}
 
-      {pastBookings.length > 0 && (
-        <>
-          <Separator className="mx-4" />
-          
-          {/* Past Bookings */}
-          <section className="p-4 space-y-4">
-            <h2 className="text-xl font-semibold">Historia ({pastBookings.length})</h2>
-            <div className="space-y-3">
-              {pastBookings.slice(0, 5).map((booking) => (
-                <BookingCard key={booking.id} booking={booking} />
-              ))}
+      {/* Day Details Panel */}
+      {showDayDetails && (
+        <Dialog open={!!showDayDetails} onOpenChange={() => setShowDayDetails(null)}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {showDayDetails.toLocaleDateString('pl-PL', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {getBookingsForDate(showDayDetails).length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Brak treningów w tym dniu</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {getBookingsForDate(showDayDetails).map((booking) => (
+                    <Card key={booking.id} className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                          <p className="text-sm text-muted-foreground">{getTrainerName(booking.trainerId)}</p>
+                        </div>
+                        {getStatusBadge(booking.status)}
+                      </div>
+                      
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <span>
+                            {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        {booking.location && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            <span>{booking.location}</span>
+                          </div>
+                        )}
+                        {booking.notes && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs">💬</span>
+                            <span className="text-xs">{booking.notes}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                        <div className="mt-3 pt-3 border-t flex gap-2">
+                          {booking.status === 'confirmed' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBookingForReschedule(booking);
+                                setClientRescheduleModalOpen(true);
+                              }}
+                              className="flex-1"
+                            >
+                              Zmień termin
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
-          </section>
-        </>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Bottom Navigation */}
@@ -398,3 +628,5 @@ export const ClientCalendarPage: React.FC = () => {
     </div>
   );
 };
+
+export default ClientCalendarPage;

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { LanguageSelector } from '@/components/LanguageSelector';
+import { SimpleLanguageSelector } from '@/components/SimpleLanguageSelector';
 import { LocationManagement } from '@/components/LocationManagement';
 import { ServiceManagementModal } from '@/components/ServiceManagementModal';
 import { PhotoUploader } from '@/components/PhotoUploader';
@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Location, Service } from '@/types';
 
 export const ProfileEditPage: React.FC = () => {
-  const { user, switchRole } = useAuth();
+  const { user, switchRole, refreshUser } = useAuth();
   const { currentLanguage } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,6 +30,7 @@ export const ProfileEditPage: React.FC = () => {
     language: user?.language || currentLanguage.code,
     email: user?.email || '',
     specialties: (user?.role === 'trainer' ? (user as any)?.specialties || (user as any)?.disciplines || [] : []),
+    languages: (user?.role === 'trainer' ? (user as any)?.languages || [] : []),
   });
 
   // Available disciplines - synchronized with ClientHome categories
@@ -58,20 +59,9 @@ export const ProfileEditPage: React.FC = () => {
   
   // Photo state
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.avatarUrl || null);
-  const [gallery, setGallery] = useState<string[]>([]);
+  const [gallery, setGallery] = useState<string[]>((user as any)?.gallery || []);
 
   const handleSave = () => {
-    // Update user data in dataStore
-    const updatedUserData = {
-      ...user,
-      ...formData
-    };
-
-    if (user?.role === 'trainer') {
-      // Sync trainer profile if user is a trainer
-      dataStore.syncTrainerProfile(user.id, updatedUserData);
-    }
-
     // For trainers, validate that they have at least one location and one specialty
     if (user?.role === 'trainer') {
       if (locations.length === 0) {
@@ -102,6 +92,44 @@ export const ProfileEditPage: React.FC = () => {
       }
     }
 
+    // Update user data in dataStore
+    const updatedUserData = {
+      ...user,
+      ...formData,
+      // Include photos
+      avatarUrl: profilePhoto,
+      // Include services, locations, and languages for trainers
+      ...(user?.role === 'trainer' && {
+        services: services,
+        locations: locations,
+        gallery: gallery,
+        languages: formData.languages
+      })
+    };
+
+    if (user?.role === 'trainer') {
+      // Sync trainer profile if user is a trainer
+      console.log('Syncing trainer profile with data:', {
+        name: updatedUserData.name,
+        surname: updatedUserData.surname,
+        avatarUrl: updatedUserData.avatarUrl,
+        specialties: (updatedUserData as any).specialties
+      });
+      dataStore.syncTrainerProfile(user.id, updatedUserData);
+    } else {
+      // For clients, update user data directly
+      dataStore.updateUser(user.id, updatedUserData);
+    }
+
+    // Refresh user data in context
+    refreshUser();
+    
+    // Force refresh trainers list if we're a trainer
+    if (user?.role === 'trainer') {
+      // Trigger a custom event to refresh trainers list
+      window.dispatchEvent(new CustomEvent('trainerProfileUpdated'));
+    }
+    
     toast({
       title: "Profil zaktualizowany",
       description: "Twoje dane zostały pomyślnie zapisane.",
@@ -163,7 +191,6 @@ export const ProfileEditPage: React.FC = () => {
           <div className="flex-1">
             <h1 className="text-xl font-bold">Edytuj profil</h1>
           </div>
-          <LanguageSelector />
           <Button onClick={handleSave}>
             <Save className="h-4 w-4 mr-2" />
             Zapisz
@@ -235,12 +262,31 @@ export const ProfileEditPage: React.FC = () => {
                     <SelectItem value="ru">Русский</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-sm text-muted-foreground">lub</span>
-                <LanguageSelector />
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {user.role === 'trainer' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Języki</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label>Języki, w których prowadzisz treningi</Label>
+                <SimpleLanguageSelector
+                  selectedLanguages={formData.languages}
+                  onLanguagesChange={(languages) => setFormData({ ...formData, languages })}
+                  placeholder="Wybierz języki..."
+                />
+                <p className="text-sm text-muted-foreground">
+                  Wybierz wszystkie języki, w których możesz prowadzić treningi
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {user.role === 'trainer' && (
           <Card>

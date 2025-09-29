@@ -175,3 +175,5 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
     </Dialog>
   );
 };
+
+export default TrainerProfileModal;

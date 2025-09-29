@@ -9,6 +9,7 @@ import { BookingModal } from '@/components/BookingModal';
 import { TrainerProfileModal } from '@/components/TrainerProfileModal';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { FilterModal, FilterOptions } from '@/components/FilterModal';
+import { LanguageChips } from '@/components/LanguageChips';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -40,18 +41,58 @@ export const ClientHome: React.FC = () => {
     availableToday: false,
     showFavoritesOnly: false,
     trainerGender: 'all',
-    serviceTypes: []
+    serviceTypes: [],
+    languages: []
   });
 
   useEffect(() => {
-    // Force reset data if needed for development
+    // Load filters from URL params on mount
     const urlParams = new URLSearchParams(window.location.search);
+    
+    // Force reset data if needed for development
     if (urlParams.get('reset') === 'true') {
       dataStore.resetData();
-      window.location.search = ''; // Remove reset param
+      // Force reload to clear any cached data
+      window.location.reload();
+      return;
+    }
+
+    // Parse language filter from URL
+    const langParam = urlParams.get('lang');
+    if (langParam) {
+      const languages = langParam.split(',').filter(Boolean);
+      setFilters(prev => ({ ...prev, languages }));
     }
     
-    setTrainers(dataStore.getTrainers());
+    // Auto-clean corrupted data on startup
+    const trainers = dataStore.getTrainers();
+    const hasCorruptedData = trainers.some(trainer => 
+      !trainer.name || 
+      trainer.name.includes('calhost') || 
+      trainer.name.includes('localhost') ||
+      trainer.name.includes('8080') ||
+      trainer.name.includes('3-Bc6e')
+    );
+    
+    if (hasCorruptedData) {
+      console.log('Auto-cleaning corrupted data...');
+      dataStore.resetData();
+      setTrainers(dataStore.getTrainers());
+    } else {
+      setTrainers(trainers);
+    }
+    
+    // Listen for trainer profile updates
+    const handleTrainerProfileUpdate = () => {
+      console.log('Trainer profile updated, refreshing list...');
+      setTrainers(dataStore.getTrainers());
+    };
+    
+    window.addEventListener('trainerProfileUpdated', handleTrainerProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('trainerProfileUpdated', handleTrainerProfileUpdate);
+    };
   }, []);
 
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
@@ -103,6 +144,15 @@ export const ClientHome: React.FC = () => {
       filtered = filtered.filter(trainer => mockFavorites.includes(trainer.id));
     }
 
+    // Apply language filter (OR logic - trainer matches if they speak at least one selected language)
+    if (filters.languages.length > 0) {
+      filtered = filtered.filter(trainer => 
+        trainer.languages && trainer.languages.some(trainerLang => 
+          filters.languages.includes(trainerLang)
+        )
+      );
+    }
+
     if (filters.minRating > 0) {
       filtered = filtered.filter(trainer => trainer.rating >= filters.minRating);
     }
@@ -121,6 +171,22 @@ export const ClientHome: React.FC = () => {
 
     setFilteredTrainers(filtered);
   }, [trainers, selectedCategory, searchQuery, filters]);
+
+  // Update URL params when filters change
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Update language parameter
+    if (filters.languages.length > 0) {
+      urlParams.set('lang', filters.languages.join(','));
+    } else {
+      urlParams.delete('lang');
+    }
+    
+    // Update URL without page reload
+    const newUrl = urlParams.toString() ? `${window.location.pathname}?${urlParams.toString()}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [filters.languages]);
 
   const handleBookTrainer = (trainerId: string) => {
     const trainer = trainers.find(t => t.id === trainerId);
@@ -286,12 +352,26 @@ export const ClientHome: React.FC = () => {
           <Card key={trainer.id} className="overflow-hidden hover:shadow-card transition-all duration-200 cursor-pointer bg-gradient-card">
             <CardHeader className="pb-3">
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center text-2xl">
-                  {trainer.avatar}
+                <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center text-2xl overflow-hidden">
+                  {trainer.avatar && trainer.avatar.startsWith('http') ? (
+                    <img 
+                      src={trainer.avatar} 
+                      alt={trainer.name || 'Trener'} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl">
+                      {trainer.avatar || (trainer.name ? trainer.name.charAt(0).toUpperCase() : 'T')}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-lg">{trainer.name}</h3>
+                    <h3 className="font-semibold text-lg">
+                      {trainer.name && trainer.name.length > 0 && !trainer.name.includes('calhost') 
+                        ? trainer.name 
+                        : trainer.displayName || 'Trener'}
+                    </h3>
                     <FavoriteButton trainerId={trainer.id} size="sm" />
                     {trainer.isVerified && (
                       <Badge variant="secondary" className="bg-success/20 text-success">
@@ -319,6 +399,15 @@ export const ClientHome: React.FC = () => {
                       </Badge>
                     ))}
                   </div>
+                  {trainer.languages && trainer.languages.length > 0 && (
+                    <div className="mb-2">
+                      <LanguageChips 
+                        languages={trainer.languages} 
+                        maxDisplay={3} 
+                        size="sm"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-primary">

@@ -24,16 +24,14 @@ export const RoleSwitch: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-4 left-4 z-50 flex items-center gap-2 bg-card p-2 rounded-lg shadow-lg border">
-      <Badge variant={user.role === 'client' ? 'default' : 'secondary'}>
-        {user.role === 'client' ? 'Klient' : 'Trener'}
-      </Badge>
+    <div className="fixed top-2 left-2 z-50">
       <Button 
-        variant="outline" 
+        variant="destructive" 
         size="sm"
         onClick={handleRoleSwitch}
+        className="text-xs px-2 py-1 h-6 text-white bg-red-500 hover:bg-red-600"
       >
-        Przełącz na {user.role === 'client' ? 'Trenera' : 'Klienta'}
+        {user.role === 'client' ? '→T' : '→K'}
       </Button>
     </div>
   );

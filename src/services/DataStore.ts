@@ -9,6 +9,7 @@ export interface User {
   city?: string;
   avatarUrl?: string;
   language: string;
+  gallery?: string[];
 }
 
 export interface Trainer {
@@ -16,6 +17,7 @@ export interface Trainer {
   userId: string;
   name: string;
   surname: string;
+  displayName?: string;
   rating: number;
   reviewCount: number;
   priceFrom: number;
@@ -26,6 +28,8 @@ export interface Trainer {
   avatar: string;
   bio: string;
   gender: 'male' | 'female' | 'other';
+  languages?: string[]; // ISO language codes
+  gallery?: string[];
   locations?: Array<{
     id: string;
     name: string;
@@ -70,12 +74,24 @@ export interface ManualBlock {
   createdAt: string;
 }
 
+export interface TimeOff {
+  id: string;
+  trainerId: string;
+  type: 'time_off';
+  start: string; // ISO date
+  end: string; // ISO date
+  allDay: boolean;
+  note?: string;
+  createdAt: string;
+}
+
 export interface RescheduleRequest {
   id: string;
   requestedAt: string; // ISO date
   requestedBy: 'client' | 'trainer';
   newTime: string; // ISO date
   status: 'pending' | 'accepted' | 'declined';
+  awaitingDecisionBy: 'client' | 'trainer'; // Who needs to make the decision
 }
 
 export interface Booking {
@@ -226,6 +242,7 @@ const seedData = {
     {
       id: 't-1', userId: 'u-trainer1', name: 'Anna', surname: 'Kowalska', rating: 4.9, reviewCount: 127, priceFrom: 80, distance: '0.5 km',
       specialties: ['Fitness', 'Siłownia'], isVerified: true, hasVideo: true, avatar: '👩‍🦰', gender: 'female' as const,
+      languages: ['pl', 'en', 'de'],
       bio: 'Certyfikowana trenerka fitness z 8-letnim doświadczeniem. Specjalizuję się w treningach siłowych i funkcjonalnych.',
       locations: [
         {
@@ -309,6 +326,7 @@ const seedData = {
     {
       id: 't-4', userId: 'u-trainer4', name: 'Tomasz', surname: 'Wójcik', rating: 4.6, reviewCount: 78, priceFrom: 85, distance: '3.5 km',
       specialties: ['Fitness', 'Rehabilitacja'], isVerified: false, hasVideo: true, avatar: '👨‍⚕️', gender: 'male' as const,
+      languages: ['pl', 'en'],
       bio: 'Fizjoterapeuta i trener personalny. Łączę wiedzę medyczną z treningiem dla maksymalnych efektów.',
       locations: [
         {
@@ -332,6 +350,7 @@ const seedData = {
     {
       id: 't-5', userId: 'u-trainer5', name: 'Magdalena', surname: 'Kaczmarek', rating: 4.9, reviewCount: 203, priceFrom: 95, distance: '1.8 km',
       specialties: ['Fitness', 'TRX'], isVerified: true, hasVideo: true, avatar: '👩‍🏫', gender: 'female' as const,
+      languages: ['pl', 'en', 'de'],
       bio: 'Ekspertka TRX z międzynarodowymi certyfikatami. Tworzę wyzwania dla każdego poziomu zaawansowania.',
       locations: [
         {
@@ -358,6 +377,7 @@ const seedData = {
     {
       id: 't-6', userId: 'u-trainer6', name: 'Ewa', surname: 'Wiśniowska', rating: 5.0, reviewCount: 189, priceFrom: 70, distance: '2.0 km',
       specialties: ['Yoga', 'Pilates'], isVerified: true, hasVideo: true, avatar: '👩‍🦱', gender: 'female' as const,
+      languages: ['pl', 'en', 'fr'],
       bio: 'Instruktorka jogi z 10-letnim doświadczeniem. Specjalizuję się w Hatha i Vinyasa yoga.',
       coordinates: { lat: 52.2400, lng: 21.0150 },
       services: [
@@ -392,6 +412,7 @@ const seedData = {
     {
       id: 't-8', userId: 'u-trainer8', name: 'Marta', surname: 'Kamińska', rating: 4.7, reviewCount: 98, priceFrom: 75, distance: '2.8 km',
       specialties: ['Yoga', 'Stretching'], isVerified: false, hasVideo: false, avatar: '👩‍🎨', gender: 'female' as const,
+      languages: ['pl', 'en', 'uk'],
       bio: 'Pasjonatka jogi i rozciągania. Prowadzę klasy dla początkujących i zaawansowanych.',
       coordinates: { lat: 52.2100, lng: 21.0250 },
       services: [
@@ -407,6 +428,7 @@ const seedData = {
     {
       id: 't-9', userId: 'u-trainer9', name: 'Aleksandra', surname: 'Lewandowska', rating: 4.9, reviewCount: 167, priceFrom: 85, distance: '3.2 km',
       specialties: ['Yoga', 'Pilates'], isVerified: true, hasVideo: true, avatar: '👩‍🌾', gender: 'female' as const,
+      languages: ['pl', 'en', 'es', 'fr'],
       bio: 'Instruktorka z certyfikatem Yoga Alliance. Łączę tradycyjną jogę z nowoczesnymi technikami pilates.',
       coordinates: { lat: 52.2600, lng: 21.0100 },
       services: [
@@ -422,6 +444,7 @@ const seedData = {
     {
       id: 't-10', userId: 'u-trainer10', name: 'Natalia', surname: 'Dąbrowska', rating: 4.6, reviewCount: 76, priceFrom: 65, distance: '4.1 km',
       specialties: ['Yoga', 'Relaks'], isVerified: false, hasVideo: true, avatar: '👩‍🎤', gender: 'female' as const,
+      languages: ['pl', 'en', 'es'],
       bio: 'Młoda instruktorka jogi z fresh podejściem. Specjalizuję się w jodze relaksacyjnej i yin yoga.',
       coordinates: { lat: 52.1950, lng: 21.0350 },
       services: [
@@ -476,6 +499,7 @@ const seedData = {
     {
       id: 't-13', userId: 'u-trainer13', name: 'Anna', surname: 'Mazurek', rating: 4.9, reviewCount: 145, priceFrom: 65, distance: '1.9 km',
       specialties: ['Bieganie', 'Nordic Walking'], isVerified: true, hasVideo: true, avatar: '👩‍🏃', gender: 'female' as const,
+      languages: ['pl', 'en', 'de'],
       bio: 'Biegaczka górska i instruktorka nordic walking. Pokażę Ci piękno biegania w każdych warunkach.',
       coordinates: { lat: 52.2450, lng: 21.0050 },
       services: [
@@ -493,6 +517,7 @@ const seedData = {
     {
       id: 't-14', userId: 'u-trainer14', name: 'Bartosz', surname: 'Jankowski', rating: 4.5, reviewCount: 67, priceFrom: 70, distance: '3.8 km',
       specialties: ['Bieganie', 'Kondycja'], isVerified: false, hasVideo: true, avatar: '👨‍💻', gender: 'male' as const,
+      languages: ['pl', 'en'],
       bio: 'Były zawodnik lekkoatletyczny. Pomagam poprawić kondycję i osiągnąć cele biegowe.',
       coordinates: { lat: 52.2050, lng: 21.0280 },
       services: [
@@ -1326,6 +1351,12 @@ const seedData = {
     { id: 'block-3', trainerId: 't-16', title: 'Trening zawodnika', date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], startTime: '16:00', endTime: '17:30', createdAt: new Date().toISOString() },
     { id: 'block-4', trainerId: 't-21', title: 'Konserwacja basenu', date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], startTime: '13:00', endTime: '15:00', createdAt: new Date().toISOString() },
   ] as ManualBlock[],
+
+  timeOffs: [
+    // Sample time off blocks for testing
+    { id: 'timeoff-1', trainerId: 't-1', type: 'time_off' as const, start: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), end: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString(), allDay: true, note: 'Urlop', createdAt: new Date().toISOString() },
+    { id: 'timeoff-2', trainerId: 't-6', type: 'time_off' as const, start: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), end: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), allDay: false, note: 'Wizyta lekarska', createdAt: new Date().toISOString() },
+  ] as TimeOff[],
   
   trainerSettings: [
     // Fitness trainers
@@ -1381,6 +1412,7 @@ class DataStore {
     messages: Message[];
     sports: Sport[];
     manualBlocks: ManualBlock[];
+    timeOffs: TimeOff[];
     reviews: Review[];
     trainerSettings: (TrainerSettings & { trainerId: string })[];
   };
@@ -1437,7 +1469,38 @@ class DataStore {
 
   // Trainer methods
   getTrainers(): Trainer[] {
-    return this.data.trainers;
+    // Filter out corrupted trainers and reset if needed
+    const validTrainers = this.data.trainers.filter(trainer => {
+      const isValid = trainer.name && 
+        trainer.name.length > 0 && 
+        !trainer.name.includes('calhost') &&
+        !trainer.name.includes('localhost') &&
+        !trainer.name.includes('8080') &&
+        !trainer.name.includes('3-Bc6e') &&
+        !trainer.name.includes('km') &&
+        trainer.name.length < 50; // Reasonable name length
+      
+      if (!isValid) {
+        console.log('Removing corrupted trainer:', trainer.name);
+      }
+      return isValid;
+    });
+    
+    // If we have corrupted data, reset completely
+    if (this.data.trainers.length > 0 && validTrainers.length === 0) {
+      console.log('Detected corrupted data, resetting...');
+      this.resetData();
+      return this.data.trainers;
+    }
+    
+    // Force remove corrupted trainers from data
+    if (validTrainers.length < this.data.trainers.length) {
+      console.log('Removing corrupted trainers from data...');
+      this.data.trainers = validTrainers;
+      this.saveData();
+    }
+    
+    return validTrainers;
   }
 
   getTrainer(id: string): Trainer | null {
@@ -1651,6 +1714,14 @@ class DataStore {
     return this.data.manualBlocks.filter(block => block.trainerId === trainerId);
   }
 
+  getTimeOffs(trainerId: string): TimeOff[] {
+    if (!this.data.timeOffs) {
+      this.data.timeOffs = [];
+      this.saveData();
+    }
+    return this.data.timeOffs.filter(timeOff => timeOff.trainerId === trainerId);
+  }
+
   addManualBlock(block: Omit<ManualBlock, 'id' | 'createdAt'>): ManualBlock {
     if (!this.data.manualBlocks) {
       this.data.manualBlocks = [];
@@ -1671,6 +1742,45 @@ class DataStore {
       return;
     }
     this.data.manualBlocks = this.data.manualBlocks.filter(block => block.id !== blockId);
+    this.saveData();
+  }
+
+  // Time off methods
+  addTimeOff(timeOff: Omit<TimeOff, 'id' | 'createdAt'>): TimeOff {
+    if (!this.data.timeOffs) {
+      this.data.timeOffs = [];
+    }
+    
+    const newTimeOff: TimeOff = {
+      ...timeOff,
+      id: `timeoff-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+    };
+    
+    this.data.timeOffs.push(newTimeOff);
+    this.saveData();
+    return newTimeOff;
+  }
+
+  updateTimeOff(timeOffId: string, updates: Partial<Omit<TimeOff, 'id' | 'createdAt'>>): void {
+    if (!this.data.timeOffs) {
+      this.data.timeOffs = [];
+      return;
+    }
+    
+    const index = this.data.timeOffs.findIndex(timeOff => timeOff.id === timeOffId);
+    if (index !== -1) {
+      this.data.timeOffs[index] = { ...this.data.timeOffs[index], ...updates };
+      this.saveData();
+    }
+  }
+
+  removeTimeOff(timeOffId: string): void {
+    if (!this.data.timeOffs) {
+      this.data.timeOffs = [];
+      return;
+    }
+    this.data.timeOffs = this.data.timeOffs.filter(timeOff => timeOff.id !== timeOffId);
     this.saveData();
   }
 
@@ -1745,8 +1855,20 @@ class DataStore {
         
         return blockStartMinutes < slotEndMinutes && blockEndMinutes > slotStartMinutes;
       });
+
+      const isTimeOffBlocked = this.data.timeOffs && this.data.timeOffs.some(timeOff => {
+        if (timeOff.trainerId !== trainerId) return false;
+        
+        const timeOffStart = new Date(timeOff.start);
+        const timeOffEnd = new Date(timeOff.end);
+        const slotStart = new Date(date + 'T' + timeSlot + ':00');
+        const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
+        
+        // Check if slot overlaps with time off period
+        return slotStart < timeOffEnd && slotEnd > timeOffStart;
+      });
       
-      if (!isBookingBlocked && !isManualBlocked) {
+      if (!isBookingBlocked && !isManualBlocked && !isTimeOffBlocked) {
         availableHours.push(timeSlot);
       }
     }
@@ -1839,14 +1961,69 @@ class DataStore {
     return this.data.trainers.find(trainer => trainer.userId === userId);
   }
 
+  getUserById(userId: string): User | undefined {
+    return this.data.users.find(u => u.id === userId);
+  }
+
+  updateUser(userId: string, userData: Partial<User>): void {
+    const userIndex = this.data.users.findIndex(u => u.id === userId);
+    if (userIndex !== -1) {
+      this.data.users[userIndex] = { ...this.data.users[userIndex], ...userData };
+      this.saveData();
+    }
+  }
+
   syncTrainerProfile(userId: string, userData: User): void {
     const trainer = this.getTrainerByUserId(userId);
     if (trainer) {
+      // Update all trainer fields with proper mapping
       trainer.name = userData.name;
       trainer.surname = userData.surname || '';
-      // Sync other relevant fields as needed
+      
+      // Sync specialties (categories)
+      if ((userData as any).specialties) {
+        trainer.specialties = (userData as any).specialties;
+      }
+      
+      // Sync avatar - ensure it's a proper URL
+      if (userData.avatarUrl) {
+        trainer.avatar = userData.avatarUrl;
+      }
+      
+      // Sync gallery
+      if ((userData as any).gallery) {
+        (trainer as any).gallery = (userData as any).gallery;
+      }
+      
+      // Sync services
+      if ((userData as any).services) {
+        trainer.services = (userData as any).services;
+      }
+      
+      // Sync locations
+      if ((userData as any).locations) {
+        trainer.locations = (userData as any).locations;
+      }
+      
+      // Sync languages
+      if ((userData as any).languages) {
+        trainer.languages = (userData as any).languages;
+      }
+      
+      // Update display name for consistency
+      trainer.displayName = `${userData.name} ${userData.surname || ''}`.trim();
+      
+      console.log('Trainer profile synced:', {
+        name: trainer.name,
+        displayName: trainer.displayName,
+        avatar: trainer.avatar,
+        specialties: trainer.specialties
+      });
       this.saveData();
     }
+    
+    // Also update the user data
+    this.updateUser(userId, userData);
   }
 
   // Reschedule request methods
@@ -1855,12 +2032,16 @@ class DataStore {
       setTimeout(() => {
         const booking = this.data.bookings.find(b => b.id === bookingId);
         if (booking) {
+          // Determine who needs to make the decision
+          const awaitingDecisionBy = requestedBy === 'client' ? 'trainer' : 'client';
+          
           const rescheduleRequest: RescheduleRequest = {
             id: `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             requestedAt: new Date().toISOString(),
             requestedBy,
             newTime,
-            status: 'pending'
+            status: 'pending',
+            awaitingDecisionBy
           };
           booking.rescheduleRequests.push(rescheduleRequest);
           this.saveData();
@@ -1886,7 +2067,8 @@ class DataStore {
               requestedAt: new Date().toISOString(),
               requestedBy: request.requestedBy === 'client' ? 'trainer' : 'client',
               newTime: request.newTime,
-              status: 'accepted'
+              status: 'accepted',
+              awaitingDecisionBy: request.requestedBy === 'client' ? 'trainer' : 'client'
             };
             booking.rescheduleRequests.push(feedbackRequest);
             
@@ -1913,7 +2095,8 @@ class DataStore {
               requestedAt: new Date().toISOString(),
               requestedBy: request.requestedBy === 'client' ? 'trainer' : 'client',
               newTime: request.newTime,
-              status: 'declined'
+              status: 'declined',
+              awaitingDecisionBy: request.requestedBy === 'client' ? 'trainer' : 'client'
             };
             booking.rescheduleRequests.push(feedbackRequest);
             
@@ -1939,10 +2122,58 @@ class DataStore {
     return requests;
   }
 
+  // New methods for improved reschedule flow
+  updateRescheduleRequest(bookingId: string, requestId: string, newTime: string): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const booking = this.data.bookings.find(b => b.id === bookingId);
+        if (booking) {
+          const request = booking.rescheduleRequests.find(r => r.id === requestId);
+          if (request && request.status === 'pending') {
+            request.newTime = newTime;
+            this.saveData();
+          }
+        }
+        resolve();
+      }, 300);
+    });
+  }
+
+  withdrawRescheduleRequest(bookingId: string, requestId: string): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const booking = this.data.bookings.find(b => b.id === bookingId);
+        if (booking) {
+          const requestIndex = booking.rescheduleRequests.findIndex(r => r.id === requestId);
+          if (requestIndex !== -1 && booking.rescheduleRequests[requestIndex].status === 'pending') {
+            booking.rescheduleRequests.splice(requestIndex, 1);
+            this.saveData();
+          }
+        }
+        resolve();
+      }, 300);
+    });
+  }
+
   // Dev methods
   resetData() {
+    // Clear localStorage completely
+    localStorage.removeItem('fitana-data');
+    localStorage.removeItem('fitana-current-user');
+    localStorage.removeItem('fitana-trainers');
+    localStorage.removeItem('fitana-users');
+    
+    // Clear all localStorage keys that start with 'fitana'
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('fitana')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Reset to initial data
     this.data = { ...seedData };
     this.saveData();
+    console.log('Data completely reset - all localStorage cleared');
   }
 
   seedData() {

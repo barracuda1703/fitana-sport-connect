@@ -9,6 +9,7 @@ interface AuthContextType {
   register: (userData: Omit<User, 'id'>) => Promise<boolean>;
   logout: () => void;
   switchRole: (role: 'client' | 'trainer') => void;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,8 +109,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = () => {
+    if (user) {
+      // Reload user data from dataStore
+      const updatedUser = dataStore.getUserById(user.id);
+      if (updatedUser) {
+        setUser(updatedUser);
+        localStorage.setItem('fitana-current-user', JSON.stringify(updatedUser));
+      }
+    }
+  };
+
   const value = React.useMemo(
-    () => ({ user, isLoading, login, register, logout, switchRole }),
+    () => ({ user, isLoading, login, register, logout, switchRole, refreshUser }),
     [user, isLoading]
   );
 
