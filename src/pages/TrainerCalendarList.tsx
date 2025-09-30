@@ -304,27 +304,19 @@ export const TrainerCalendarListPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            <CalendarComponent
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              className="w-full"
-            />
-            <CalendarGrid
-              events={events}
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-              onEventClick={(event) => {
-                if (event.type === 'booking') {
-                  const booking = bookings.find(b => b.id === event.id);
-                  if (booking) {
-                    setShowRescheduleDialog(booking);
-                  }
+          <CalendarGrid
+            events={events}
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            onEventClick={(event) => {
+              if (event.type === 'booking') {
+                const booking = bookings.find(b => b.id === event.id);
+                if (booking) {
+                  setShowRescheduleDialog(booking);
                 }
-              }}
-            />
-          </div>
+              }
+            }}
+          />
         )}
       </div>
 
