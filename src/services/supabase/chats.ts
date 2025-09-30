@@ -23,31 +23,38 @@ export const chatsService = {
       .from('chats')
       .select(`
         *,
-        client:profiles!chats_client_id_fkey (
-          id,
-          name,
-          surname,
-          avatarurl
-        ),
-        trainer:profiles!chats_trainer_id_fkey (
-          id,
-          name,
-          surname,
-          avatarurl
-        ),
-        messages (
-          id,
-          content,
-          sender_id,
-          read_at,
-          created_at
-        )
+        client:client_id(id, name, surname, avatarurl),
+        trainer:trainer_id(id, name, surname, avatarurl),
+        messages(id, content, created_at, sender_id, read_at)
       `)
       .or(`client_id.eq.${userId},trainer_id.eq.${userId}`)
       .order('updated_at', { ascending: false });
-    
+
     if (error) throw error;
     return data;
+  },
+
+  async getUnreadCount(chatId: string, userId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('chat_id', chatId)
+      .neq('sender_id', userId)
+      .is('read_at', null);
+
+    if (error) throw error;
+    return count || 0;
+  },
+
+  async markChatAsRead(chatId: string, userId: string) {
+    const { error } = await supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('chat_id', chatId)
+      .neq('sender_id', userId)
+      .is('read_at', null);
+
+    if (error) throw error;
   },
 
   async getOrCreate(clientId: string, trainerId: string) {

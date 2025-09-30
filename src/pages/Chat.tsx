@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ export const ChatPage: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [chat, setChat] = useState<any>(null);
+  const [otherUser, setOtherUser] = useState<any>(null);
 
   useEffect(() => {
     const loadChat = async () => {
@@ -32,8 +34,23 @@ export const ChatPage: React.FC = () => {
 
       try {
         setLoading(true);
-        const messages = await chatsService.getMessages(chatId);
-        setMessages(messages || []);
+        
+        // Load chat details to get other user info
+        const chats = await chatsService.getByUserId(user.id);
+        const currentChat = chats?.find(c => c.id === chatId);
+        setChat(currentChat);
+        
+        if (currentChat) {
+          const other = currentChat.client_id === user.id ? currentChat.trainer : currentChat.client;
+          setOtherUser(other);
+        }
+
+        // Load messages
+        const msgs = await chatsService.getMessages(chatId);
+        setMessages(msgs || []);
+
+        // Mark messages as read
+        await chatsService.markChatAsRead(chatId, user.id);
       } catch (error) {
         console.error('Error loading chat:', error);
       } finally {
@@ -42,6 +59,19 @@ export const ChatPage: React.FC = () => {
     };
 
     loadChat();
+
+    // Subscribe to new messages in real-time
+    const unsubscribe = chatsService.subscribeToMessages(chatId, (newMessage) => {
+      setMessages(prev => [...prev, newMessage]);
+      // Mark new messages as read if they're not from current user
+      if (newMessage.sender_id !== user?.id) {
+        chatsService.markAsRead(newMessage.id);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [chatId, user]);
 
   const handleSendMessage = async () => {
@@ -50,10 +80,7 @@ export const ChatPage: React.FC = () => {
     try {
       await chatsService.sendMessage(chatId, user.id, newMessage.trim());
       setNewMessage('');
-      
-      // Reload messages
-      const updatedMessages = await chatsService.getMessages(chatId);
-      setMessages(updatedMessages || []);
+      // No need to reload - real-time subscription will handle it
     } catch (error) {
       toast({
         title: "Błąd",
@@ -73,11 +100,16 @@ export const ChatPage: React.FC = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5" />
-            </div>
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={otherUser?.avatarurl || undefined} />
+              <AvatarFallback>
+                {otherUser?.name?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
             <div>
-              <h2 className="font-semibold">Rozmowa</h2>
+              <h2 className="font-semibold">
+                {`${otherUser?.name || ''} ${otherUser?.surname || ''}`.trim() || 'Użytkownik'}
+              </h2>
               <p className="text-xs text-muted-foreground">Aktywny</p>
             </div>
           </div>

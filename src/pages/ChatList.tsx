@@ -9,6 +9,7 @@ import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { chatsService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 export const ChatListPage: React.FC = () => {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ export const ChatListPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [chats, setChats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const loadChats = async () => {
@@ -25,6 +27,14 @@ export const ChatListPage: React.FC = () => {
       try {
         const data = await chatsService.getByUserId(user.id);
         setChats(data || []);
+
+        // Load unread counts for each chat
+        const counts: Record<string, number> = {};
+        for (const chat of data || []) {
+          const count = await chatsService.getUnreadCount(chat.id, user.id);
+          if (count > 0) counts[chat.id] = count;
+        }
+        setUnreadCounts(counts);
       } catch (error) {
         console.error('Error loading chats:', error);
       } finally {
@@ -33,12 +43,39 @@ export const ChatListPage: React.FC = () => {
     };
 
     loadChats();
+
+    // Subscribe to new messages for real-time unread count updates
+    const channel = supabase
+      .channel('chat-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
+        () => {
+          loadChats(); // Reload chats when new message arrives
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
-  const filteredChats = chats.filter(chat =>
-    searchQuery === '' || 
-    chat.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getOtherUser = (chat: any) => {
+    if (!user) return null;
+    return chat.client_id === user.id ? chat.trainer : chat.client;
+  };
+
+  const filteredChats = chats.filter(chat => {
+    if (searchQuery === '') return true;
+    const otherUser = getOtherUser(chat);
+    const userName = `${otherUser?.name || ''} ${otherUser?.surname || ''}`.toLowerCase();
+    return userName.includes(searchQuery.toLowerCase());
+  });
 
   const handleChatClick = (chatId: string) => {
     navigate(`/chat/${chatId}`);
@@ -77,32 +114,55 @@ export const ChatListPage: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          filteredChats.map((chat) => (
-            <Card
-              key={chat.id}
-              className="cursor-pointer hover:shadow-card transition-all"
-              onClick={() => handleChatClick(chat.id)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarFallback>U</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold truncate">Rozmowa</h3>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(chat.created_at).toLocaleDateString('pl-PL')}
-                      </span>
+          filteredChats.map((chat) => {
+            const otherUser = getOtherUser(chat);
+            const userName = `${otherUser?.name || ''} ${otherUser?.surname || ''}`.trim() || 'Użytkownik';
+            const lastMessage = chat.messages?.[0];
+            const unreadCount = unreadCounts[chat.id] || 0;
+
+            return (
+              <Card
+                key={chat.id}
+                className="cursor-pointer hover:shadow-card transition-all"
+                onClick={() => handleChatClick(chat.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Avatar>
+                        <AvatarImage src={otherUser?.avatarurl || undefined} />
+                        <AvatarFallback>
+                          {userName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {unreadCount > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                        >
+                          {unreadCount}
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      Kliknij aby otworzyć
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold truncate">{userName}</h3>
+                        <span className="text-xs text-muted-foreground">
+                          {lastMessage 
+                            ? new Date(lastMessage.created_at).toLocaleDateString('pl-PL')
+                            : new Date(chat.created_at).toLocaleDateString('pl-PL')
+                          }
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {lastMessage?.content || 'Brak wiadomości'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
 
