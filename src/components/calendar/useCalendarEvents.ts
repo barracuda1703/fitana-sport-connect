@@ -79,7 +79,7 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
           }).filter(Boolean) as CalendarEvent[];
 
           // Convert time offs to calendar events
-          const timeOffEvents: CalendarEvent[] = timeOffs.map(timeOff => {
+          const timeOffEvents = timeOffs.map(timeOff => {
             try {
               const startDate = new Date(timeOff.start);
               const endDate = new Date(timeOff.end);
@@ -94,8 +94,8 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
                 title: timeOff.note || (timeOff.allDay ? 'Wolne' : 'Wolne'),
                 start: startDate.toISOString(),
                 end: endDate.toISOString(),
-                status: 'block' as const,
-                type: 'time_off'
+                status: 'confirmed' as const,
+                type: 'block'
               };
             } catch (error) {
               console.warn('Error processing time off:', timeOff.id, error);

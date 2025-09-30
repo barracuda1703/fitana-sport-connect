@@ -17,7 +17,8 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultRole = 'client' }) => {
   const { t } = useLanguage();
-  const { signIn, signUp, loading } = useAuth();
+  const { login, register } = useAuth();
+  const [loading, setLoading] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [showPassword, setShowPassword] = useState(false);
@@ -42,20 +43,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultRo
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
     
     try {
-      // Demo mode - pozwól na logowanie z dowolnymi danymi
-      if (signInData.email && signInData.password) {
-        // Symuluj pomyślne logowanie
-        console.log('Demo login successful');
+      // Use the auth context login method
+      const success = await login(signInData.email, signInData.password);
+      if (success) {
+        console.log('Login successful');
         onClose();
-        return;
+      } else {
+        setError('Nieprawidłowe dane logowania');
       }
-      
-      await signIn(signInData.email, signInData.password);
-      onClose();
     } catch (error: any) {
       setError(error.message || 'Błąd logowania');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,19 +75,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultRo
       return;
     }
     
+    setLoading(true);
     try {
-      // Demo mode - symuluj pomyślną rejestrację
-      console.log('Demo signup successful');
-      setSuccess('Konto zostało utworzone! (Tryb demo)');
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-      return;
+      // Use the auth context register method
+      const success = await register({
+        email: signUpData.email,
+        password: signUpData.password,
+        name: signUpData.name,
+        role: signUpData.role,
+        language: 'pl',
+        city: signUpData.role === 'client' ? 'Warszawa' : undefined
+      });
       
-      await signUp(signUpData.email, signUpData.password, signUpData.name, signUpData.role);
-      setSuccess('Konto zostało utworzone! Sprawdź email w celu weryfikacji.');
+      if (success) {
+        setSuccess('Konto zostało utworzone!');
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      } else {
+        setError('Błąd rejestracji');
+      }
     } catch (error: any) {
       setError(error.message || 'Błąd rejestracji');
+    } finally {
+      setLoading(false);
     }
   };
 

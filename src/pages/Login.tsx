@@ -45,7 +45,10 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-background flex items-center justify-center p-4">
       <div className="absolute top-4 right-4">
-        <LanguageSelector />
+        <LanguageSelector 
+          selectedLanguages={[]} 
+          onLanguagesChange={() => {}} 
+        />
       </div>
       
       <Card className="w-full max-w-md bg-card/95 backdrop-blur shadow-floating">

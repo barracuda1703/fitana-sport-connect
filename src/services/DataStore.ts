@@ -104,6 +104,12 @@ export interface Booking {
   notes?: string;
   createdAt: string;
   rescheduleRequests: RescheduleRequest[];
+  // Computed properties for convenience
+  duration?: number;
+  location?: string;
+  clientName?: string;
+  serviceName?: string;
+  trainerName?: string;
 }
 
 export interface Message {

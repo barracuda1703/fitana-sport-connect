@@ -233,7 +233,8 @@ export const ClientHome: React.FC = () => {
               availableToday: false,
               showFavoritesOnly: false,
               trainerGender: 'all',
-              serviceTypes: []
+              serviceTypes: [],
+              languages: []
             })}
           />
         </div>

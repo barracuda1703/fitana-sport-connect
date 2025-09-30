@@ -111,7 +111,7 @@ export const LanguageChips: React.FC<LanguageChipsProps> = ({
       
       {showAll && remainingCount > 0 && (
         <Badge
-          variant="ghost"
+          variant="outline"
           className={cn(
             "text-muted-foreground cursor-pointer hover:bg-accent",
             getSizeClasses()

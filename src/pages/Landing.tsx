@@ -48,7 +48,10 @@ export const Landing: React.FC = () => {
             <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" />
             <span className="font-bold text-xl text-primary">Fitana</span>
           </div>
-          <LanguageSelector />
+        <LanguageSelector 
+          selectedLanguages={[]} 
+          onLanguagesChange={() => {}} 
+        />
         </header>
 
         {/* Role Selection Content */}
@@ -78,7 +81,10 @@ export const Landing: React.FC = () => {
           <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" />
           <span className="font-bold text-xl text-primary">Fitana</span>
         </div>
-        <LanguageSelector />
+         <LanguageSelector 
+          selectedLanguages={[]} 
+          onLanguagesChange={() => {}} 
+        />
       </header>
 
       {/* Hero Section */}
