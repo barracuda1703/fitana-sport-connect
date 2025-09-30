@@ -109,18 +109,21 @@ export const ProfileEditPage: React.FC = () => {
     };
 
     // Update profile in Supabase
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        name: updatedUserData.name,
-        surname: updatedUserData.surname,
-        city: updatedUserData.city,
-        language: updatedUserData.language,
-        avatarUrl: updatedUserData.avatarUrl
-      })
-      .eq('id', user.id);
+    try {
+      const { error: updateError } = await (supabase as any)
+        .from('profiles')
+        .update({
+          name: updatedUserData.name,
+          surname: updatedUserData.surname,
+          city: updatedUserData.city,
+          language: updatedUserData.language,
+          avatarUrl: updatedUserData.avatarUrl
+        })
+        .eq('id', user.id);
 
-    if (updateError) {
+      if (updateError) throw updateError;
+
+    } catch (updateError: any) {
       console.error('Error updating profile:', updateError);
       toast({
         title: t('error'),

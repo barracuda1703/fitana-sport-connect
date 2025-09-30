@@ -47,7 +47,7 @@ export const AuthScreen: React.FC = () => {
       if (signInError) throw signInError;
 
       // Check if user has correct role
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
