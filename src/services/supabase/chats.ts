@@ -73,6 +73,11 @@ export const chatsService = {
     return data;
   },
 
+  async createForBooking(clientId: string, trainerId: string) {
+    // Automatically create a chat when a booking is created/confirmed
+    return this.getOrCreate(clientId, trainerId);
+  },
+
   async getMessages(chatId: string) {
     const { data, error } = await supabase
       .from('messages')

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, User, CheckCircle, X, Plus, ArrowLeft, List, Calendar, MapPin } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, CheckCircle, X, Plus, ArrowLeft, List, Calendar, MapPin, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,7 @@ import { RescheduleNotificationModal } from '@/components/RescheduleNotification
 import { TrainerBookingModal } from '@/components/TrainerBookingModal';
 import { TimeOffModal } from '@/components/TimeOffModal';
 import { CalendarViewSwitcher, CalendarGrid, useCalendarEvents } from '@/components/calendar';
-import { bookingsService, manualBlocksService } from '@/services/supabase';
+import { bookingsService, manualBlocksService, chatsService } from '@/services/supabase';
 
 type ViewType = 'list' | 'calendar';
 
@@ -118,6 +118,19 @@ export const TrainerCalendarListPage: React.FC = () => {
     setRescheduleBooking(null);
   };
 
+  const handleOpenChat = async (booking: any) => {
+    try {
+      const chat = await chatsService.getOrCreate(booking.client_id, booking.trainer_id);
+      navigate(`/chat/${chat.id}`);
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się otworzyć czatu",
+        variant: "destructive"
+      });
+    }
+  };
+
   const pendingBookings = bookings.filter(b => b.status === 'pending');
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
 
@@ -200,30 +213,41 @@ export const TrainerCalendarListPage: React.FC = () => {
                           </div>
                           <Badge variant="secondary">Oczekuje</Badge>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            className="flex-1"
-                            onClick={() => handleAcceptBooking(booking.id)}
-                          >
-                            Akceptuj
-                          </Button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="flex-1"
+                              onClick={() => handleAcceptBooking(booking.id)}
+                            >
+                              Akceptuj
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => handleDeclineBooking(booking.id)}
+                            >
+                              Odrzuć
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="flex-1"
+                              onClick={() => handleProposeNewTime(booking)}
+                            >
+                              Nowy termin
+                            </Button>
+                          </div>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="flex-1"
-                            onClick={() => handleDeclineBooking(booking.id)}
+                            className="w-full"
+                            onClick={() => handleOpenChat(booking)}
                           >
-                            Odrzuć
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="flex-1"
-                            onClick={() => handleProposeNewTime(booking)}
-                          >
-                            Nowy termin
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Czat z klientem
                           </Button>
                         </div>
                       </div>
@@ -239,19 +263,30 @@ export const TrainerCalendarListPage: React.FC = () => {
                 {confirmedBookings.map(booking => (
                   <Card key={booking.id} className="bg-gradient-card">
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">Klient #{booking.client_id?.slice(-4)}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
-                            {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                          <p className="text-sm text-muted-foreground">{booking.service_id}</p>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium">Klient #{booking.client_id?.slice(-4)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
+                              {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{booking.service_id}</p>
+                          </div>
+                          <Badge className="bg-success/20 text-success">Potwierdzone</Badge>
                         </div>
-                        <Badge className="bg-success/20 text-success">Potwierdzone</Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleOpenChat(booking)}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Czat z klientem
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

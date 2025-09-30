@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingsService } from '@/services/supabase';
+import { bookingsService, chatsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface Service {
@@ -119,6 +119,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
         notes: notes.trim() || undefined,
         reschedule_requests: []
       });
+
+      // Create chat between client and trainer
+      await chatsService.createForBooking(user.id, trainer.id);
 
       toast({
         title: "Rezerwacja wysłana!",

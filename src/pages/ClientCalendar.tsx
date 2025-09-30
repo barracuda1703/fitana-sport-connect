@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, MapPin, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, ArrowLeft, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { CalendarViewSwitcher } from '@/components/calendar';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { bookingsService } from '@/services/supabase';
+import { bookingsService, chatsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 type ViewType = 'list' | 'calendar';
@@ -130,6 +130,19 @@ export const ClientCalendarPage: React.FC = () => {
     };
   };
 
+  const handleOpenChat = async (booking: Booking) => {
+    try {
+      const chat = await chatsService.getOrCreate(booking.client_id, booking.trainer_id);
+      navigate(`/chat/${chat.id}`);
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się otworzyć czatu",
+        variant: "destructive"
+      });
+    }
+  };
+
   const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
     const { date, time } = formatDateTime(booking.scheduled_at);
     
@@ -160,6 +173,16 @@ export const ClientCalendarPage: React.FC = () => {
               </div>
             )}
           </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full mt-3"
+            onClick={() => handleOpenChat(booking)}
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Czat z trenerem
+          </Button>
         </CardContent>
       </Card>
     );

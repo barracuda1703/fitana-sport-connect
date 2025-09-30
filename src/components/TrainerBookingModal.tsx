@@ -11,7 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingsService } from '@/services/supabase';
+import { bookingsService, chatsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface Service {
@@ -165,6 +165,9 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
         status: 'confirmed',
         notes: notes.trim() || undefined,
       });
+
+      // Create chat between trainer and client
+      await chatsService.createForBooking(selectedClient.id, user.id);
 
       toast({
         title: "Trening dodany!",
