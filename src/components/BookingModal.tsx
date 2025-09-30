@@ -8,8 +8,22 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { dataStore, Trainer, Service } from '@/services/DataStore';
+import { bookingsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
+
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+  type: string;
+}
+
+interface Trainer {
+  id: string;
+  display_name: string | null;
+  services: any;
+}
 
 interface BookingModalProps {
   trainer: Trainer;
@@ -43,22 +57,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
     }
   }, [isOpen]);
 
-  // Load available dates when service is selected
+  // Mock available dates - in real app would fetch from backend
   useEffect(() => {
     if (selectedService) {
-      const dates = dataStore.getAvailableDates(trainer.id);
+      // Generate next 30 days as available
+      const dates: string[] = [];
+      for (let i = 1; i <= 30; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() + i);
+        dates.push(date.toISOString().split('T')[0]);
+      }
       setAvailableDates(dates);
     }
-  }, [selectedService, trainer.id]);
+  }, [selectedService]);
 
-  // Load available hours when date is selected
+  // Mock available hours - in real app would fetch from backend
   useEffect(() => {
     if (selectedService && selectedDate) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const hours = dataStore.getAvailableHoursWithSettings(trainer.id, dateStr, selectedService.duration);
+      // Generate available hours
+      const hours = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
       setAvailableHours(hours);
     }
-  }, [selectedService, selectedDate, trainer.id]);
+  }, [selectedService, selectedDate]);
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -85,25 +105,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   const handleConfirmBooking = async () => {
     if (!user || !selectedService || !selectedDate || !selectedTime) return;
 
-    const [hours, minutes] = selectedTime.split(':').map(Number);
-    const scheduledAt = new Date(selectedDate);
-    scheduledAt.setHours(hours, minutes, 0, 0);
-    
-    await dataStore.createBooking({
-      clientId: user.id,
-      trainerId: trainer.id,
-      serviceId: selectedService.id,
-      scheduledAt: scheduledAt.toISOString(),
-      status: 'pending',
-      notes: notes.trim() || undefined,
-    });
+    try {
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const scheduledAt = new Date(selectedDate);
+      scheduledAt.setHours(hours, minutes, 0, 0);
+      
+      await bookingsService.create({
+        client_id: user.id,
+        trainer_id: trainer.id,
+        service_id: selectedService.id,
+        scheduled_at: scheduledAt.toISOString(),
+        status: 'pending',
+        notes: notes.trim() || undefined,
+        reschedule_requests: []
+      });
 
-    toast({
-      title: "Rezerwacja wysłana!",
-      description: "Trener otrzymał prośbę o rezerwację. Oczekuj na potwierdzenie.",
-    });
+      toast({
+        title: "Rezerwacja wysłana!",
+        description: "Trener otrzymał prośbę o rezerwację. Oczekuj na potwierdzenie.",
+      });
 
-    onClose();
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się wysłać rezerwacji",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleBack = () => {
@@ -152,10 +181,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
               </Button>
             )}
             <div className="w-12 h-12 rounded-full bg-gradient-accent flex items-center justify-center text-xl">
-              {trainer.avatar}
+              {trainer.display_name ? trainer.display_name.charAt(0) : 'T'}
             </div>
             <div>
-              <h3 className="font-semibold">{trainer.name}</h3>
+              <h3 className="font-semibold">{trainer.display_name || 'Trener'}</h3>
               <p className="text-sm text-muted-foreground">{getStepTitle()}</p>
             </div>
           </DialogTitle>
@@ -192,7 +221,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
         {step === 'service' && (
           <div className="space-y-4">
             <div className="space-y-2">
-              {trainer.services.map((service) => (
+              {(Array.isArray(trainer.services) ? trainer.services : []).map((service: Service) => (
                 <Card 
                   key={service.id} 
                   className="cursor-pointer hover:shadow-card transition-all duration-200 hover:border-primary"

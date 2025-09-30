@@ -13,7 +13,25 @@ import { LanguageChips } from '@/components/LanguageChips';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { dataStore, Trainer } from '@/services/DataStore';
+import { trainersService } from '@/services/supabase';
+
+interface Trainer {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+  bio: string | null;
+  specialties: string[];
+  services: any;
+  locations: any;
+  languages: string[];
+  price_from: number | null;
+  rating: number | null;
+  review_count: number | null;
+  is_verified: boolean | null;
+  has_video: boolean | null;
+  gender: string | null;
+  gallery: string[];
+}
 
 const sportsCategories = [
   { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-accent' },
@@ -32,7 +50,7 @@ export const ClientHome: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [sports] = useState(dataStore.getSports());
+  const [sports] = useState(sportsCategories);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({
     maxDistance: 50,
@@ -44,55 +62,30 @@ export const ClientHome: React.FC = () => {
     serviceTypes: [],
     languages: []
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load filters from URL params on mount
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Force reset data if needed for development
-    if (urlParams.get('reset') === 'true') {
-      dataStore.resetData();
-      // Force reload to clear any cached data
-      window.location.reload();
-      return;
-    }
+    const loadTrainers = async () => {
+      try {
+        setLoading(true);
+        const data = await trainersService.getAll();
+        setTrainers(data || []);
+      } catch (error) {
+        console.error('Error loading trainers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTrainers();
 
     // Parse language filter from URL
+    const urlParams = new URLSearchParams(window.location.search);
     const langParam = urlParams.get('lang');
     if (langParam) {
       const languages = langParam.split(',').filter(Boolean);
       setFilters(prev => ({ ...prev, languages }));
     }
-    
-    // Auto-clean corrupted data on startup
-    const trainers = dataStore.getTrainers();
-    const hasCorruptedData = trainers.some(trainer => 
-      !trainer.name || 
-      trainer.name.includes('calhost') || 
-      trainer.name.includes('localhost') ||
-      trainer.name.includes('8080') ||
-      trainer.name.includes('3-Bc6e')
-    );
-    
-    if (hasCorruptedData) {
-      console.log('Auto-cleaning corrupted data...');
-      dataStore.resetData();
-      setTrainers(dataStore.getTrainers());
-    } else {
-      setTrainers(trainers);
-    }
-    
-    // Listen for trainer profile updates
-    const handleTrainerProfileUpdate = () => {
-      console.log('Trainer profile updated, refreshing list...');
-      setTrainers(dataStore.getTrainers());
-    };
-    
-    window.addEventListener('trainerProfileUpdated', handleTrainerProfileUpdate);
-    
-    return () => {
-      window.removeEventListener('trainerProfileUpdated', handleTrainerProfileUpdate);
-    };
   }, []);
 
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
@@ -106,18 +99,18 @@ export const ClientHome: React.FC = () => {
     // Apply category filter
     if (selectedCategory) {
       const sportIdToSpecialty: Record<string, string> = {
-        's-fitness': 'Fitness',
-        's-yoga': 'Yoga', 
-        's-running': 'Bieganie',
-        's-boxing': 'Boks',
-        's-swimming': 'Pływanie',
-        's-tennis': 'Tenis'
+        'fitness': 'Fitness',
+        'yoga': 'Yoga', 
+        'running': 'Bieganie',
+        'boxing': 'Boks',
+        'swimming': 'Pływanie',
+        'tennis': 'Tenis'
       };
       
       const specialtyName = sportIdToSpecialty[selectedCategory];
       if (specialtyName) {
         filtered = filtered.filter(trainer => 
-          trainer.specialties.some(specialty => 
+          trainer.specialties?.some(specialty => 
             specialty.toLowerCase().includes(specialtyName.toLowerCase())
           )
         );
@@ -128,23 +121,19 @@ export const ClientHome: React.FC = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(trainer => 
-        trainer.name.toLowerCase().includes(query) ||
-        trainer.specialties.some(specialty => 
+        (trainer.display_name?.toLowerCase().includes(query) || false) ||
+        trainer.specialties?.some(specialty => 
           specialty.toLowerCase().includes(query)
-        ) ||
-        // Search in mock facility names
-        'fitness club centrum siłownia'.includes(query)
+        )
       );
     }
 
     // Apply advanced filters
     if (filters.showFavoritesOnly) {
-      // Mock favorites - in real app would check user's favoriteTrainers
-      const mockFavorites = ['t-1', 't-3'];
-      filtered = filtered.filter(trainer => mockFavorites.includes(trainer.id));
+      // TODO: Implement favorites in database
     }
 
-    // Apply language filter (OR logic - trainer matches if they speak at least one selected language)
+    // Apply language filter
     if (filters.languages.length > 0) {
       filtered = filtered.filter(trainer => 
         trainer.languages && trainer.languages.some(trainerLang => 
@@ -154,19 +143,14 @@ export const ClientHome: React.FC = () => {
     }
 
     if (filters.minRating > 0) {
-      filtered = filtered.filter(trainer => trainer.rating >= filters.minRating);
+      filtered = filtered.filter(trainer => (trainer.rating || 0) >= filters.minRating);
     }
 
     if (filters.priceRange[0] > 0 || filters.priceRange[1] < 500) {
       filtered = filtered.filter(trainer => 
-        trainer.priceFrom >= filters.priceRange[0] && 
-        trainer.priceFrom <= filters.priceRange[1]
+        (trainer.price_from || 0) >= filters.priceRange[0] && 
+        (trainer.price_from || 0) <= filters.priceRange[1]
       );
-    }
-
-    // Mock distance filter (in real app would use GPS coordinates)
-    if (filters.maxDistance < 50) {
-      // Keep all trainers for demo - in real app would filter by actual distance
     }
 
     setFilteredTrainers(filtered);
@@ -286,54 +270,30 @@ export const ClientHome: React.FC = () => {
            
            {sports.map((sport) => {
              // Map DataStore sport IDs to specialty names for counting
-             const sportIdToSpecialty: Record<string, string> = {
-               's-fitness': 'Fitness',
-               's-yoga': 'Yoga', 
-               's-running': 'Bieganie',
-               's-boxing': 'Boks',
-               's-swimming': 'Pływanie',
-               's-tennis': 'Tenis'
-             };
+              const categoryCount = trainers.filter(trainer => 
+                trainer.specialties?.some(specialty => 
+                  specialty.toLowerCase().includes(sport.name.toLowerCase())
+                )
+              ).length;
              
-             const specialtyName = sportIdToSpecialty[sport.id];
-             const categoryCount = trainers.filter(trainer => 
-               trainer.specialties.some(specialty => 
-                 specialty.toLowerCase().includes(specialtyName?.toLowerCase() || '')
-               )
-             ).length;
-             
-             return (
-               <button
-                 key={sport.id}
-                 onClick={() => setSelectedCategory(
-                   selectedCategory === sport.id ? null : sport.id
-                 )}
-                 className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] ${
-                   selectedCategory === sport.id
-                     ? 'bg-primary text-primary-foreground shadow-button'
-                     : 'bg-card hover:bg-accent/50'
-                 }`}
-               >
-                 <span className="text-2xl mb-1">{sport.icon}</span>
-                 <span className="text-xs font-medium text-center">{sport.name}</span>
-                 <span className="text-xs text-muted-foreground">({categoryCount})</span>
-               </button>
-             );
-           })}
-           
-           {/* Debug Reset Button - only show in development */}
-           {process.env.NODE_ENV === 'development' && (
-             <button
-               onClick={() => {
-                 dataStore.resetData();
-                 window.location.reload();
-               }}
-               className="flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] bg-red-100 hover:bg-red-200 text-red-700"
-             >
-               <span className="text-2xl mb-1">🔄</span>
-               <span className="text-xs font-medium text-center">Reset</span>
-             </button>
-           )}
+              return (
+                <button
+                  key={sport.id}
+                  onClick={() => setSelectedCategory(
+                    selectedCategory === sport.id ? null : sport.id
+                  )}
+                  className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl transition-all duration-200 min-w-[80px] ${
+                    selectedCategory === sport.id
+                      ? 'bg-primary text-primary-foreground shadow-button'
+                      : 'bg-card hover:bg-accent/50'
+                  }`}
+                >
+                  <span className="text-2xl mb-1">{sport.icon}</span>
+                  <span className="text-xs font-medium text-center">{sport.name}</span>
+                  <span className="text-xs text-muted-foreground">({categoryCount})</span>
+                </button>
+              );
+            })}
          </div>
        </section>
 
@@ -349,37 +309,33 @@ export const ClientHome: React.FC = () => {
           </Card>
         )}
         
-        {viewMode === 'list' && filteredTrainers.map((trainer) => (
+        {loading ? (
+          <Card className="bg-gradient-card">
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">Ładowanie trenerów...</p>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'list' && filteredTrainers.map((trainer) => (
           <Card key={trainer.id} className="overflow-hidden hover:shadow-card transition-all duration-200 cursor-pointer bg-gradient-card">
             <CardHeader className="pb-3">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center text-2xl overflow-hidden">
-                  {trainer.avatar && trainer.avatar.startsWith('http') ? (
-                    <img 
-                      src={trainer.avatar} 
-                      alt={trainer.name || 'Trener'} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-2xl">
-                      {trainer.avatar || (trainer.name ? trainer.name.charAt(0).toUpperCase() : 'T')}
-                    </span>
-                  )}
+                  <span className="text-2xl">
+                    {trainer.display_name ? trainer.display_name.charAt(0).toUpperCase() : 'T'}
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-lg">
-                      {trainer.name && trainer.name.length > 0 && !trainer.name.includes('calhost') 
-                        ? trainer.name 
-                        : trainer.displayName || 'Trener'}
+                      {trainer.display_name || 'Trener'}
                     </h3>
                     <FavoriteButton trainerId={trainer.id} size="sm" />
-                    {trainer.isVerified && (
+                    {trainer.is_verified && (
                       <Badge variant="secondary" className="bg-success/20 text-success">
                         ✓
                       </Badge>
                     )}
-                    {trainer.hasVideo && (
+                    {trainer.has_video && (
                       <Badge variant="outline" className="text-primary">
                         📹
                       </Badge>
@@ -388,13 +344,12 @@ export const ClientHome: React.FC = () => {
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-warning text-warning" />
-                      <span className="font-medium">{trainer.rating}</span>
-                      <span className="text-sm text-muted-foreground">({trainer.reviewCount})</span>
+                      <span className="font-medium">{trainer.rating || 0}</span>
+                      <span className="text-sm text-muted-foreground">({trainer.review_count || 0})</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">• {trainer.distance}</span>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {trainer.specialties.map((specialty) => (
+                    {trainer.specialties?.map((specialty) => (
                       <Badge key={specialty} variant="secondary" className="text-xs">
                         {specialty}
                       </Badge>
@@ -412,7 +367,7 @@ export const ClientHome: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-primary">
-                    od {trainer.priceFrom} zł
+                    od {trainer.price_from || 0} zł
                   </div>
                   <div className="text-sm text-muted-foreground">za sesję</div>
                 </div>
