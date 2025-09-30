@@ -518,21 +518,23 @@ export const TrainerCalendarListPage: React.FC = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">Kalendarz</h1>
-            <p className="text-muted-foreground">Zarządzaj rezerwacjami</p>
-          </div>
-          <div className="flex gap-2">
-            {/* View Toggle */}
-            <div className="flex rounded-lg border bg-muted p-1">
+        <div className="space-y-3">
+          {/* Top row: Back button and title */}
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">Kalendarz</h1>
+              <p className="text-sm text-muted-foreground hidden sm:block">Zarządzaj rezerwacjami</p>
+            </div>
+            {/* View Toggle - visible on all sizes */}
+            <div className="flex rounded-lg border bg-muted p-1 shrink-0">
               <Button
                 variant={viewType === 'list' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewType('list')}
+                className="px-2"
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -540,21 +542,33 @@ export const TrainerCalendarListPage: React.FC = () => {
                 variant={viewType === 'calendar' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewType('calendar')}
+                className="px-2"
               >
                 <Calendar className="h-4 w-4" />
               </Button>
             </div>
-            {/* Action Buttons */}
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleAddTraining}>
-                <Plus className="h-4 w-4 mr-2" />
-                Dodaj trening
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowTimeOffDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Wolne / Urlop
-              </Button>
-            </div>
+          </div>
+          
+          {/* Bottom row: Action buttons - full width on mobile, inline on desktop */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddTraining}
+              className="w-full sm:w-auto justify-start sm:justify-center"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Dodaj trening
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowTimeOffDialog(true)}
+              className="w-full sm:w-auto justify-start sm:justify-center"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Wolne / Urlop
+            </Button>
           </div>
         </div>
       </header>
