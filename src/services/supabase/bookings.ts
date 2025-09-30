@@ -20,6 +20,20 @@ export interface Booking {
   reschedule_requests: any[];
   created_at: string;
   updated_at: string;
+  client?: {
+    id: string;
+    name: string;
+    surname: string;
+    email: string;
+    avatarurl?: string;
+  };
+  trainer?: {
+    id: string;
+    name: string;
+    surname: string;
+    email: string;
+    avatarurl?: string;
+  };
 }
 
 export const bookingsService = {

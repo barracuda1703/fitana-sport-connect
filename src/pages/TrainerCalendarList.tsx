@@ -201,7 +201,9 @@ export const TrainerCalendarListPage: React.FC = () => {
                       <div className="space-y-3">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-medium">Klient #{booking.client_id?.slice(-4)}</p>
+                            <p className="font-medium">
+                              {booking.client?.name} {booking.client?.surname}
+                            </p>
                             <p className="text-sm text-muted-foreground">
                               {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
                               {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
@@ -266,7 +268,9 @@ export const TrainerCalendarListPage: React.FC = () => {
                       <div className="space-y-3">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-medium">Klient #{booking.client_id?.slice(-4)}</p>
+                            <p className="font-medium">
+                              {booking.client?.name} {booking.client?.surname}
+                            </p>
                             <p className="text-sm text-muted-foreground">
                               {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
                               {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
