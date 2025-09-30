@@ -12,7 +12,6 @@ import { bookingsService, chatsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface Service {
-  id: string;
   name: string;
   price: number;
   duration: number;
@@ -110,10 +109,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
       const scheduledAt = new Date(selectedDate);
       scheduledAt.setHours(hours, minutes, 0, 0);
       
+      // Use service name as identifier since services don't have explicit IDs
+      const serviceIdentifier = selectedService.name;
+      
       await bookingsService.create({
         client_id: user.id,
         trainer_id: trainer.id,
-        service_id: selectedService.id,
+        service_id: serviceIdentifier,
         scheduled_at: scheduledAt.toISOString(),
         status: 'pending',
         notes: notes.trim() || undefined,
@@ -224,9 +226,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
         {step === 'service' && (
           <div className="space-y-4">
             <div className="space-y-2">
-              {(Array.isArray(trainer.services) ? trainer.services : []).map((service: Service) => (
+              {(Array.isArray(trainer.services) ? trainer.services : []).map((service: Service, index: number) => (
                 <Card 
-                  key={service.id} 
+                  key={`${service.name}-${index}`}
                   className="cursor-pointer hover:shadow-card transition-all duration-200 hover:border-primary"
                   onClick={() => handleServiceSelect(service)}
                 >
