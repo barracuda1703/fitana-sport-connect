@@ -34,12 +34,29 @@ interface Trainer {
 }
 
 const sportsCategories = [
-  { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-accent' },
-  { id: 'yoga', name: 'Yoga', icon: '🧘‍♀️', color: 'bg-primary' },
-  { id: 'running', name: 'Bieganie', icon: '🏃‍♂️', color: 'bg-success' },
+  { id: 'gym', name: 'Siłownia', icon: '🏋️', color: 'bg-accent' },
+  { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-primary' },
   { id: 'boxing', name: 'Boks', icon: '🥊', color: 'bg-warning' },
-  { id: 'swimming', name: 'Pływanie', icon: '🏊‍♀️', color: 'bg-accent-light' },
-  { id: 'tennis', name: 'Tenis', icon: '🎾', color: 'bg-primary-light' },
+  { id: 'kickboxing', name: 'Kickboxing', icon: '🥋', color: 'bg-success' },
+  { id: 'mma', name: 'MMA', icon: '🤼', color: 'bg-accent' },
+  { id: 'swimming', name: 'Pływanie', icon: '🏊‍♀️', color: 'bg-primary' },
+  { id: 'tennis', name: 'Tenis', icon: '🎾', color: 'bg-warning' },
+  { id: 'judo', name: 'Judo', icon: '🥋', color: 'bg-success' },
+  { id: 'karate', name: 'Karate', icon: '🥋', color: 'bg-accent' },
+  { id: 'yoga', name: 'Joga', icon: '🧘‍♀️', color: 'bg-primary' },
+  { id: 'pilates', name: 'Pilates', icon: '🤸', color: 'bg-warning' },
+  { id: 'dance', name: 'Taniec', icon: '💃', color: 'bg-success' },
+  { id: 'basketball', name: 'Koszykówka', icon: '🏀', color: 'bg-accent' },
+  { id: 'football', name: 'Piłka nożna', icon: '⚽', color: 'bg-primary' },
+  { id: 'horse-riding', name: 'Jazda konna', icon: '🏇', color: 'bg-warning' },
+  { id: 'skiing', name: 'Narciarstwo', icon: '⛷️', color: 'bg-success' },
+  { id: 'crossfit', name: 'Crossfit', icon: '🏋️‍♀️', color: 'bg-accent' },
+  { id: 'gymnastics', name: 'Gimnastyka', icon: '🤸‍♀️', color: 'bg-primary' },
+  { id: 'snowboard', name: 'Snowboard', icon: '🏂', color: 'bg-warning' },
+  { id: 'squash', name: 'Squash', icon: '🎾', color: 'bg-success' },
+  { id: 'badminton', name: 'Badminton', icon: '🏸', color: 'bg-accent' },
+  { id: 'running', name: 'Trening biegowy', icon: '🏃‍♂️', color: 'bg-primary' },
+  { id: 'golf', name: 'Golf', icon: '⛳', color: 'bg-warning' },
 ];
 
 export const ClientHome: React.FC = () => {
@@ -99,12 +116,29 @@ export const ClientHome: React.FC = () => {
     // Apply category filter
     if (selectedCategory) {
       const sportIdToSpecialty: Record<string, string> = {
+        'gym': 'Siłownia',
         'fitness': 'Fitness',
-        'yoga': 'Yoga', 
-        'running': 'Bieganie',
         'boxing': 'Boks',
+        'kickboxing': 'Kickboxing',
+        'mma': 'MMA',
         'swimming': 'Pływanie',
-        'tennis': 'Tenis'
+        'tennis': 'Tenis',
+        'judo': 'Judo',
+        'karate': 'Karate',
+        'yoga': 'Joga',
+        'pilates': 'Pilates',
+        'dance': 'Taniec',
+        'basketball': 'Koszykówka',
+        'football': 'Piłka nożna',
+        'horse-riding': 'Jazda konna',
+        'skiing': 'Narciarstwo',
+        'crossfit': 'Crossfit',
+        'gymnastics': 'Gimnastyka',
+        'snowboard': 'Snowboard',
+        'squash': 'Squash',
+        'badminton': 'Badminton',
+        'running': 'Trening biegowy',
+        'golf': 'Golf'
       };
       
       const specialtyName = sportIdToSpecialty[selectedCategory];
