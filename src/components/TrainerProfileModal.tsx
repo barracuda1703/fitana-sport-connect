@@ -5,7 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Trainer } from '@/services/DataStore';
+
+interface Trainer {
+  id: string;
+  display_name: string | null;
+  bio: string | null;
+  specialties: string[];
+  services: any;
+  locations: any;
+  languages: string[];
+  price_from: number | null;
+  rating: number | null;
+  review_count: number | null;
+  is_verified: boolean | null;
+  has_video: boolean | null;
+  gallery: string[];
+}
 
 interface TrainerProfileModalProps {
   trainer: Trainer;
@@ -44,30 +59,33 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center text-2xl">
-              {trainer.avatar}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg">{trainer.name}</h3>
-                {trainer.isVerified && (
-                  <CheckCircle className="h-5 w-5 text-success" />
-                )}
-                {trainer.hasVideo && (
-                  <Video className="h-5 w-5 text-primary" />
-                )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center text-2xl">
+                {trainer.display_name ? trainer.display_name.charAt(0) : 'T'}
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-warning text-warning" />
-                  <span className="font-medium">{trainer.rating}</span>
-                  <span className="text-sm text-muted-foreground">({trainer.reviewCount})</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold">{trainer.display_name || 'Trener'}</h2>
+                  {trainer.is_verified && (
+                    <CheckCircle className="h-5 w-5 text-success" />
+                  )}
+                  {trainer.has_video && (
+                    <Video className="h-5 w-5 text-primary" />
+                  )}
                 </div>
-                <span className="text-sm text-muted-foreground">• {trainer.distance}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-warning text-warning" />
+                    <span className="font-medium">{trainer.rating || 0}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    ({trainer.review_count || 0} opinii)
+                  </span>
+                </div>
               </div>
             </div>
-          </DialogTitle>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -77,7 +95,7 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
               <CardTitle className="text-base">O trenerze</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">{trainer.bio}</p>
+              <p className="text-sm text-muted-foreground">{trainer.bio || 'Brak opisu'}</p>
             </CardContent>
           </Card>
 
@@ -88,7 +106,7 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {trainer.specialties.map((specialty) => (
+                {(trainer.specialties || []).map((specialty) => (
                   <Badge key={specialty} variant="secondary">
                     {specialty}
                   </Badge>
@@ -102,26 +120,28 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
             <CardHeader>
               <CardTitle className="text-base">Usługi i ceny</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {trainer.services.map((service) => (
-                <div key={service.id} className="flex justify-between items-center">
-                  <div>
-                    <h4 className="font-medium">{service.name}</h4>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {service.duration} min
-                    </p>
+            <CardContent>
+              <div className="space-y-3">
+                {(Array.isArray(trainer.services) ? trainer.services : []).map((service: any) => (
+                  <div key={service.id} className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium">{service.name}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{service.duration} min</span>
+                        <Badge variant="outline" className="ml-2">
+                          {service.type === 'online' ? 'Online' : 
+                           service.type === 'gym' ? 'Siłownia' :
+                           service.type === 'court' ? 'Kort' : 'Dojazd'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-primary">{service.price} zł</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-primary">{service.price} zł</div>
-                    <Badge variant="outline" className="text-xs">
-                      {service.type === 'online' ? 'Online' : 
-                       service.type === 'gym' ? 'Siłownia' :
-                       service.type === 'court' ? 'Kort' : 'Dojazd'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
 
