@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { RescheduleNotificationModal } from '@/components/RescheduleNotificationModal';
-import { CalendarViewSwitcher } from '@/components/calendar';
+import { CalendarViewSwitcher, CalendarGrid, useCalendarEvents } from '@/components/calendar';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -36,6 +36,8 @@ export const ClientCalendarPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const { events } = useCalendarEvents({ userId: user?.id || '', role: 'client' });
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -252,25 +254,19 @@ export const ClientCalendarPage: React.FC = () => {
         </>
       ) : (
         <section className="p-4">
-          <Card>
-            <CardContent className="p-4">
-              <CalendarComponent
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                className="mx-auto"
-              />
-            </CardContent>
-          </Card>
-          
-          <div className="mt-4 space-y-2">
-            <h3 className="font-semibold">
-              Treningi na {selectedDate.toLocaleDateString('pl-PL')}
-            </h3>
-            {getBookingsForDate(selectedDate).map(booking => (
-              <BookingCard key={booking.id} booking={booking} />
-            ))}
-          </div>
+          <CalendarGrid
+            events={events}
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            onEventClick={(event) => {
+              if (event.type === 'booking') {
+                const booking = bookings.find(b => b.id === event.id);
+                if (booking) {
+                  // Możesz dodać akcję przy kliknięciu w wydarzenie
+                }
+              }
+            }}
+          />
         </section>
       )}
 
