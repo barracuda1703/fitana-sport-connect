@@ -14,7 +14,391 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          reschedule_requests: Json | null
+          scheduled_at: string
+          service_id: string
+          status: string
+          trainer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          reschedule_requests?: Json | null
+          scheduled_at: string
+          service_id: string
+          status: string
+          trainer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          reschedule_requests?: Json | null
+          scheduled_at?: string
+          service_id?: string
+          status?: string
+          trainer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chats: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          trainer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          trainer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          trainer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chats_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_blocks: {
+        Row: {
+          created_at: string | null
+          date: string
+          end_time: string
+          id: string
+          start_time: string
+          title: string
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          end_time: string
+          id?: string
+          start_time: string
+          title: string
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          title?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_blocks_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string | null
+          id: string
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          chat_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatarurl: string | null
+          city: string | null
+          created_at: string | null
+          email: string
+          id: string
+          language: string | null
+          name: string
+          role: string
+          surname: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatarurl?: string | null
+          city?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          language?: string | null
+          name: string
+          role: string
+          surname?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatarurl?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          language?: string | null
+          name?: string
+          role?: string
+          surname?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          booking_id: string | null
+          client_id: string
+          comment: string | null
+          created_at: string | null
+          id: string
+          photos: string[] | null
+          rating: number
+          trainer_id: string
+          trainer_reply: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          client_id: string
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          photos?: string[] | null
+          rating: number
+          trainer_id: string
+          trainer_reply?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          client_id?: string
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          photos?: string[] | null
+          rating?: number
+          trainer_id?: string
+          trainer_reply?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_off: {
+        Row: {
+          all_day: boolean | null
+          created_at: string | null
+          end_date: string
+          id: string
+          note: string | null
+          start_date: string
+          trainer_id: string
+        }
+        Insert: {
+          all_day?: boolean | null
+          created_at?: string | null
+          end_date: string
+          id?: string
+          note?: string | null
+          start_date: string
+          trainer_id: string
+        }
+        Update: {
+          all_day?: boolean | null
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          note?: string | null
+          start_date?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainers: {
+        Row: {
+          availability: Json | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          gallery: string[] | null
+          gender: string | null
+          has_video: boolean | null
+          id: string
+          is_verified: boolean | null
+          languages: string[] | null
+          locations: Json | null
+          price_from: number | null
+          rating: number | null
+          review_count: number | null
+          services: Json | null
+          settings: Json | null
+          specialties: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          availability?: Json | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          gallery?: string[] | null
+          gender?: string | null
+          has_video?: boolean | null
+          id?: string
+          is_verified?: boolean | null
+          languages?: string[] | null
+          locations?: Json | null
+          price_from?: number | null
+          rating?: number | null
+          review_count?: number | null
+          services?: Json | null
+          settings?: Json | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          availability?: Json | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          gallery?: string[] | null
+          gender?: string | null
+          has_video?: boolean | null
+          id?: string
+          is_verified?: boolean | null
+          languages?: string[] | null
+          locations?: Json | null
+          price_from?: number | null
+          rating?: number | null
+          review_count?: number | null
+          services?: Json | null
+          settings?: Json | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
