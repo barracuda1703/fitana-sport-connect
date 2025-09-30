@@ -6,8 +6,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { dataStore, Booking, RescheduleRequest } from '@/services/DataStore';
+import { bookingsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
+
+interface Booking {
+  id: string;
+  scheduled_at: string;
+  service_id: string;
+  status: string;
+  reschedule_requests: any[];
+}
+
+interface RescheduleRequest {
+  id: string;
+  newTime: string;
+  status: string;
+  requestedBy: string;
+}
 
 interface RescheduleModalProps {
   isOpen: boolean;

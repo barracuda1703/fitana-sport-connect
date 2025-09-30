@@ -11,8 +11,16 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { dataStore, Service } from '@/services/DataStore';
+import { bookingsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
+
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+  type: string;
+}
 
 interface Client {
   id: string;

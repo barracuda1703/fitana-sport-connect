@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { dataStore, Booking, ManualBlock, TimeOff } from '@/services/DataStore';
+import { bookingsService, manualBlocksService, timeOffService } from '@/services/supabase';
 import { CalendarEvent } from './CalendarGrid';
 
 interface UseCalendarEventsProps {
@@ -22,27 +22,26 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
 
         if (role === 'trainer') {
           // For trainers: get their bookings + manual blocks + time offs
-          const bookings = dataStore.getBookings(userId);
-          const manualBlocks = dataStore.getManualBlocks(userId);
-          const timeOffs = dataStore.getTimeOffs(userId);
+          const bookings = await bookingsService.getByUserId(userId);
+          const manualBlocks = await manualBlocksService.getByTrainerId(userId);
+          const timeOffs = await timeOffService.getByTrainerId(userId);
 
           // Convert bookings to calendar events
           const bookingEvents: CalendarEvent[] = bookings.map(booking => {
             try {
-              const startDate = new Date(booking.scheduledAt);
+              const startDate = new Date(booking.scheduled_at);
               if (isNaN(startDate.getTime())) {
-                console.warn('Invalid booking date:', booking.scheduledAt);
+                console.warn('Invalid booking date:', booking.scheduled_at);
                 return null;
               }
-              const endDate = new Date(startDate.getTime() + booking.duration * 60000);
+              const endDate = new Date(startDate.getTime() + 60 * 60000); // Default 60 min
               return {
                 id: `booking-${booking.id}`,
-                title: `${booking.clientName} - ${booking.serviceName}`,
+                title: `Booking - ${booking.service_id}`,
                 start: startDate.toISOString(),
                 end: endDate.toISOString(),
                 status: booking.status === 'confirmed' ? 'confirmed' : 
                        booking.status === 'pending' ? 'pending' : 'canceled',
-                location: booking.location,
                 type: 'booking'
               };
             } catch (error) {
@@ -54,8 +53,8 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
           // Convert manual blocks to calendar events
           const blockEvents: CalendarEvent[] = manualBlocks.map(block => {
             try {
-              const startDateTime = `${block.date}T${block.startTime}:00`;
-              const endDateTime = `${block.date}T${block.endTime}:00`;
+              const startDateTime = `${block.date}T${block.start_time}:00`;
+              const endDateTime = `${block.date}T${block.end_time}:00`;
               const startDate = new Date(startDateTime);
               const endDate = new Date(endDateTime);
               
@@ -81,8 +80,8 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
           // Convert time offs to calendar events
           const timeOffEvents = timeOffs.map(timeOff => {
             try {
-              const startDate = new Date(timeOff.start);
-              const endDate = new Date(timeOff.end);
+              const startDate = new Date(timeOff.start_date);
+              const endDate = new Date(timeOff.end_date);
               
               if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
                 console.warn('Invalid time off date:', timeOff);
@@ -91,7 +90,7 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
               
               return {
                 id: `timeoff-${timeOff.id}`,
-                title: timeOff.note || (timeOff.allDay ? 'Wolne' : 'Wolne'),
+                title: timeOff.note || (timeOff.all_day ? 'Wolne' : 'Wolne'),
                 start: startDate.toISOString(),
                 end: endDate.toISOString(),
                 status: 'confirmed' as const,
@@ -106,24 +105,23 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
           calendarEvents = [...bookingEvents, ...blockEvents, ...timeOffEvents];
         } else {
           // For clients: get only their bookings
-          const bookings = dataStore.getBookings(userId);
+          const bookings = await bookingsService.getByUserId(userId);
 
           calendarEvents = bookings.map(booking => {
             try {
-              const startDate = new Date(booking.scheduledAt);
+              const startDate = new Date(booking.scheduled_at);
               if (isNaN(startDate.getTime())) {
-                console.warn('Invalid booking date:', booking.scheduledAt);
+                console.warn('Invalid booking date:', booking.scheduled_at);
                 return null;
               }
-              const endDate = new Date(startDate.getTime() + booking.duration * 60000);
+              const endDate = new Date(startDate.getTime() + 60 * 60000);
               return {
                 id: `booking-${booking.id}`,
-                title: `${booking.serviceName} z ${booking.trainerName}`,
+                title: `Booking - ${booking.service_id}`,
                 start: startDate.toISOString(),
                 end: endDate.toISOString(),
                 status: booking.status === 'confirmed' ? 'confirmed' : 
                        booking.status === 'pending' ? 'pending' : 'canceled',
-                location: booking.location,
                 type: 'booking'
               };
             } catch (error) {

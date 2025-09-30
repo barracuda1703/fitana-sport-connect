@@ -18,7 +18,32 @@ import { RescheduleNotificationModal } from '@/components/RescheduleNotification
 import { TrainerBookingModal } from '@/components/TrainerBookingModal';
 import { TimeOffModal } from '@/components/TimeOffModal';
 import { CalendarViewSwitcher, CalendarGrid, useCalendarEvents, CalendarEvent } from '@/components/calendar';
-import { dataStore, Booking, ManualBlock, RescheduleRequest, TimeOff } from '@/services/DataStore';
+import { bookingsService, manualBlocksService } from '@/services/supabase';
+
+interface Booking {
+  id: string;
+  scheduled_at: string;
+  client_id: string;
+  trainer_id: string;
+  service_id: string;
+  status: string;
+  notes?: string;
+  reschedule_requests: any[];
+}
+
+interface ManualBlock {
+  id: string;
+  title: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+}
+
+interface RescheduleRequest {
+  id: string;
+  newTime: string;
+  status: string;
+}
 
 type ViewType = 'list' | 'calendar';
 

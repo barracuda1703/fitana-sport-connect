@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { dataStore } from '@/services/DataStore';
+import { bookingsService } from '@/services/supabase';
 
 interface TrainerStats {
   todayTrainings: number;

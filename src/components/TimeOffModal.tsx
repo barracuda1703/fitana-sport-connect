@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
-import { dataStore, TimeOff, Booking } from '@/services/DataStore';
+import { timeOffService, bookingsService } from '@/services/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 interface TimeOffModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ interface TimeOffModalProps {
 }
 
 interface Collision {
-  booking: Booking;
+  booking: any;
   conflictType: 'overlap' | 'within';
 }
 
@@ -31,6 +32,7 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
   prefilledDate,
   prefilledMode
 }) => {
+  const { toast } = useToast();
   const [mode, setMode] = useState<'allDay' | 'hours'>('allDay');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -40,7 +42,6 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
   const [collisions, setCollisions] = useState<Collision[]>([]);
   const [isCheckingCollisions, setIsCheckingCollisions] = useState(false);
 
-  // Prefill form when modal opens
   useEffect(() => {
     if (isOpen) {
       if (prefilledDate) {
@@ -56,7 +57,6 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
     }
   }, [isOpen, prefilledDate, prefilledMode]);
 
-  // Check for collisions when form changes
   useEffect(() => {
     if (startDate && (mode === 'allDay' || (startTime && endTime))) {
       checkCollisions();
@@ -68,32 +68,28 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
 
     setIsCheckingCollisions(true);
     try {
-      const startDateTime = mode === 'allDay' 
-        ? new Date(startDate + 'T00:00:00').toISOString()
-        : new Date(startDate + 'T' + startTime + ':00').toISOString();
-      
-      const endDateTime = mode === 'allDay'
-        ? new Date(endDate + 'T23:59:59').toISOString()
-        : new Date(endDate + 'T' + endTime + ':00').toISOString();
-
-      const trainerBookings = dataStore.getBookings(trainerId);
+      const trainerBookings = await bookingsService.getByUserId(trainerId);
       const foundCollisions: Collision[] = [];
 
-      trainerBookings.forEach(booking => {
-        const bookingStart = new Date(booking.scheduledAt);
-        const bookingEnd = new Date(bookingStart.getTime() + booking.duration * 60000);
-        
-        const timeOffStart = new Date(startDateTime);
-        const timeOffEnd = new Date(endDateTime);
+      const startDateTime = mode === 'allDay' 
+        ? new Date(startDate + 'T00:00:00')
+        : new Date(startDate + 'T' + startTime + ':00');
+      
+      const endDateTime = mode === 'allDay'
+        ? new Date(endDate + 'T23:59:59')
+        : new Date(endDate + 'T' + endTime + ':00');
 
-        // Check for overlap
+      trainerBookings.forEach(booking => {
+        const bookingStart = new Date(booking.scheduled_at);
+        const bookingEnd = new Date(bookingStart.getTime() + 60 * 60000);
+
         if (
-          (bookingStart < timeOffEnd && bookingEnd > timeOffStart) ||
-          (timeOffStart < bookingEnd && timeOffEnd > bookingStart)
+          (bookingStart < endDateTime && bookingEnd > startDateTime) ||
+          (startDateTime < bookingEnd && endDateTime > bookingStart)
         ) {
           foundCollisions.push({
             booking,
-            conflictType: bookingStart >= timeOffStart && bookingEnd <= timeOffEnd ? 'within' : 'overlap'
+            conflictType: 'overlap'
           });
         }
       });
@@ -113,53 +109,36 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
 
     try {
       const startDateTime = mode === 'allDay' 
-        ? new Date(startDate + 'T00:00:00').toISOString()
-        : new Date(startDate + 'T' + startTime + ':00').toISOString();
+        ? startDate + 'T00:00:00Z'
+        : startDate + 'T' + startTime + ':00Z';
       
       const endDateTime = mode === 'allDay'
-        ? new Date(endDate + 'T23:59:59').toISOString()
-        : new Date(endDate + 'T' + endTime + ':00').toISOString();
+        ? endDate + 'T23:59:59Z'
+        : endDate + 'T' + endTime + ':00Z';
 
-      const timeOffData = {
-        trainerId,
-        type: 'time_off' as const,
-        start: startDateTime,
-        end: endDateTime,
-        allDay: mode === 'allDay',
+      await timeOffService.create({
+        trainer_id: trainerId,
+        start_date: startDateTime,
+        end_date: endDateTime,
+        all_day: mode === 'allDay',
         note: note.trim() || undefined,
-      };
+      });
 
-      dataStore.addTimeOff(timeOffData);
+      toast({
+        title: "Wolne dodane",
+        description: "Pomyślnie dodano wolne w kalendarzu"
+      });
+
       onTimeOffAdded();
       onClose();
     } catch (error) {
       console.error('Error adding time off:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się dodać wolnego",
+        variant: "destructive"
+      });
     }
-  };
-
-  const formatDateTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return {
-      date: date.toLocaleDateString('pl-PL'),
-      time: date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
-    };
-  };
-
-  const getClientName = (clientId: string) => {
-    const client = dataStore.getUserById(clientId);
-    return client ? `${client.name} ${client.surname || ''}`.trim() : 'Klient';
-  };
-
-  const getServiceName = (serviceId: string) => {
-    const serviceMap: Record<string, string> = {
-      'srv-1': 'Trening personalny',
-      'srv-2': 'Yoga',
-      'srv-3': 'Trening boksu',
-      'srv-4': 'Crossfit',
-      'srv-5': 'Pilates',
-      'srv-6': 'Stretching'
-    };
-    return serviceMap[serviceId] || 'Trening';
   };
 
   return (
@@ -173,7 +152,6 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Mode Selection */}
           <div className="space-y-2">
             <Label>Tryb</Label>
             <Select value={mode} onValueChange={(value: 'allDay' | 'hours') => setMode(value)}>
@@ -187,7 +165,6 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
             </Select>
           </div>
 
-          {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Od</Label>
@@ -210,7 +187,6 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
             </div>
           </div>
 
-          {/* Time Range (only for hours mode) */}
           {mode === 'hours' && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -234,7 +210,6 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
             </div>
           )}
 
-          {/* Note */}
           <div className="space-y-2">
             <Label htmlFor="note">Notatka (opcjonalnie)</Label>
             <Textarea
@@ -246,35 +221,15 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
             />
           </div>
 
-          {/* Collisions Alert */}
           {collisions.length > 0 && (
             <Alert className="border-warning bg-warning/10">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                <div className="space-y-2">
-                  <p className="font-medium">Wykryto kolizje z istniejącymi treningami:</p>
-                  <div className="space-y-1 text-sm">
-                    {collisions.map((collision, index) => {
-                      const { date, time } = formatDateTime(collision.booking.scheduledAt);
-                      return (
-                        <div key={index} className="flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            {getServiceName(collision.booking.serviceId)} z {getClientName(collision.booking.clientId)} - {date} {time}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Te treningi będą niedostępne w wybranym okresie. Rozważ zmianę terminu lub skontaktuj się z klientami.
-                  </p>
-                </div>
+                <p className="font-medium">Wykryto {collisions.length} kolizji z istniejącymi treningami</p>
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Actions */}
           <div className="flex gap-2 pt-4">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Anuluj
@@ -282,9 +237,9 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
             <Button 
               onClick={handleSubmit} 
               className="flex-1"
-              disabled={!startDate || (mode === 'hours' && (!startTime || !endTime)) || isCheckingCollisions}
+              disabled={!startDate || (mode === 'hours' && (!startTime || !endTime))}
             >
-              {isCheckingCollisions ? 'Sprawdzanie...' : 'Zapisz'}
+              Zapisz
             </Button>
           </div>
         </div>

@@ -11,7 +11,7 @@ import { ConflictResolutionModal } from '@/components/ConflictResolutionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { dataStore, Booking } from '@/services/DataStore';
+import { bookingsService } from '@/services/supabase';
 
 export const TrainerDashboard: React.FC = () => {
   const { t } = useLanguage();
