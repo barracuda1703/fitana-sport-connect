@@ -80,27 +80,27 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   const pendingBookings = bookings.filter(booking => booking.status === 'pending');
   const upcomingBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.scheduled_at);
+    const bookingDate = new Date(booking.scheduledAt);
     return bookingDate > new Date() && booking.status === 'confirmed';
   });
 
   // Get requests awaiting trainer's decision
   const awaitingTrainerDecision = bookings.flatMap(booking => 
-    (booking.reschedule_requests || [])
+    (booking.rescheduleRequests || [])
       .filter((request: RescheduleRequest) => request.status === 'pending' && request.awaitingDecisionBy === 'trainer')
       .map((request: RescheduleRequest) => ({ booking, request }))
   );
 
   // Get requests awaiting client's decision (trainer's proposals)
   const awaitingClientDecision = bookings.flatMap(booking => 
-    (booking.reschedule_requests || [])
+    (booking.rescheduleRequests || [])
       .filter((request: RescheduleRequest) => request.status === 'pending' && request.awaitingDecisionBy === 'client')
       .map((request: RescheduleRequest) => ({ booking, request }))
   );
 
   // Get trainer's own reschedule requests with responses
   const trainerRescheduleResponses = bookings.flatMap(booking => 
-    (booking.reschedule_requests || [])
+    (booking.rescheduleRequests || [])
       .filter((request: RescheduleRequest) => request.requestedBy === 'trainer' && request.status !== 'pending')
       .map((request: RescheduleRequest) => ({ booking, request }))
   );
@@ -109,7 +109,7 @@ export const TrainerCalendarListPage: React.FC = () => {
   const getBookingsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     return bookings.filter(booking => {
-      const bookingDate = new Date(booking.scheduled_at).toISOString().split('T')[0];
+      const bookingDate = new Date(booking.scheduledAt).toISOString().split('T')[0];
       return bookingDate === dateStr;
     });
   };
@@ -148,7 +148,7 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   const handleAcceptBooking = async (bookingId: string) => {
     try {
-      await bookingsService.updateStatus(bookingId, 'confirmed');
+      dataStore.updateBookingStatus(bookingId, 'confirmed');
       refreshData();
       toast({
         title: "Rezerwacja zaakceptowana",
@@ -166,7 +166,7 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   const handleDeclineBooking = async (bookingId: string) => {
     try {
-      await bookingsService.updateStatus(bookingId, 'declined');
+      dataStore.updateBookingStatus(bookingId, 'declined');
       refreshData();
       toast({
         title: "Rezerwacja odrzucona",
@@ -198,17 +198,23 @@ export const TrainerCalendarListPage: React.FC = () => {
       const booking = bookings.find(b => b.id === bookingId);
       if (!booking) return;
 
-      const requests = booking.reschedule_requests || [];
+      const requests = booking.rescheduleRequests || [];
       const updatedRequests = requests.map((req: RescheduleRequest) =>
-        req.id === requestId ? { ...req, status: 'accepted' } : req
+        req.id === requestId ? { ...req, status: 'accepted' as const } : req
       );
 
       const request = requests.find((r: RescheduleRequest) => r.id === requestId);
       if (request) {
-        await bookingsService.update(bookingId, {
-          scheduled_at: request.newTime,
-          reschedule_requests: updatedRequests
-        });
+        // Update booking directly
+        const bookingIndex = dataStore['data'].bookings.findIndex(b => b.id === bookingId);
+        if (bookingIndex !== -1) {
+          dataStore['data'].bookings[bookingIndex] = {
+            ...booking,
+            scheduledAt: request.newTime,
+            rescheduleRequests: updatedRequests
+          };
+          dataStore['saveData']();
+        }
       }
 
       toast({
@@ -232,14 +238,20 @@ export const TrainerCalendarListPage: React.FC = () => {
       const booking = bookings.find(b => b.id === bookingId);
       if (!booking) return;
 
-      const requests = booking.reschedule_requests || [];
+      const requests = booking.rescheduleRequests || [];
       const updatedRequests = requests.map((req: RescheduleRequest) =>
-        req.id === requestId ? { ...req, status: 'declined' } : req
+        req.id === requestId ? { ...req, status: 'declined' as const } : req
       );
 
-      await bookingsService.update(bookingId, {
-        reschedule_requests: updatedRequests
-      });
+      // Update booking directly
+      const bookingIndex = dataStore['data'].bookings.findIndex(b => b.id === bookingId);
+      if (bookingIndex !== -1) {
+        dataStore['data'].bookings[bookingIndex] = {
+          ...booking,
+          rescheduleRequests: updatedRequests
+        };
+        dataStore['saveData']();
+      }
 
       toast({
         title: "Termin odrzucony",
@@ -280,12 +292,12 @@ export const TrainerCalendarListPage: React.FC = () => {
     if (!blockForm.title || !blockForm.date || !blockForm.startTime || !blockForm.endTime) return;
 
     try {
-      await manualBlocksService.create({
-        trainer_id: user!.id,
+      dataStore.addManualBlock({
+        trainerId: user!.id,
         title: blockForm.title,
         date: blockForm.date,
-        start_time: blockForm.startTime,
-        end_time: blockForm.endTime,
+        startTime: blockForm.startTime,
+        endTime: blockForm.endTime
       });
 
       refreshData();
@@ -306,7 +318,7 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   const handleRemoveBlock = async (blockId: string) => {
     try {
-      await manualBlocksService.delete(blockId);
+      dataStore.removeManualBlock(blockId);
       refreshData();
       toast({
         title: "Blokada usunięta",
@@ -354,10 +366,10 @@ export const TrainerCalendarListPage: React.FC = () => {
   };
 
   const BookingCard: React.FC<{ booking: Booking; showActions?: boolean }> = ({ booking, showActions = false }) => {
-    const { date, time } = formatDateTime(booking.scheduled_at);
+    const { date, time } = formatDateTime(booking.scheduledAt);
     
     // Check if trainer has proposed a reschedule
-    const trainerRescheduleRequest = (booking.reschedule_requests || []).find(
+    const trainerRescheduleRequest = (booking.rescheduleRequests || []).find(
       (request: RescheduleRequest) => request.requestedBy === 'trainer' && request.status === 'pending'
     );
     
@@ -386,10 +398,10 @@ export const TrainerCalendarListPage: React.FC = () => {
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
+              <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <User className="h-3 w-3" />
-                {getClientName(booking.client_id)}
+                {getClientName(booking.clientId)}
               </p>
             </div>
             {statusInfo && (
@@ -482,7 +494,7 @@ export const TrainerCalendarListPage: React.FC = () => {
               </p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                 <Clock className="h-4 w-4" />
-                <span>{block.start_time} - {block.end_time}</span>
+                <span>{block.startTime} - {block.endTime}</span>
               </div>
             </div>
             <Button
@@ -647,11 +659,11 @@ export const TrainerCalendarListPage: React.FC = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.client_id)}</p>
+                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Stary termin: {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
+                          Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', {
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
@@ -699,11 +711,11 @@ export const TrainerCalendarListPage: React.FC = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.client_id)}</p>
+                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Zaproponowany termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
+                          {new Date(request.newTime).toLocaleTimeString('pl-PL', {
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
@@ -731,11 +743,11 @@ export const TrainerCalendarListPage: React.FC = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.client_id)}</p>
+                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Stary termin: {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
+                          Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', {
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
@@ -771,12 +783,18 @@ export const TrainerCalendarListPage: React.FC = () => {
                         size="sm"
                         onClick={async () => {
                           try {
-                            const requests = booking.reschedule_requests || [];
+                            const requests = booking.rescheduleRequests || [];
                             const updatedRequests = requests.filter((r: RescheduleRequest) => r.id !== request.id);
                             
-                            await bookingsService.update(booking.id, {
-                              reschedule_requests: updatedRequests
-                            });
+                            // Update booking directly
+                            const bookingIndex = dataStore['data'].bookings.findIndex(b => b.id === booking.id);
+                            if (bookingIndex !== -1) {
+                              dataStore['data'].bookings[bookingIndex] = {
+                                ...booking,
+                                rescheduleRequests: updatedRequests
+                              };
+                              dataStore['saveData']();
+                            }
                             
                             refreshData();
                             toast({

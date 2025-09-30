@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Booking } from '@/services/supabase';
+import { Booking } from '@/services/DataStore';
 
 interface ConflictResolutionModalProps {
   isOpen: boolean;
@@ -56,8 +56,8 @@ export const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = (
 
   if (!conflictingBooking || !newBooking) return null;
 
-  const conflictDateTime = formatDateTime(conflictingBooking.scheduled_at);
-  const newDateTime = formatDateTime(newBooking.scheduled_at);
+  const conflictDateTime = formatDateTime(conflictingBooking.scheduledAt);
+  const newDateTime = formatDateTime(newBooking.scheduledAt);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -86,11 +86,11 @@ export const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = (
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Klient:</span>
-                  <span>{getClientName(conflictingBooking.client_id)}</span>
+                  <span>{getClientName(conflictingBooking.clientId)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Usługa:</span>
-                  <span>{getServiceName(conflictingBooking.service_id)}</span>
+                  <span>{getServiceName(conflictingBooking.serviceId)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
@@ -117,11 +117,11 @@ export const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = (
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Klient:</span>
-                  <span>{getClientName(newBooking.client_id)}</span>
+                  <span>{getClientName(newBooking.clientId)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Usługa:</span>
-                  <span>{getServiceName(newBooking.service_id)}</span>
+                  <span>{getServiceName(newBooking.serviceId)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { bookingsService, Booking } from '@/services/supabase';
+import { dataStore, Booking, RescheduleRequest } from '@/services/DataStore';
 import { useToast } from '@/hooks/use-toast';
 
 interface RescheduleModalProps {
@@ -80,16 +80,24 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       const [hours, minutes] = selectedTime.split(':').map(Number);
       newScheduledAt.setHours(hours, minutes, 0, 0);
 
-      const rescheduleRequests = [...(booking.reschedule_requests || []), {
+      const rescheduleRequests: RescheduleRequest[] = [...(booking.rescheduleRequests || []), {
         id: crypto.randomUUID(),
         requestedAt: new Date().toISOString(),
-        requestedBy: 'trainer',
+        requestedBy: 'trainer' as const,
         newTime: newScheduledAt.toISOString(),
-        status: 'pending',
-        awaitingDecisionBy: 'client'
+        status: 'pending' as const,
+        awaitingDecisionBy: 'client' as const
       }];
 
-      await bookingsService.update(booking.id, { reschedule_requests: rescheduleRequests });
+      // Update booking directly in dataStore
+      const bookingIndex = dataStore['data'].bookings.findIndex(b => b.id === booking.id);
+      if (bookingIndex !== -1) {
+        dataStore['data'].bookings[bookingIndex] = {
+          ...booking,
+          rescheduleRequests
+        };
+        dataStore['saveData']();
+      }
       
       toast({
         title: "Propozycja wysłana",
@@ -139,11 +147,11 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
         <Card className="bg-gradient-card">
           <CardContent className="p-3">
             <div className="text-sm">
-              <p className="font-medium">{getClientName(booking.client_id)}</p>
-              <p className="text-muted-foreground">{getServiceName(booking.service_id)}</p>
+              <p className="font-medium">{getClientName(booking.clientId)}</p>
+              <p className="text-muted-foreground">{getServiceName(booking.serviceId)}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Obecny termin: {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
-                {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
+                Obecny termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
+                {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', {
                   hour: '2-digit', 
                   minute: '2-digit' 
                 })}

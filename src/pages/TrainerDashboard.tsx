@@ -11,7 +11,7 @@ import { ConflictResolutionModal } from '@/components/ConflictResolutionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { bookingsService, Booking } from '@/services/supabase';
+import { dataStore, Booking } from '@/services/DataStore';
 
 export const TrainerDashboard: React.FC = () => {
   const { t } = useLanguage();
@@ -36,8 +36,8 @@ export const TrainerDashboard: React.FC = () => {
   const loadBookings = async () => {
     if (!user) return;
     try {
-      const data = await bookingsService.getByUserId(user.id);
-      setBookings(data as any);
+      const data = dataStore.getBookings(user.id);
+      setBookings(data);
     } catch (error) {
       console.error('Error loading bookings:', error);
       toast({
@@ -52,7 +52,7 @@ export const TrainerDashboard: React.FC = () => {
   const hasConflict = (scheduledAt: string) => {
     return bookings.some(booking => 
       booking.status === 'confirmed' && 
-      booking.scheduled_at === scheduledAt
+      booking.scheduledAt === scheduledAt
     );
   };
 
@@ -61,10 +61,10 @@ export const TrainerDashboard: React.FC = () => {
     if (!booking) return;
 
     // Check for conflicts
-    if (hasConflict(booking.scheduled_at)) {
+    if (hasConflict(booking.scheduledAt)) {
       const conflictingBooking = bookings.find(b => 
         b.status === 'confirmed' && 
-        b.scheduled_at === booking.scheduled_at
+        b.scheduledAt === booking.scheduledAt
       );
       setConflictBooking(conflictingBooking || null);
       setPendingBooking(booking);
@@ -73,7 +73,7 @@ export const TrainerDashboard: React.FC = () => {
     }
 
     try {
-      await bookingsService.updateStatus(bookingId, 'confirmed');
+      dataStore.updateBookingStatus(bookingId, 'confirmed');
       await loadBookings();
       toast({
         title: "Wizyta zaakceptowana",
@@ -91,7 +91,7 @@ export const TrainerDashboard: React.FC = () => {
 
   const handleDeclineBooking = async (bookingId: string) => {
     try {
-      await bookingsService.updateStatus(bookingId, 'declined');
+      dataStore.updateBookingStatus(bookingId, 'declined');
       await loadBookings();
       toast({
         title: "Wizyta odrzucona", 
@@ -127,9 +127,9 @@ export const TrainerDashboard: React.FC = () => {
     
     try {
       // Decline the conflicting booking
-      await bookingsService.updateStatus(conflictBooking.id, 'declined');
+      dataStore.updateBookingStatus(conflictBooking.id, 'declined');
       // Accept the new booking
-      await bookingsService.updateStatus(pendingBooking.id, 'confirmed');
+      dataStore.updateBookingStatus(pendingBooking.id, 'confirmed');
       
       await loadBookings();
       
@@ -166,7 +166,7 @@ export const TrainerDashboard: React.FC = () => {
   };
 
   const todayBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.scheduled_at);
+    const bookingDate = new Date(booking.scheduledAt);
     const today = new Date();
     return bookingDate.toDateString() === today.toDateString() && booking.status === 'confirmed';
   });
@@ -181,7 +181,7 @@ export const TrainerDashboard: React.FC = () => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     
     const weekBookings = bookings.filter(booking => {
-      const bookingDate = new Date(booking.scheduled_at);
+      const bookingDate = new Date(booking.scheduledAt);
       return bookingDate >= startOfWeek && bookingDate <= endOfWeek && booking.status === 'confirmed';
     });
     
@@ -191,7 +191,7 @@ export const TrainerDashboard: React.FC = () => {
       count: weekBookings.length,
       earnings: weeklyEarnings,
       breakdown: weekBookings.reduce((acc, booking) => {
-        const day = new Date(booking.scheduled_at).getDay();
+        const day = new Date(booking.scheduledAt).getDay();
         const dayNames = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
         acc[dayNames[day]] = (acc[dayNames[day]] || 0) + 1;
         return acc;
@@ -312,16 +312,16 @@ export const TrainerDashboard: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-primary">
-                        {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
+                        {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
                           hour: '2-digit', 
                           minute: '2-digit' 
                         })}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">Klient #{booking.client_id.slice(-4)}</h3>
+                      <h3 className="font-semibold">Klient #{booking.clientId.slice(-4)}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {booking.service_id} • {booking.notes || 'Brak notatek'}
+                        {booking.serviceId} • {booking.notes || 'Brak notatek'}
                       </p>
                     </div>
                   </div>
