@@ -14,6 +14,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { trainersService } from '@/services/supabase';
+import { sportsCategories } from '@/data/sports';
 
 interface Trainer {
   id: string;
@@ -33,31 +34,10 @@ interface Trainer {
   gallery: string[];
 }
 
-const sportsCategories = [
-  { id: 'gym', name: 'Siłownia', icon: '🏋️', color: 'bg-accent' },
-  { id: 'fitness', name: 'Fitness', icon: '💪', color: 'bg-primary' },
-  { id: 'boxing', name: 'Boks', icon: '🥊', color: 'bg-warning' },
-  { id: 'kickboxing', name: 'Kickboxing', icon: '🥋', color: 'bg-success' },
-  { id: 'mma', name: 'MMA', icon: '🤼', color: 'bg-accent' },
-  { id: 'swimming', name: 'Pływanie', icon: '🏊‍♀️', color: 'bg-primary' },
-  { id: 'tennis', name: 'Tenis', icon: '🎾', color: 'bg-warning' },
-  { id: 'judo', name: 'Judo', icon: '🥋', color: 'bg-success' },
-  { id: 'karate', name: 'Karate', icon: '🥋', color: 'bg-accent' },
-  { id: 'yoga', name: 'Joga', icon: '🧘‍♀️', color: 'bg-primary' },
-  { id: 'pilates', name: 'Pilates', icon: '🤸', color: 'bg-warning' },
-  { id: 'dance', name: 'Taniec', icon: '💃', color: 'bg-success' },
-  { id: 'basketball', name: 'Koszykówka', icon: '🏀', color: 'bg-accent' },
-  { id: 'football', name: 'Piłka nożna', icon: '⚽', color: 'bg-primary' },
-  { id: 'horse-riding', name: 'Jazda konna', icon: '🏇', color: 'bg-warning' },
-  { id: 'skiing', name: 'Narciarstwo', icon: '⛷️', color: 'bg-success' },
-  { id: 'crossfit', name: 'Crossfit', icon: '🏋️‍♀️', color: 'bg-accent' },
-  { id: 'gymnastics', name: 'Gimnastyka', icon: '🤸‍♀️', color: 'bg-primary' },
-  { id: 'snowboard', name: 'Snowboard', icon: '🏂', color: 'bg-warning' },
-  { id: 'squash', name: 'Squash', icon: '🎾', color: 'bg-success' },
-  { id: 'badminton', name: 'Badminton', icon: '🏸', color: 'bg-accent' },
-  { id: 'running', name: 'Trening biegowy', icon: '🏃‍♂️', color: 'bg-primary' },
-  { id: 'golf', name: 'Golf', icon: '⛳', color: 'bg-warning' },
-];
+const sportsCategoriesWithColors = sportsCategories.map((sport, index) => ({
+  ...sport,
+  color: ['bg-accent', 'bg-primary', 'bg-warning', 'bg-success'][index % 4]
+}));
 
 export const ClientHome: React.FC = () => {
   const { t } = useLanguage();

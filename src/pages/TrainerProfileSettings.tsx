@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, User, Settings, Camera, MapPin, Briefcase, Languages, Award, Clock, Bell, Shield, Globe } from 'lucide-react';
+import { ArrowLeft, Save, User, Settings, Camera, MapPin, Briefcase, Languages, Award, Clock, Bell, Shield, Globe, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { PhotoUploader } from '@/components/PhotoUploader';
 import { LocationManagement } from '@/components/LocationManagement';
@@ -17,7 +18,7 @@ import { trainersService } from '@/services/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { X, Plus } from 'lucide-react';
+import { sportsCategories } from '@/data/sports';
 
 const DAYS_OF_WEEK = [
   { id: 'monday', label: 'Poniedziałek' },
@@ -67,7 +68,6 @@ export const TrainerProfileSettings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [newSpecialty, setNewSpecialty] = useState('');
 
   const [trainerData, setTrainerData] = useState<TrainerData>({
     display_name: '',
@@ -159,21 +159,30 @@ export const TrainerProfileSettings: React.FC = () => {
     }
   };
 
-  const handleAddSpecialty = () => {
-    if (newSpecialty.trim() && !trainerData.specialties.includes(newSpecialty.trim())) {
+  const handleToggleSpecialty = (sportName: string) => {
+    const isSelected = trainerData.specialties.includes(sportName);
+    
+    if (isSelected) {
+      // Usuń specjalizację
       setTrainerData(prev => ({
         ...prev,
-        specialties: [...prev.specialties, newSpecialty.trim()]
+        specialties: prev.specialties.filter(s => s !== sportName)
       }));
-      setNewSpecialty('');
+    } else {
+      // Dodaj tylko jeśli nie przekroczono limitu 3
+      if (trainerData.specialties.length < 3) {
+        setTrainerData(prev => ({
+          ...prev,
+          specialties: [...prev.specialties, sportName]
+        }));
+      } else {
+        toast({
+          title: "Limit osiągnięty",
+          description: "Możesz wybrać maksymalnie 3 dyscypliny",
+          variant: "destructive"
+        });
+      }
     }
-  };
-
-  const handleRemoveSpecialty = (specialty: string) => {
-    setTrainerData(prev => ({
-      ...prev,
-      specialties: prev.specialties.filter(s => s !== specialty)
-    }));
   };
 
   if (!user) return null;
@@ -307,35 +316,70 @@ export const TrainerProfileSettings: React.FC = () => {
                     <Award className="h-5 w-5" />
                     Dyscypliny i specjalizacje
                   </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Wybierz maksymalnie 3 dyscypliny ({trainerData.specialties.length}/3)
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    {trainerData.specialties.map((specialty) => (
-                      <div
-                        key={specialty}
-                        className="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full"
-                      >
-                        <span className="text-sm">{specialty}</span>
-                        <button
-                          onClick={() => handleRemoveSpecialty(specialty)}
-                          className="hover:bg-primary/20 rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                  {/* Wybrane specjalizacje */}
+                  {trainerData.specialties.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {trainerData.specialties.map((specialty) => {
+                        const sport = sportsCategories.find(s => s.name === specialty);
+                        return (
+                          <div
+                            key={specialty}
+                            className="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1.5 rounded-full"
+                          >
+                            {sport && <span>{sport.icon}</span>}
+                            <span className="text-sm font-medium">{specialty}</span>
+                            <button
+                              onClick={() => handleToggleSpecialty(specialty)}
+                              className="hover:bg-primary/20 rounded-full p-0.5 ml-1"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Dodaj specjalizację (np. Yoga, Crossfit, Pilates)..."
-                      value={newSpecialty}
-                      onChange={(e) => setNewSpecialty(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddSpecialty()}
-                    />
-                    <Button onClick={handleAddSpecialty} size="icon">
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                  {/* Lista dostępnych dyscyplin */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {sportsCategories.map((sport) => {
+                      const isSelected = trainerData.specialties.includes(sport.name);
+                      const isDisabled = !isSelected && trainerData.specialties.length >= 3;
+                      
+                      return (
+                        <div
+                          key={sport.id}
+                          className={`flex items-center space-x-2 p-2 rounded-lg border transition-colors ${
+                            isSelected 
+                              ? 'border-primary bg-primary/5' 
+                              : isDisabled 
+                                ? 'border-muted bg-muted/30 opacity-50' 
+                                : 'border-border hover:border-primary/50 hover:bg-accent/5'
+                          }`}
+                        >
+                          <Checkbox
+                            id={`sport-${sport.id}`}
+                            checked={isSelected}
+                            disabled={isDisabled}
+                            onCheckedChange={() => handleToggleSpecialty(sport.name)}
+                          />
+                          <Label
+                            htmlFor={`sport-${sport.id}`}
+                            className={`text-sm cursor-pointer flex items-center gap-2 flex-1 ${
+                              isDisabled ? 'cursor-not-allowed' : ''
+                            }`}
+                          >
+                            <span className="text-lg">{sport.icon}</span>
+                            <span>{sport.name}</span>
+                          </Label>
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
