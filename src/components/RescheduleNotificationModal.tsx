@@ -179,7 +179,7 @@ export const RescheduleNotificationModal: React.FC<RescheduleNotificationModalPr
               <User className="h-3 w-3" />
               <span className="font-medium">
                 {rescheduleRequest.requestedBy === 'trainer' 
-                  ? getTrainerName(booking.trainerId) 
+                  ? getTrainerName(booking.trainerId)
                   : 'Ty'} 
                 {rescheduleRequest.requestedBy === 'trainer' ? ' prosi' : ' prosisz'} o zmianę terminu
               </span>

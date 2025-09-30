@@ -1,5 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface RescheduleRequest {
+  id: string;
+  requestedAt: string;
+  requestedBy: 'client' | 'trainer';
+  newTime: string;
+  status: 'pending' | 'accepted' | 'declined';
+  awaitingDecisionBy: 'client' | 'trainer';
+}
+
 export interface Booking {
   id: string;
   client_id: string;
@@ -94,7 +103,7 @@ export const bookingsService = {
     return data;
   },
 
-  async create(booking: Omit<Booking, 'id' | 'created_at' | 'updated_at'>) {
+  async create(booking: any) {
     const { data, error } = await supabase
       .from('bookings')
       .insert(booking)
@@ -117,7 +126,7 @@ export const bookingsService = {
     return data;
   },
 
-  async update(id: string, updates: Partial<Booking>) {
+  async update(id: string, updates: any) {
     const { data, error } = await supabase
       .from('bookings')
       .update(updates)

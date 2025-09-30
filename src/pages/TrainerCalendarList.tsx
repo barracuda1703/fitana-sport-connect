@@ -18,7 +18,7 @@ import { RescheduleNotificationModal } from '@/components/RescheduleNotification
 import { TrainerBookingModal } from '@/components/TrainerBookingModal';
 import { TimeOffModal } from '@/components/TimeOffModal';
 import { CalendarViewSwitcher, CalendarGrid, useCalendarEvents, CalendarEvent } from '@/components/calendar';
-import { bookingsService, Booking, manualBlocksService, ManualBlock, timeOffService, TimeOff } from '@/services/supabase';
+import { dataStore, Booking, ManualBlock, RescheduleRequest, TimeOff } from '@/services/DataStore';
 
 type ViewType = 'list' | 'calendar';
 
@@ -80,36 +80,36 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   const pendingBookings = bookings.filter(booking => booking.status === 'pending');
   const upcomingBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.scheduledAt);
+    const bookingDate = new Date(booking.scheduled_at);
     return bookingDate > new Date() && booking.status === 'confirmed';
   });
 
   // Get requests awaiting trainer's decision
   const awaitingTrainerDecision = bookings.flatMap(booking => 
-    (booking.rescheduleRequests || [])
-      .filter(request => request.status === 'pending' && request.awaitingDecisionBy === 'trainer')
-      .map(request => ({ booking, request }))
+    (booking.reschedule_requests || [])
+      .filter((request: RescheduleRequest) => request.status === 'pending' && request.awaitingDecisionBy === 'trainer')
+      .map((request: RescheduleRequest) => ({ booking, request }))
   );
 
   // Get requests awaiting client's decision (trainer's proposals)
   const awaitingClientDecision = bookings.flatMap(booking => 
-    (booking.rescheduleRequests || [])
-      .filter(request => request.status === 'pending' && request.awaitingDecisionBy === 'client')
-      .map(request => ({ booking, request }))
+    (booking.reschedule_requests || [])
+      .filter((request: RescheduleRequest) => request.status === 'pending' && request.awaitingDecisionBy === 'client')
+      .map((request: RescheduleRequest) => ({ booking, request }))
   );
 
   // Get trainer's own reschedule requests with responses
   const trainerRescheduleResponses = bookings.flatMap(booking => 
-    (booking.rescheduleRequests || [])
-      .filter(request => request.requestedBy === 'trainer' && request.status !== 'pending')
-      .map(request => ({ booking, request }))
+    (booking.reschedule_requests || [])
+      .filter((request: RescheduleRequest) => request.requestedBy === 'trainer' && request.status !== 'pending')
+      .map((request: RescheduleRequest) => ({ booking, request }))
   );
 
   // Calendar helper functions
   const getBookingsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     return bookings.filter(booking => {
-      const bookingDate = new Date(booking.scheduledAt).toISOString().split('T')[0];
+      const bookingDate = new Date(booking.scheduled_at).toISOString().split('T')[0];
       return bookingDate === dateStr;
     });
   };
@@ -141,27 +141,45 @@ export const TrainerCalendarListPage: React.FC = () => {
     const dayHours = workingHours[dayOfWeek as keyof typeof workingHours];
     if (!dayHours) return [];
 
-    // Generate 60-minute slots by default
-    const slots = dataStore.getAvailableHoursWithSettings(user!.id, dateStr, 60);
+    // TODO: Implement getAvailableHours in backend
+    const slots: string[] = [];
     return slots;
   };
 
   const handleAcceptBooking = async (bookingId: string) => {
-    await dataStore.updateBookingStatus(bookingId, 'confirmed');
-    refreshData();
-    toast({
-      title: "Rezerwacja zaakceptowana",
-      description: "Klient został powiadomiony o potwierdzeniu.",
-    });
+    try {
+      await bookingsService.updateStatus(bookingId, 'confirmed');
+      refreshData();
+      toast({
+        title: "Rezerwacja zaakceptowana",
+        description: "Klient został powiadomiony o potwierdzeniu.",
+      });
+    } catch (error) {
+      console.error('Error accepting booking:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaakceptować rezerwacji",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeclineBooking = async (bookingId: string) => {
-    await dataStore.updateBookingStatus(bookingId, 'declined');
-    refreshData();
-    toast({
-      title: "Rezerwacja odrzucona",
-      description: "Klient został powiadomiony o odrzuceniu.",
-    });
+    try {
+      await bookingsService.updateStatus(bookingId, 'declined');
+      refreshData();
+      toast({
+        title: "Rezerwacja odrzucona",
+        description: "Klient został powiadomiony o odrzuceniu.",
+      });
+    } catch (error) {
+      console.error('Error declining booking:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się odrzucić rezerwacji",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleReschedule = (booking: Booking) => {
@@ -177,7 +195,22 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   const handleAcceptClientReschedule = async (bookingId: string, requestId: string) => {
     try {
-      await dataStore.acceptRescheduleRequest(bookingId, requestId);
+      const booking = bookings.find(b => b.id === bookingId);
+      if (!booking) return;
+
+      const requests = booking.reschedule_requests || [];
+      const updatedRequests = requests.map((req: RescheduleRequest) =>
+        req.id === requestId ? { ...req, status: 'accepted' } : req
+      );
+
+      const request = requests.find((r: RescheduleRequest) => r.id === requestId);
+      if (request) {
+        await bookingsService.update(bookingId, {
+          scheduled_at: request.newTime,
+          reschedule_requests: updatedRequests
+        });
+      }
+
       toast({
         title: "Termin zaakceptowany",
         description: "Nowy termin został potwierdzony",
@@ -196,7 +229,18 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   const handleDeclineClientReschedule = async (bookingId: string, requestId: string) => {
     try {
-      await dataStore.declineRescheduleRequest(bookingId, requestId);
+      const booking = bookings.find(b => b.id === bookingId);
+      if (!booking) return;
+
+      const requests = booking.reschedule_requests || [];
+      const updatedRequests = requests.map((req: RescheduleRequest) =>
+        req.id === requestId ? { ...req, status: 'declined' } : req
+      );
+
+      await bookingsService.update(bookingId, {
+        reschedule_requests: updatedRequests
+      });
+
       toast({
         title: "Termin odrzucony",
         description: "Propozycja nowego terminu została odrzucona",
@@ -232,32 +276,50 @@ export const TrainerCalendarListPage: React.FC = () => {
     setShowTrainerBookingDialog(false);
   };
 
-  const confirmAddManualBlock = () => {
+  const confirmAddManualBlock = async () => {
     if (!blockForm.title || !blockForm.date || !blockForm.startTime || !blockForm.endTime) return;
 
-    dataStore.addManualBlock({
-      trainerId: user!.id,
-      title: blockForm.title,
-      date: blockForm.date,
-      startTime: blockForm.startTime,
-      endTime: blockForm.endTime,
-    });
+    try {
+      await manualBlocksService.create({
+        trainer_id: user!.id,
+        title: blockForm.title,
+        date: blockForm.date,
+        start_time: blockForm.startTime,
+        end_time: blockForm.endTime,
+      });
 
-    refreshData();
-    setShowManualBlockDialog(false);
-    toast({
-      title: "Blokada dodana",
-      description: "Czas został zablokowany w kalendarzu.",
-    });
+      refreshData();
+      setShowManualBlockDialog(false);
+      toast({
+        title: "Blokada dodana",
+        description: "Czas został zablokowany w kalendarzu.",
+      });
+    } catch (error) {
+      console.error('Error adding block:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się dodać blokady",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleRemoveBlock = (blockId: string) => {
-    dataStore.removeManualBlock(blockId);
-    refreshData();
-    toast({
-      title: "Blokada usunięta",
-      description: "Czas został odblokowany w kalendarzu.",
-    });
+  const handleRemoveBlock = async (blockId: string) => {
+    try {
+      await manualBlocksService.delete(blockId);
+      refreshData();
+      toast({
+        title: "Blokada usunięta",
+        description: "Czas został odblokowany w kalendarzu.",
+      });
+    } catch (error) {
+      console.error('Error removing block:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się usunąć blokady",
+        variant: "destructive"
+      });
+    }
   };
 
   const getClientName = (clientId: string) => {
@@ -292,11 +354,11 @@ export const TrainerCalendarListPage: React.FC = () => {
   };
 
   const BookingCard: React.FC<{ booking: Booking; showActions?: boolean }> = ({ booking, showActions = false }) => {
-    const { date, time } = formatDateTime(booking.scheduledAt);
+    const { date, time } = formatDateTime(booking.scheduled_at);
     
     // Check if trainer has proposed a reschedule
-    const trainerRescheduleRequest = (booking.rescheduleRequests || []).find(
-      request => request.requestedBy === 'trainer' && request.status === 'pending'
+    const trainerRescheduleRequest = (booking.reschedule_requests || []).find(
+      (request: RescheduleRequest) => request.requestedBy === 'trainer' && request.status === 'pending'
     );
     
     const getBookingStatusInfo = () => {
@@ -324,10 +386,10 @@ export const TrainerCalendarListPage: React.FC = () => {
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
+              <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <User className="h-3 w-3" />
-                {getClientName(booking.clientId)}
+                {getClientName(booking.client_id)}
               </p>
             </div>
             {statusInfo && (
@@ -420,7 +482,7 @@ export const TrainerCalendarListPage: React.FC = () => {
               </p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                 <Clock className="h-4 w-4" />
-                <span>{block.startTime} - {block.endTime}</span>
+                <span>{block.start_time} - {block.end_time}</span>
               </div>
             </div>
             <Button
@@ -585,11 +647,11 @@ export const TrainerCalendarListPage: React.FC = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
+                        <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.client_id)}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                          Stary termin: {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
@@ -637,8 +699,8 @@ export const TrainerCalendarListPage: React.FC = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
+                        <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.client_id)}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Zaproponowany termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
                           {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
@@ -669,11 +731,11 @@ export const TrainerCalendarListPage: React.FC = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
+                        <h3 className="font-semibold">{getServiceName(booking.service_id)}</h3>
+                        <p className="text-sm text-muted-foreground">{getClientName(booking.client_id)}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                          Stary termin: {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
+                          {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
@@ -709,7 +771,13 @@ export const TrainerCalendarListPage: React.FC = () => {
                         size="sm"
                         onClick={async () => {
                           try {
-                            await dataStore.withdrawRescheduleRequest(booking.id, request.id);
+                            const requests = booking.reschedule_requests || [];
+                            const updatedRequests = requests.filter((r: RescheduleRequest) => r.id !== request.id);
+                            
+                            await bookingsService.update(booking.id, {
+                              reschedule_requests: updatedRequests
+                            });
+                            
                             refreshData();
                             toast({
                               title: "Propozycja wycofana",
