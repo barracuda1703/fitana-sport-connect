@@ -139,7 +139,7 @@ export const TrainerProfileSettings: React.FC = () => {
 
     setSaving(true);
     try {
-      await trainersService.updateByUserId(user.id, trainerData);
+      await trainersService.upsert(user.id, trainerData);
 
       toast({
         title: "Zapisano zmiany",

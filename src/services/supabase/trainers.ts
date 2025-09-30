@@ -109,6 +109,20 @@ export const trainersService = {
     return data;
   },
 
+  async upsert(userId: string, trainerData: any) {
+    const { data, error } = await supabase
+      .from('trainers')
+      .upsert(
+        { user_id: userId, ...trainerData },
+        { onConflict: 'user_id' }
+      )
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
   async searchBySpecialty(specialty: string) {
     const { data, error } = await supabase
       .from('trainers')
