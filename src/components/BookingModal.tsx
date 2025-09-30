@@ -20,6 +20,7 @@ interface Service {
 
 interface Trainer {
   id: string;
+  user_id: string;
   display_name: string | null;
   services: any;
 }
@@ -104,6 +105,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   const handleConfirmBooking = async () => {
     if (!user || !selectedService || !selectedDate || !selectedTime) return;
 
+    // Validate trainer has user_id
+    if (!trainer.user_id) {
+      toast({
+        title: "Błąd",
+        description: "Brak danych trenera. Spróbuj ponownie.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const [hours, minutes] = selectedTime.split(':').map(Number);
       const scheduledAt = new Date(selectedDate);
@@ -112,18 +123,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
       // Use service name as identifier since services don't have explicit IDs
       const serviceIdentifier = selectedService.name;
       
-      await bookingsService.create({
+      const bookingData = {
         client_id: user.id,
-        trainer_id: trainer.id,
+        trainer_id: trainer.user_id, // Use user_id to match profiles table
         service_id: serviceIdentifier,
         scheduled_at: scheduledAt.toISOString(),
         status: 'pending',
         notes: notes.trim() || undefined,
         reschedule_requests: []
-      });
+      };
 
-      // Create chat between client and trainer
-      await chatsService.createForBooking(user.id, trainer.id);
+      console.log('Creating booking with data:', bookingData);
+      
+      await bookingsService.create(bookingData);
+
+      // Create chat between client and trainer using user_id
+      await chatsService.createForBooking(user.id, trainer.user_id);
 
       toast({
         title: "Rezerwacja wysłana!",
@@ -132,9 +147,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
 
       onClose();
     } catch (error) {
+      console.error('Booking creation error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Nie udało się wysłać rezerwacji';
       toast({
         title: "Błąd",
-        description: "Nie udało się wysłać rezerwacji",
+        description: errorMessage,
         variant: "destructive"
       });
     }
