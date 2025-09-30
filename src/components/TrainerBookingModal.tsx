@@ -52,16 +52,14 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [availableHours] = useState<string[]>(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00']);
 
-  // Mock clients data - in real app would come from backend
   const [existingClients] = useState<Client[]>([
     { id: 'u-client1', name: 'Kasia Nowak', email: 'kasia@example.com' },
     { id: 'u-client2', name: 'Marek Kowalski', email: 'marek@example.com' },
     { id: 'u-client3', name: 'Anna Wiśniewska', email: 'anna@example.com' }
   ]);
 
-  // Mock trainer services - in real app would come from user profile
   const [trainerServices] = useState<Service[]>([
     {
       id: 'srv-1',
@@ -86,7 +84,6 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     }
   ]);
 
-  // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setStep('client');
@@ -98,18 +95,8 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
       setSelectedDate(undefined);
       setSelectedTime('');
       setNotes('');
-      setAvailableHours([]);
     }
   }, [isOpen]);
-
-  // Load available hours when date and service are selected
-  useEffect(() => {
-    if (selectedService && selectedDate && user) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const hours = dataStore.getAvailableHoursWithSettings(user.id, dateStr, selectedService.duration);
-      setAvailableHours(hours);
-    }
-  }, [selectedService, selectedDate, user]);
 
   const handleClientSelect = (clientId: string) => {
     const client = existingClients.find(c => c.id === clientId);
@@ -169,38 +156,30 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     const scheduledAt = new Date(selectedDate);
     scheduledAt.setHours(hours, minutes, 0, 0);
     
-    // Check for conflicts
-    const existingBookings = dataStore.getBookings(user.id);
-    const hasConflict = existingBookings.some(booking => 
-      booking.status === 'confirmed' && 
-      booking.scheduledAt === scheduledAt.toISOString()
-    );
+    try {
+      await bookingsService.create({
+        client_id: selectedClient.id,
+        trainer_id: user.id,
+        service_id: selectedService.id,
+        scheduled_at: scheduledAt.toISOString(),
+        status: 'confirmed',
+        notes: notes.trim() || undefined,
+      });
 
-    if (hasConflict) {
       toast({
-        title: "Konflikt terminów",
-        description: "Masz już trening zaplanowany w tym czasie.",
+        title: "Trening dodany!",
+        description: `Trening z ${selectedClient.name} został dodany do kalendarza.`,
+      });
+
+      onBookingCreated();
+      onClose();
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się dodać treningu",
         variant: "destructive"
       });
-      return;
     }
-    
-    await dataStore.createBooking({
-      clientId: selectedClient.id,
-      trainerId: user.id,
-      serviceId: selectedService.id,
-      scheduledAt: scheduledAt.toISOString(),
-      status: 'confirmed', // Trainer-created bookings are automatically confirmed
-      notes: notes.trim() || undefined,
-    });
-
-    toast({
-      title: "Trening dodany!",
-      description: `Trening z ${selectedClient.name} został dodany do kalendarza.`,
-    });
-
-    onBookingCreated();
-    onClose();
   };
 
   const handleBack = () => {
@@ -251,281 +230,191 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center text-xl">
-              📅
-            </div>
-            <div>
-              <h3 className="font-semibold">Dodaj trening</h3>
-              <p className="text-sm text-muted-foreground">{getStepTitle()}</p>
-            </div>
+            {getStepTitle()}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Step Progress Indicator */}
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center gap-2">
-            {['client', 'service', 'date', 'hour', 'notes', 'summary'].map((stepName, index) => (
-              <div key={stepName} className="flex items-center">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-                  step === stepName ? "bg-primary text-primary-foreground" :
-                  ['client', 'service', 'date', 'hour', 'notes', 'summary'].indexOf(step) > index ? "bg-success text-white" :
-                  "bg-muted text-muted-foreground"
-                )}>
-                  {['client', 'service', 'date', 'hour', 'notes', 'summary'].indexOf(step) > index ? 
-                    <Check className="h-4 w-4" /> : 
-                    index + 1
-                  }
-                </div>
-                {index < 5 && (
-                  <div className={cn(
-                    "w-4 h-0.5 mx-1",
-                    ['client', 'service', 'date', 'hour', 'notes', 'summary'].indexOf(step) > index ? "bg-success" : "bg-muted"
-                  )} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Step 1: Client Selection */}
-        {step === 'client' && (
-          <div className="space-y-4">
-            {!newClientMode ? (
-              <>
-                <div className="space-y-2">
-                  {existingClients.map((client) => (
-                    <Card 
-                      key={client.id} 
-                      className="cursor-pointer hover:shadow-card transition-all duration-200 hover:border-primary"
-                      onClick={() => handleClientSelect(client.id)}
+        <div className="space-y-4">
+          {step === 'client' && (
+            <div className="space-y-3">
+              {!newClientMode ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Istniejący klienci</Label>
+                    {existingClients.map(client => (
+                      <Card 
+                        key={client.id}
+                        className="cursor-pointer hover:bg-accent transition-colors"
+                        onClick={() => handleClientSelect(client.id)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-3">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{client.name}</p>
+                              <p className="text-xs text-muted-foreground">{client.email}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setNewClientMode(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Dodaj nowego klienta
+                  </Button>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Imię i nazwisko</Label>
+                    <Input
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      placeholder="np. Jan Kowalski"
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      placeholder="jan@example.com"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setNewClientMode(false)}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <h5 className="font-medium">{client.name}</h5>
-                            <p className="text-sm text-muted-foreground">{client.email}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      Anuluj
+                    </Button>
+                    <Button 
+                      className="flex-1"
+                      onClick={handleNewClient}
+                    >
+                      Dodaj
+                    </Button>
+                  </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => setNewClientMode(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Dodaj nowego klienta
-                </Button>
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clientName">Imię i nazwisko</Label>
-                  <Input
-                    id="clientName"
-                    placeholder="Np. Jan Kowalski"
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientEmail">Email</Label>
-                  <Input
-                    id="clientEmail"
-                    type="email"
-                    placeholder="jan@example.com"
-                    value={newClientEmail}
-                    onChange={(e) => setNewClientEmail(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setNewClientMode(false)}>
-                    Anuluj
-                  </Button>
-                  <Button onClick={handleNewClient} className="flex-1">
-                    Dodaj klienta
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {/* Step 2: Service Selection */}
-        {step === 'service' && (
-          <div className="space-y-4">
+          {step === 'service' && (
             <div className="space-y-2">
-              {trainerServices.map((service) => (
+              {trainerServices.map(service => (
                 <Card 
-                  key={service.id} 
-                  className="cursor-pointer hover:shadow-card transition-all duration-200 hover:border-primary"
+                  key={service.id}
+                  className="cursor-pointer hover:bg-accent transition-colors"
                   onClick={() => handleServiceSelect(service)}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h5 className="font-medium">{service.name}</h5>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                          <Clock className="h-3 w-3" />
-                          {service.duration} min
-                          <Badge variant="outline" className="ml-2">
-                            {service.type === 'online' ? 'Online' : 
-                             service.type === 'gym' ? 'Siłownia' :
-                             service.type === 'court' ? 'Kort' : 'Dojazd'}
-                          </Badge>
+                        <p className="font-medium">{service.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {service.duration} min • {service.type}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-primary">{service.price} zł</div>
-                      </div>
+                      <Badge>{service.price} zł</Badge>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 3: Date Selection */}
-        {step === 'date' && selectedService && (
-          <div className="space-y-4">
-            <div className="text-center">
+          {step === 'date' && (
+            <div className="space-y-3">
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={handleDateSelect}
                 disabled={(date) => !isDateAvailable(date)}
-                className={cn("mx-auto pointer-events-auto")}
+                className="w-full"
               />
             </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Wybierz datę dla: <strong>{selectedService.name}</strong>
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* Step 4: Hour Selection */}
-        {step === 'hour' && selectedService && selectedDate && (
-          <div className="space-y-4">
-            <div className="text-center mb-4">
-              <p className="text-sm text-muted-foreground">
-                {selectedDate.toLocaleDateString('pl-PL', { 
-                  weekday: 'long', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
-              <p className="font-medium">{selectedService.name}</p>
+          {step === 'hour' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                {availableHours.map((time) => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleTimeSelect(time)}
+                  >
+                    {time}
+                  </Button>
+                ))}
+              </div>
             </div>
-            
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-              {availableHours.map((time) => (
-                <Button
-                  key={time}
-                  variant={selectedTime === time ? "default" : "outline"}
-                  onClick={() => handleTimeSelect(time)}
-                  className="h-12"
-                >
-                  {time}
-                </Button>
-              ))}
+          )}
+
+          {step === 'notes' && (
+            <div className="space-y-3">
+              <div>
+                <Label>Notatki (opcjonalne)</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Dodaj uwagi do tego treningu..."
+                  rows={4}
+                />
+              </div>
+              <Button 
+                className="w-full"
+                onClick={handleNotesNext}
+              >
+                Dalej
+              </Button>
             </div>
-            
-            {availableHours.length === 0 && (
-              <Card className="bg-muted/50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Brak dostępnych godzin na wybrany dzień
-                  </p>
+          )}
+
+          {step === 'summary' && (
+            <div className="space-y-4">
+              <Card className="bg-gradient-card">
+                <CardContent className="p-4 space-y-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Klient</p>
+                    <p className="font-medium">{selectedClient?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Usługa</p>
+                    <p className="font-medium">{selectedService?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data i godzina</p>
+                    <p className="font-medium">
+                      {selectedDate?.toLocaleDateString('pl-PL')} o {selectedTime}
+                    </p>
+                  </div>
+                  {notes && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Notatki</p>
+                      <p className="text-sm">{notes}</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
-          </div>
-        )}
-
-        {/* Step 5: Notes */}
-        {step === 'notes' && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Notatki (opcjonalne):</label>
-              <Textarea
-                placeholder="Np. Pierwszy trening, skupić się na technice, klient ma kontuzję..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="mt-2"
-                rows={4}
-              />
+              <Button 
+                className="w-full"
+                onClick={handleConfirmBooking}
+              >
+                Potwierdź rezerwację
+              </Button>
             </div>
-            
-            <Button onClick={handleNotesNext} className="w-full">
-              Dalej
-            </Button>
-          </div>
-        )}
-
-        {/* Step 6: Summary */}
-        {step === 'summary' && selectedClient && selectedService && selectedDate && (
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{selectedClient.name}</p>
-                    <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
-                    💪
-                  </div>
-                  <div>
-                    <p className="font-medium">{selectedService.name}</p>
-                    <p className="text-sm text-muted-foreground">{selectedService.duration} min</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    {selectedDate.toLocaleDateString('pl-PL', { 
-                      weekday: 'long', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })} o {selectedTime}
-                  </span>
-                </div>
-                
-                {notes && (
-                  <div className="pt-2 border-t">
-                    <p className="text-sm font-medium mb-1">Notatki:</p>
-                    <p className="text-sm text-muted-foreground">{notes}</p>
-                  </div>
-                )}
-                
-                <div className="pt-2 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Koszt:</span>
-                    <span className="text-lg font-bold text-primary">{selectedService.price} zł</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Button onClick={handleConfirmBooking} className="w-full" size="lg">
-              Dodaj trening do kalendarza
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

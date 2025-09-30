@@ -11,7 +11,7 @@ import { ConflictResolutionModal } from '@/components/ConflictResolutionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { bookingsService } from '@/services/supabase';
+import { bookingsService, type Booking } from '@/services/supabase';
 
 export const TrainerDashboard: React.FC = () => {
   const { t } = useLanguage();
@@ -19,13 +19,12 @@ export const TrainerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
+  const [rescheduleBooking, setRescheduleBooking] = useState<any>(null);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
-  const [conflictBooking, setConflictBooking] = useState<Booking | null>(null);
-  const [pendingBooking, setPendingBooking] = useState<Booking | null>(null);
+  const [conflicts, setConflicts] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -36,7 +35,7 @@ export const TrainerDashboard: React.FC = () => {
   const loadBookings = async () => {
     if (!user) return;
     try {
-      const data = dataStore.getBookings(user.id);
+      const data = await bookingsService.getByUserId(user.id);
       setBookings(data);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -48,32 +47,9 @@ export const TrainerDashboard: React.FC = () => {
     }
   };
 
-  // Check for booking conflicts
-  const hasConflict = (scheduledAt: string) => {
-    return bookings.some(booking => 
-      booking.status === 'confirmed' && 
-      booking.scheduledAt === scheduledAt
-    );
-  };
-
   const handleAcceptBooking = async (bookingId: string) => {
-    const booking = bookings.find(b => b.id === bookingId);
-    if (!booking) return;
-
-    // Check for conflicts
-    if (hasConflict(booking.scheduledAt)) {
-      const conflictingBooking = bookings.find(b => 
-        b.status === 'confirmed' && 
-        b.scheduledAt === booking.scheduledAt
-      );
-      setConflictBooking(conflictingBooking || null);
-      setPendingBooking(booking);
-      setIsConflictModalOpen(true);
-      return;
-    }
-
     try {
-      dataStore.updateBookingStatus(bookingId, 'confirmed');
+      await bookingsService.updateStatus(bookingId, 'confirmed');
       await loadBookings();
       toast({
         title: "Wizyta zaakceptowana",
@@ -91,7 +67,7 @@ export const TrainerDashboard: React.FC = () => {
 
   const handleDeclineBooking = async (bookingId: string) => {
     try {
-      dataStore.updateBookingStatus(bookingId, 'declined');
+      await bookingsService.updateStatus(bookingId, 'declined');
       await loadBookings();
       toast({
         title: "Wizyta odrzucona", 
@@ -122,43 +98,17 @@ export const TrainerDashboard: React.FC = () => {
     });
   };
 
-  const handleConflictReplace = async () => {
-    if (!pendingBooking || !conflictBooking) return;
-    
-    try {
-      // Decline the conflicting booking
-      dataStore.updateBookingStatus(conflictBooking.id, 'declined');
-      // Accept the new booking
-      dataStore.updateBookingStatus(pendingBooking.id, 'confirmed');
-      
-      await loadBookings();
-      
-      setIsConflictModalOpen(false);
-      setConflictBooking(null);
-      setPendingBooking(null);
-      
-      toast({
-        title: "Trening zastąpiony",
-        description: "Nowy trening został zaakceptowany, a poprzedni anulowany.",
-      });
-    } catch (error) {
-      console.error('Error replacing booking:', error);
-      toast({
-        title: "Błąd",
-        description: "Nie udało się zastąpić treningu",
-        variant: "destructive"
-      });
+  const handleConflictResolve = async (bookingId: string, action: 'cancel' | 'reschedule') => {
+    if (action === 'cancel') {
+      await handleDeclineBooking(bookingId);
+    } else {
+      const booking = conflicts.find(b => b.id === bookingId);
+      if (booking) {
+        handleProposeNewTime(booking);
+      }
     }
-  };
-
-  const handleConflictReschedule = () => {
-    if (!pendingBooking) return;
-    
     setIsConflictModalOpen(false);
-    setRescheduleBooking(pendingBooking);
-    setIsRescheduleModalOpen(true);
-    setConflictBooking(null);
-    setPendingBooking(null);
+    setConflicts([]);
   };
 
   const handlePendingClick = () => {
@@ -166,14 +116,13 @@ export const TrainerDashboard: React.FC = () => {
   };
 
   const todayBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.scheduledAt);
+    const bookingDate = new Date(booking.scheduled_at);
     const today = new Date();
     return bookingDate.toDateString() === today.toDateString() && booking.status === 'confirmed';
   });
 
   const pendingBookings = bookings.filter(booking => booking.status === 'pending');
   
-  // Enhanced stats with better calculations
   const getWeeklyStats = () => {
     const now = new Date();
     const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
@@ -181,17 +130,17 @@ export const TrainerDashboard: React.FC = () => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     
     const weekBookings = bookings.filter(booking => {
-      const bookingDate = new Date(booking.scheduledAt);
+      const bookingDate = new Date(booking.scheduled_at);
       return bookingDate >= startOfWeek && bookingDate <= endOfWeek && booking.status === 'confirmed';
     });
     
-    const weeklyEarnings = weekBookings.reduce((sum, booking) => sum + 90, 0);
+    const weeklyEarnings = weekBookings.length * 90;
     
     return {
       count: weekBookings.length,
       earnings: weeklyEarnings,
       breakdown: weekBookings.reduce((acc, booking) => {
-        const day = new Date(booking.scheduledAt).getDay();
+        const day = new Date(booking.scheduled_at).getDay();
         const dayNames = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
         acc[dayNames[day]] = (acc[dayNames[day]] || 0) + 1;
         return acc;
@@ -206,7 +155,7 @@ export const TrainerDashboard: React.FC = () => {
     pendingBookings: pendingBookings.length,
     weeklyTrainings: weeklyStats.count,
     weeklyEarnings: weeklyStats.earnings,
-    todayEarnings: todayBookings.filter(b => b.status === 'confirmed').reduce((sum, b) => sum + 90, 0),
+    todayEarnings: todayBookings.filter(b => b.status === 'confirmed').length * 90,
     rating: 4.9,
     completedSessions: 127,
     weekBreakdown: weeklyStats.breakdown
@@ -214,7 +163,6 @@ export const TrainerDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
         <div className="flex justify-between items-center">
           <div>
@@ -227,7 +175,6 @@ export const TrainerDashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Stats Overview */}
       <section className="p-4 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-gradient-card shadow-card">
@@ -270,7 +217,7 @@ export const TrainerDashboard: React.FC = () => {
                 {mockStats.weeklyTrainings}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {mockStats.weeklyEarnings} zł • {Object.entries(mockStats.weekBreakdown).slice(0, 3).map(([day, count]) => `${day}: ${count}`).join(' • ')}
+                {mockStats.weeklyEarnings} zł
               </div>
             </CardContent>
           </Card>
@@ -290,7 +237,6 @@ export const TrainerDashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Today's Schedule */}
       <section className="px-4 space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Dzisiejszy harmonogram</h2>
@@ -312,16 +258,16 @@ export const TrainerDashboard: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-primary">
-                        {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                        {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
                           hour: '2-digit', 
                           minute: '2-digit' 
                         })}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">Klient #{booking.clientId.slice(-4)}</h3>
+                      <h3 className="font-semibold">Klient #{booking.client_id.slice(-4)}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {booking.serviceId} • {booking.notes || 'Brak notatek'}
+                        {booking.service_id} • {booking.notes || 'Brak notatek'}
                       </p>
                     </div>
                   </div>
@@ -375,7 +321,6 @@ export const TrainerDashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Quick Actions */}
       <section className="p-4 space-y-4">
         <h2 className="text-xl font-semibold">Szybkie akcje</h2>
         <div className="grid grid-cols-2 gap-4">
@@ -398,21 +343,18 @@ export const TrainerDashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Bottom Navigation */}
       <BottomNavigation 
         userRole="trainer"
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
 
-      {/* Reviews Modal */}
       <ReviewsModal
         isOpen={isReviewsModalOpen}
         onClose={() => setIsReviewsModalOpen(false)}
         trainerId={user?.id || ''}
       />
 
-      {/* Reschedule Modal */}
       {rescheduleBooking && (
         <RescheduleModal
           isOpen={isRescheduleModalOpen}
@@ -422,14 +364,11 @@ export const TrainerDashboard: React.FC = () => {
         />
       )}
 
-      {/* Conflict Resolution Modal */}
       <ConflictResolutionModal
         isOpen={isConflictModalOpen}
         onClose={() => setIsConflictModalOpen(false)}
-        conflictingBooking={conflictBooking}
-        newBooking={pendingBooking}
-        onReplace={handleConflictReplace}
-        onReschedule={handleConflictReschedule}
+        conflicts={conflicts}
+        onResolve={handleConflictResolve}
       />
     </div>
   );

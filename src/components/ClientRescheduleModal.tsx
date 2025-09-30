@@ -6,16 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { bookingsService } from '@/services/supabase';
+import { bookingsService, type Booking } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
-
-interface Booking {
-  id: string;
-  scheduled_at: string;
-  service_id: string;
-  trainer_id: string;
-  status: string;
-}
 
 interface ClientRescheduleModalProps {
   isOpen: boolean;

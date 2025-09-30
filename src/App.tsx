@@ -15,8 +15,8 @@ import { TrainerDashboard } from "@/pages/TrainerDashboard";
 import { CalendarPage } from "@/pages/Calendar";
 import { ClientCalendarPage } from "@/pages/ClientCalendar";
 import { TrainerCalendarListPage } from '@/pages/TrainerCalendarList';
-import { TrainerSettingsPage } from '@/pages/TrainerSettings';
-import { ProfileEditPage } from "@/pages/ProfileEdit";
+import { TrainerSettings } from '@/pages/TrainerSettings';
+import { ProfileEdit } from "@/pages/ProfileEdit";
 import { ProfileSetup } from "@/pages/ProfileSetup";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
@@ -103,12 +103,12 @@ const AppRoutes: React.FC = () => {
       } />
       <Route path="/trainer-settings" element={
         <RoleProtectedRoute allowedRole="trainer">
-          <TrainerSettingsPage />
+          <TrainerSettings />
         </RoleProtectedRoute>
       } />
       <Route path="/profile/edit" element={
         <ProtectedRoute>
-          <ProfileEditPage />
+          <ProfileEdit />
         </ProtectedRoute>
       } />
       <Route path="/profile/setup" element={
