@@ -16,7 +16,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Location, Service } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 export const ProfileEditPage: React.FC = () => {
   const { user, switchRole, refreshUser } = useAuth();
