@@ -18,7 +18,7 @@ import { RescheduleNotificationModal } from '@/components/RescheduleNotification
 import { TrainerBookingModal } from '@/components/TrainerBookingModal';
 import { TimeOffModal } from '@/components/TimeOffModal';
 import { CalendarViewSwitcher, CalendarGrid, useCalendarEvents, CalendarEvent } from '@/components/calendar';
-import { dataStore, Booking, ManualBlock, RescheduleRequest, TimeOff } from '@/services/DataStore';
+import { bookingsService, Booking, manualBlocksService, ManualBlock, timeOffService, TimeOff } from '@/services/supabase';
 
 type ViewType = 'list' | 'calendar';
 

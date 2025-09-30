@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { dataStore, Booking } from '@/services/DataStore';
+import { bookingsService, Booking } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface RescheduleModalProps {
@@ -45,7 +45,8 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   // Load available dates when modal opens
   useEffect(() => {
     if (isOpen && booking) {
-      const dates = dataStore.getAvailableDates(booking.trainerId);
+      // TODO: Implement getAvailableDates in backend
+      const dates: string[] = [];
       setAvailableDates(dates);
     }
   }, [isOpen, booking]);
@@ -53,8 +54,8 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   // Load available hours when date is selected
   useEffect(() => {
     if (selectedDate && booking) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const hours = dataStore.getAvailableHoursWithSettings(booking.trainerId, dateStr, 60);
+      // TODO: Implement getAvailableHours in backend
+      const hours: string[] = [];
       setAvailableHours(hours);
     }
   }, [selectedDate, booking]);
@@ -79,7 +80,16 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       const [hours, minutes] = selectedTime.split(':').map(Number);
       newScheduledAt.setHours(hours, minutes, 0, 0);
 
-      await dataStore.addRescheduleRequest(booking.id, 'trainer', newScheduledAt.toISOString());
+      const rescheduleRequests = [...(booking.reschedule_requests || []), {
+        id: crypto.randomUUID(),
+        requestedAt: new Date().toISOString(),
+        requestedBy: 'trainer',
+        newTime: newScheduledAt.toISOString(),
+        status: 'pending',
+        awaitingDecisionBy: 'client'
+      }];
+
+      await bookingsService.update(booking.id, { reschedule_requests: rescheduleRequests });
       
       toast({
         title: "Propozycja wysłana",
@@ -129,11 +139,11 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
         <Card className="bg-gradient-card">
           <CardContent className="p-3">
             <div className="text-sm">
-              <p className="font-medium">{getClientName(booking.clientId)}</p>
-              <p className="text-muted-foreground">{getServiceName(booking.serviceId)}</p>
+              <p className="font-medium">{getClientName(booking.client_id)}</p>
+              <p className="text-muted-foreground">{getServiceName(booking.service_id)}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Obecny termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
-                {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                Obecny termin: {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
+                {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
                   hour: '2-digit', 
                   minute: '2-digit' 
                 })}

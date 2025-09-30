@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Users, TrendingUp, Settings, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { ConflictResolutionModal } from '@/components/ConflictResolutionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { dataStore, Booking } from '@/services/DataStore';
+import { bookingsService, Booking } from '@/services/supabase';
 
 export const TrainerDashboard: React.FC = () => {
   const { t } = useLanguage();
@@ -27,18 +27,32 @@ export const TrainerDashboard: React.FC = () => {
   const [conflictBooking, setConflictBooking] = useState<Booking | null>(null);
   const [pendingBooking, setPendingBooking] = useState<Booking | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
-      const userBookings = dataStore.getBookings(user.id);
-      setBookings(userBookings);
+      loadBookings();
     }
   }, [user]);
+
+  const loadBookings = async () => {
+    if (!user) return;
+    try {
+      const data = await bookingsService.getByUserId(user.id);
+      setBookings(data as any);
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się załadować rezerwacji",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Check for booking conflicts
   const hasConflict = (scheduledAt: string) => {
     return bookings.some(booking => 
       booking.status === 'confirmed' && 
-      booking.scheduledAt === scheduledAt
+      booking.scheduled_at === scheduledAt
     );
   };
 
@@ -47,10 +61,10 @@ export const TrainerDashboard: React.FC = () => {
     if (!booking) return;
 
     // Check for conflicts
-    if (hasConflict(booking.scheduledAt)) {
+    if (hasConflict(booking.scheduled_at)) {
       const conflictingBooking = bookings.find(b => 
         b.status === 'confirmed' && 
-        b.scheduledAt === booking.scheduledAt
+        b.scheduled_at === booking.scheduled_at
       );
       setConflictBooking(conflictingBooking || null);
       setPendingBooking(booking);
@@ -58,25 +72,39 @@ export const TrainerDashboard: React.FC = () => {
       return;
     }
 
-    await dataStore.updateBookingStatus(bookingId, 'confirmed');
-    if (user) {
-      setBookings(dataStore.getBookings(user.id));
+    try {
+      await bookingsService.updateStatus(bookingId, 'confirmed');
+      await loadBookings();
+      toast({
+        title: "Wizyta zaakceptowana",
+        description: "Klient został powiadomiony o potwierdzeniu.",
+      });
+    } catch (error) {
+      console.error('Error accepting booking:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaakceptować wizyty",
+        variant: "destructive"
+      });
     }
-    toast({
-      title: "Wizyta zaakceptowana",
-      description: "Klient został powiadomiony o potwierdzeniu.",
-    });
   };
 
   const handleDeclineBooking = async (bookingId: string) => {
-    await dataStore.updateBookingStatus(bookingId, 'declined');
-    if (user) {
-      setBookings(dataStore.getBookings(user.id));
+    try {
+      await bookingsService.updateStatus(bookingId, 'declined');
+      await loadBookings();
+      toast({
+        title: "Wizyta odrzucona", 
+        description: "Klient został powiadomiony o odrzuceniu.",
+      });
+    } catch (error) {
+      console.error('Error declining booking:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się odrzucić wizyty",
+        variant: "destructive"
+      });
     }
-    toast({
-      title: "Wizyta odrzucona", 
-      description: "Klient został powiadomiony o odrzuceniu.",
-    });
   };
 
   const handleProposeNewTime = (booking: Booking) => {
@@ -84,10 +112,8 @@ export const TrainerDashboard: React.FC = () => {
     setIsRescheduleModalOpen(true);
   };
 
-  const handleRescheduleComplete = () => {
-    if (user) {
-      setBookings(dataStore.getBookings(user.id));
-    }
+  const handleRescheduleComplete = async () => {
+    await loadBookings();
     setIsRescheduleModalOpen(false);
     setRescheduleBooking(null);
     toast({
@@ -99,23 +125,30 @@ export const TrainerDashboard: React.FC = () => {
   const handleConflictReplace = async () => {
     if (!pendingBooking || !conflictBooking) return;
     
-    // Decline the conflicting booking
-    await dataStore.updateBookingStatus(conflictBooking.id, 'declined');
-    // Accept the new booking
-    await dataStore.updateBookingStatus(pendingBooking.id, 'confirmed');
-    
-    if (user) {
-      setBookings(dataStore.getBookings(user.id));
+    try {
+      // Decline the conflicting booking
+      await bookingsService.updateStatus(conflictBooking.id, 'declined');
+      // Accept the new booking
+      await bookingsService.updateStatus(pendingBooking.id, 'confirmed');
+      
+      await loadBookings();
+      
+      setIsConflictModalOpen(false);
+      setConflictBooking(null);
+      setPendingBooking(null);
+      
+      toast({
+        title: "Trening zastąpiony",
+        description: "Nowy trening został zaakceptowany, a poprzedni anulowany.",
+      });
+    } catch (error) {
+      console.error('Error replacing booking:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zastąpić treningu",
+        variant: "destructive"
+      });
     }
-    
-    setIsConflictModalOpen(false);
-    setConflictBooking(null);
-    setPendingBooking(null);
-    
-    toast({
-      title: "Trening zastąpiony",
-      description: "Nowy trening został zaakceptowany, a poprzedni anulowany.",
-    });
   };
 
   const handleConflictReschedule = () => {
@@ -133,7 +166,7 @@ export const TrainerDashboard: React.FC = () => {
   };
 
   const todayBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.scheduledAt);
+    const bookingDate = new Date(booking.scheduled_at);
     const today = new Date();
     return bookingDate.toDateString() === today.toDateString() && booking.status === 'confirmed';
   });
@@ -148,7 +181,7 @@ export const TrainerDashboard: React.FC = () => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     
     const weekBookings = bookings.filter(booking => {
-      const bookingDate = new Date(booking.scheduledAt);
+      const bookingDate = new Date(booking.scheduled_at);
       return bookingDate >= startOfWeek && bookingDate <= endOfWeek && booking.status === 'confirmed';
     });
     
@@ -158,7 +191,7 @@ export const TrainerDashboard: React.FC = () => {
       count: weekBookings.length,
       earnings: weeklyEarnings,
       breakdown: weekBookings.reduce((acc, booking) => {
-        const day = new Date(booking.scheduledAt).getDay();
+        const day = new Date(booking.scheduled_at).getDay();
         const dayNames = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
         acc[dayNames[day]] = (acc[dayNames[day]] || 0) + 1;
         return acc;
@@ -279,16 +312,16 @@ export const TrainerDashboard: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <div className="text-lg font-bold text-primary">
-                        {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                        {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
                           hour: '2-digit', 
                           minute: '2-digit' 
                         })}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">Klient #{booking.clientId.slice(-4)}</h3>
+                      <h3 className="font-semibold">Klient #{booking.client_id.slice(-4)}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {booking.serviceId} • {booking.notes || 'Brak notatek'}
+                        {booking.service_id} • {booking.notes || 'Brak notatek'}
                       </p>
                     </div>
                   </div>
