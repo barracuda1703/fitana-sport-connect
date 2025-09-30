@@ -28,15 +28,7 @@ export const Landing: React.FC = () => {
   };
 
   const handleRoleSelect = (role: 'client' | 'trainer') => {
-    setSelectedRole(role);
-    console.log(`Selected role: ${role}`);
-    
-    // Navigate to appropriate page based on role
-    if (role === 'client') {
-      navigate('/client');
-    } else {
-      navigate('/trainer');
-    }
+    navigate('/auth', { state: { role } });
   };
 
   if (showRoleSelection) {

@@ -16,10 +16,11 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Location, Service } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 export const ProfileEditPage: React.FC = () => {
   const { user, switchRole, refreshUser } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -61,7 +62,7 @@ export const ProfileEditPage: React.FC = () => {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.avatarUrl || null);
   const [gallery, setGallery] = useState<string[]>((user as any)?.gallery || []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // For trainers, validate that they have at least one location and one specialty
     if (user?.role === 'trainer') {
       if (locations.length === 0) {
@@ -107,18 +108,33 @@ export const ProfileEditPage: React.FC = () => {
       })
     };
 
-    if (user?.role === 'trainer') {
-      // Sync trainer profile if user is a trainer
-      console.log('Syncing trainer profile with data:', {
+    // Update profile in Supabase
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
         name: updatedUserData.name,
         surname: updatedUserData.surname,
-        avatarUrl: updatedUserData.avatarUrl,
-        specialties: (updatedUserData as any).specialties
+        city: updatedUserData.city,
+        language: updatedUserData.language,
+        avatarUrl: updatedUserData.avatarUrl
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Error updating profile:', updateError);
+      toast({
+        title: t('error'),
+        description: 'Nie udało się zapisać zmian',
+        variant: 'destructive'
       });
-      dataStore.syncTrainerProfile(user.id, updatedUserData);
+      return;
+    }
+
+    // Also sync with DataStore for backward compatibility
+    if (user?.role === 'trainer') {
+      dataStore.syncTrainerProfile(user.id, { ...updatedUserData, password: '' });
     } else {
-      // For clients, update user data directly
-      dataStore.updateUser(user.id, updatedUserData);
+      dataStore.updateUser(user.id, { ...updatedUserData, password: '' });
     }
 
     // Refresh user data in context

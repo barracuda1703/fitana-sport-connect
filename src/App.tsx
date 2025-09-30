@@ -8,7 +8,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { RoleSwitch } from "@/components/RoleSwitch";
 import { Index } from "@/pages/Index";
 import { Landing } from "@/pages/Landing";
-import { Login } from "@/pages/Login";
+import { AuthScreen } from "@/pages/AuthScreen";
+import { AuthCallback } from "@/pages/AuthCallback";
 import { ClientHome } from "@/pages/ClientHome";
 import { TrainerDashboard } from "@/pages/TrainerDashboard";
 import { CalendarPage } from "@/pages/Calendar";
@@ -34,7 +35,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   
   return <>{children}</>;
@@ -51,7 +52,7 @@ const RoleProtectedRoute: React.FC<{
   }
   
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   
   if (user.role !== allowedRole) {
@@ -65,8 +66,10 @@ const AppRoutes: React.FC = () => {
   return (
     <div className="min-h-screen w-full">
       <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Index />} />
+      <Route path="/" element={<Landing />} />
+      <Route path="/auth" element={<AuthScreen />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/index" element={<Index />} />
       <Route path="/client" element={
         <RoleProtectedRoute allowedRole="client">
           <ClientHome />
