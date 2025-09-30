@@ -15,15 +15,13 @@ import { TrainerDashboard } from "@/pages/TrainerDashboard";
 import { CalendarPage } from "@/pages/Calendar";
 import { ClientCalendarPage } from "@/pages/ClientCalendar";
 import { TrainerCalendarListPage } from '@/pages/TrainerCalendarList';
-import { TrainerSettings } from '@/pages/TrainerSettings';
-import { ProfileEdit } from "@/pages/ProfileEdit";
+import { TrainerProfileSettings } from "@/pages/TrainerProfileSettings";
 import { ProfileSetup } from "@/pages/ProfileSetup";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
 import { ProfilePage } from "@/pages/Profile";
 import { ClientManagement } from "@/pages/ClientManagement";
 import { TrainerStatistics } from "@/pages/TrainerStatistics";
-import { TrainerPreferences } from "@/pages/TrainerPreferences";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -101,15 +99,10 @@ const AppRoutes: React.FC = () => {
           <TrainerCalendarListPage />
         </RoleProtectedRoute>
       } />
-      <Route path="/trainer-settings" element={
+      <Route path="/trainer/settings" element={
         <RoleProtectedRoute allowedRole="trainer">
-          <TrainerSettings />
+          <TrainerProfileSettings />
         </RoleProtectedRoute>
-      } />
-      <Route path="/profile/edit" element={
-        <ProtectedRoute>
-          <ProfileEdit />
-        </ProtectedRoute>
       } />
       <Route path="/profile/setup" element={
         <ProtectedRoute>
@@ -139,11 +132,6 @@ const AppRoutes: React.FC = () => {
       <Route path="/trainer/statistics" element={
         <RoleProtectedRoute allowedRole="trainer">
           <TrainerStatistics />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/trainer/preferences" element={
-        <RoleProtectedRoute allowedRole="trainer">
-          <TrainerPreferences />
         </RoleProtectedRoute>
       } />
         <Route path="*" element={<NotFound />} />

@@ -31,7 +31,7 @@ export const ProfilePage: React.FC = () => {
           <Button 
             variant="outline" 
             size="icon"
-            onClick={() => navigate('/profile/edit')}
+            onClick={() => navigate(user?.role === 'trainer' ? '/trainer/settings' : '/profile/edit')}
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -59,7 +59,7 @@ export const ProfilePage: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="icon"
-                onClick={() => navigate('/profile/edit')}
+                onClick={() => navigate(user.role === 'trainer' ? '/trainer/settings' : '/profile/edit')}
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -104,21 +104,11 @@ export const ProfilePage: React.FC = () => {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/profile/edit')}
+              onClick={() => navigate(user.role === 'trainer' ? '/trainer/settings' : '/profile/edit')}
             >
-              <User className="h-4 w-4 mr-2" />
-              Edytuj profil
+              <Settings className="h-4 w-4 mr-2" />
+              {user.role === 'trainer' ? 'Ustawienia profilu' : 'Edytuj profil'}
             </Button>
-            {user.role === 'trainer' && (
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => navigate('/trainer/preferences')}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Preferencje
-              </Button>
-            )}
             <Button 
               variant="outline" 
               className="w-full justify-start text-red-600 hover:text-red-700"
