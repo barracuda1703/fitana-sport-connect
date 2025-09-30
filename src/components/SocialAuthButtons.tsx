@@ -17,12 +17,11 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({ role, mode
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {
       setLoading(true);
-      const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: window.location.origin,
           queryParams: {
             role: role,
           },
