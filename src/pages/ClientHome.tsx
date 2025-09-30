@@ -268,13 +268,13 @@ export const ClientHome: React.FC = () => {
              <span className="text-xs text-muted-foreground">({trainers.length})</span>
            </button>
            
-           {sports.map((sport) => {
-             // Map DataStore sport IDs to specialty names for counting
-              const categoryCount = trainers.filter(trainer => 
-                trainer.specialties?.some(specialty => 
-                  specialty.toLowerCase().includes(sport.name.toLowerCase())
-                )
-              ).length;
+            {sports.map((sport) => {
+              // Count trainers by specialty
+               const categoryCount = trainers.filter(trainer => 
+                 trainer.specialties?.some(specialty => 
+                   specialty.toLowerCase().includes(sport.name.toLowerCase())
+                 )
+               ).length;
              
               return (
                 <button
