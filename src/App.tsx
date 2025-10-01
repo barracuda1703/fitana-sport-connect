@@ -21,6 +21,7 @@ import { ProfileSetup } from "@/pages/ProfileSetup";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
 import { ProfilePage } from "@/pages/Profile";
+import { ProfileEdit } from "@/pages/ProfileEdit";
 import { ClientManagement } from "@/pages/ClientManagement";
 import { TrainerStatistics } from "@/pages/TrainerStatistics";
 import NotFound from "./pages/NotFound";
@@ -123,6 +124,11 @@ const AppRoutes: React.FC = () => {
       <Route path="/profile" element={
         <ProtectedRoute>
           <ProfilePage />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile/edit" element={
+        <ProtectedRoute>
+          <ProfileEdit />
         </ProtectedRoute>
       } />
       <Route path="/trainer/clients" element={
