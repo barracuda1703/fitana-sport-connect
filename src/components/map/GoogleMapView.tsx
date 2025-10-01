@@ -56,13 +56,15 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
     // Initialize map centered on Warsaw
     const map = new google.maps.Map(mapRef.current, {
       center: { lat: 52.2297, lng: 21.0122 },
-      zoom: 12,
+      zoom: 10,
       mapId: 'FITANA_MAP',
       disableDefaultUI: false,
       zoomControl: true,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: true,
+      minZoom: 9,
+      maxZoom: 16,
     });
 
     mapInstanceRef.current = map;
@@ -137,11 +139,17 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
       locationGroups.forEach((group) => {
         bounds.extend({ lat: group.lat, lng: group.lng });
       });
-      mapInstanceRef.current.fitBounds(bounds);
+      mapInstanceRef.current.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
       
       // Don't zoom in too much for single markers
       if (locationGroups.size === 1) {
-        mapInstanceRef.current.setZoom(14);
+        mapInstanceRef.current.setZoom(12);
+      }
+      
+      // Make sure zoom doesn't go below minimum after fitBounds
+      const currentZoom = mapInstanceRef.current.getZoom();
+      if (currentZoom && currentZoom > 12) {
+        mapInstanceRef.current.setZoom(12);
       }
     }
   }, [isLoaded, trainers]);
