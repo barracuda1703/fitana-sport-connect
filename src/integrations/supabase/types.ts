@@ -107,6 +107,42 @@ export type Database = {
           },
         ]
       }
+      invitations: {
+        Row: {
+          booking_id: string | null
+          client_email: string
+          client_name: string | null
+          created_at: string | null
+          id: string
+          invitation_data: Json
+          status: string
+          trainer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          client_email: string
+          client_name?: string | null
+          created_at?: string | null
+          id?: string
+          invitation_data?: Json
+          status?: string
+          trainer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          client_email?: string
+          client_name?: string | null
+          created_at?: string | null
+          id?: string
+          invitation_data?: Json
+          status?: string
+          trainer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       manual_blocks: {
         Row: {
           created_at: string | null
