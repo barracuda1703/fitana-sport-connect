@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LocationProvider } from "@/contexts/LocationContext";
-import { RoleSwitch } from "@/components/RoleSwitch";
+
 import { Index } from "@/pages/Index";
 import { Landing } from "@/pages/Landing";
 import { AuthScreen } from "@/pages/AuthScreen";
@@ -154,12 +154,7 @@ const AuthenticatedApp: React.FC = () => {
     return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
   }
 
-  return (
-    <>
-      {user && <RoleSwitch />}
-      <AppRoutes />
-    </>
-  );
+  return <AppRoutes />;
 };
 
 const App = () => {

@@ -21,7 +21,6 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   logout: () => Promise<void>;
-  switchRole: (role: 'client' | 'trainer') => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -97,19 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null);
   };
 
-  const switchRole = async (role: 'client' | 'trainer') => {
-    if (user && session) {
-      const { error } = await (supabase as any)
-        .from('profiles')
-        .update({ role })
-        .eq('id', user.id);
-
-      if (!error) {
-        setUser({ ...user, role });
-      }
-    }
-  };
-
   const refreshUser = async () => {
     if (session?.user) {
       const { data: profile, error } = await (supabase as any)
@@ -127,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const value = React.useMemo(
-    () => ({ user, session, isLoading, logout, switchRole, refreshUser }),
+    () => ({ user, session, isLoading, logout, refreshUser }),
     [user, session, isLoading]
   );
 
