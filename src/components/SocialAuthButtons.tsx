@@ -18,10 +18,14 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({ role, mode
     try {
       setLoading(true);
       
+      // Always redirect to fitana.pl for OAuth since it's authorized in Google Cloud Console
+      // This ensures OAuth works on both preview and production domains
+      const redirectUrl = 'https://fitana.pl';
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: redirectUrl,
           queryParams: {
             role: role,
           },
