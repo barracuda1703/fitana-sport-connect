@@ -26,14 +26,14 @@ export interface Booking {
     surname: string;
     email: string;
     avatarurl?: string;
-  };
+  } | null;
   trainer?: {
     id: string;
     name: string;
     surname: string;
     email: string;
     avatarurl?: string;
-  };
+  } | null;
 }
 
 export const bookingsService = {
@@ -42,14 +42,14 @@ export const bookingsService = {
       .from('bookings')
       .select(`
         *,
-        client:profiles!bookings_client_id_fkey (
+        client:profiles!client_id (
           id,
           name,
           surname,
           email,
           avatarurl
         ),
-        trainer:profiles!bookings_trainer_id_fkey (
+        trainer:profiles!trainer_id (
           id,
           name,
           surname,
@@ -68,14 +68,14 @@ export const bookingsService = {
       .from('bookings')
       .select(`
         *,
-        client:profiles!bookings_client_id_fkey (
+        client:profiles!client_id (
           id,
           name,
           surname,
           email,
           avatarurl
         ),
-        trainer:profiles!bookings_trainer_id_fkey (
+        trainer:profiles!trainer_id (
           id,
           name,
           surname,
@@ -95,14 +95,14 @@ export const bookingsService = {
       .from('bookings')
       .select(`
         *,
-        client:profiles!bookings_client_id_fkey (
+        client:profiles!client_id (
           id,
           name,
           surname,
           email,
           avatarurl
         ),
-        trainer:profiles!bookings_trainer_id_fkey (
+        trainer:profiles!trainer_id (
           id,
           name,
           surname,
