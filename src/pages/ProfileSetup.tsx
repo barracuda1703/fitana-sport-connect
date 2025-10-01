@@ -295,7 +295,7 @@ export const ProfileSetup: React.FC = () => {
                     <SelectValue placeholder="Wybierz dyscyplinę" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SPORTS_LIST.map((sport) => (
+                    {SPORTS_LIST('pl').map((sport) => (
                       <SelectItem key={sport} value={sport}>
                         {sport}
                       </SelectItem>

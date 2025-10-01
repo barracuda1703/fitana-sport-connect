@@ -325,7 +325,7 @@ export const TrainerProfileSettings: React.FC = () => {
                   {trainerData.specialties.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">
                       {trainerData.specialties.map((specialty) => {
-                        const sport = sportsCategories.find(s => s.name === specialty);
+                        const sport = sportsCategories.find(s => getSportName(s.id, currentLanguage.code) === specialty);
                         return (
                           <div
                             key={specialty}
@@ -348,7 +348,8 @@ export const TrainerProfileSettings: React.FC = () => {
                   {/* Lista dostępnych dyscyplin */}
                   <div className="grid grid-cols-2 gap-3">
                     {sportsCategories.map((sport) => {
-                      const isSelected = trainerData.specialties.includes(sport.name);
+                      const sportName = getSportName(sport.id, currentLanguage.code);
+                      const isSelected = trainerData.specialties.includes(sportName);
                       const isDisabled = !isSelected && trainerData.specialties.length >= 3;
                       
                       return (
@@ -366,7 +367,7 @@ export const TrainerProfileSettings: React.FC = () => {
                             id={`sport-${sport.id}`}
                             checked={isSelected}
                             disabled={isDisabled}
-                            onCheckedChange={() => handleToggleSpecialty(sport.name)}
+                            onCheckedChange={() => handleToggleSpecialty(sportName)}
                           />
                           <Label
                             htmlFor={`sport-${sport.id}`}
@@ -375,7 +376,7 @@ export const TrainerProfileSettings: React.FC = () => {
                             }`}
                           >
                             <span className="text-lg">{sport.icon}</span>
-                            <span>{sport.name}</span>
+                            <span>{sportName}</span>
                           </Label>
                         </div>
                       );

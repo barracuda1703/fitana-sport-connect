@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserLocation } from '@/contexts/LocationContext';
 import { useNavigate } from 'react-router-dom';
 import { trainersService } from '@/services/supabase';
-import { sportsCategories } from '@/data/sports';
+import { sportsCategories, getSportName } from '@/data/sports';
 import { POLISH_CITIES } from '@/data/cities';
 import {
   Select,
@@ -54,6 +54,7 @@ export const ClientHome: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { currentLanguage } = useLanguage();
   const userLocation = useUserLocation();
   const [activeTab, setActiveTab] = useState('home');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -391,11 +392,12 @@ export const ClientHome: React.FC = () => {
              <span className="text-xs text-muted-foreground">({trainers.length})</span>
            </button>
            
-            {sports.map((sport) => {
+             {sports.map((sport) => {
+              const sportName = getSportName(sport.id, currentLanguage.code);
               // Count trainers by specialty
                const categoryCount = trainers.filter(trainer => 
                  trainer.specialties?.some(specialty => 
-                   specialty.toLowerCase().includes(sport.name.toLowerCase())
+                   specialty.toLowerCase().includes(sportName.toLowerCase())
                  )
                ).length;
              
@@ -410,9 +412,9 @@ export const ClientHome: React.FC = () => {
                       ? 'bg-primary text-primary-foreground shadow-button'
                       : 'bg-card hover:bg-accent/50'
                   }`}
-                >
+                 >
                   <span className="text-2xl mb-1">{sport.icon}</span>
-                  <span className="text-xs font-medium text-center">{sport.name}</span>
+                  <span className="text-xs font-medium text-center">{sportName}</span>
                   <span className="text-xs text-muted-foreground">({categoryCount})</span>
                 </button>
               );
