@@ -58,18 +58,5 @@ export const invitationsService = {
     
     if (error) throw error;
     return data;
-  },
-
-  async getByToken(token: string) {
-    const { data, error } = await supabase
-      .from('invitations')
-      .select('*')
-      .eq('invitation_token', token)
-      .eq('status', 'sent')
-      .gt('expires_at', new Date().toISOString())
-      .single();
-    
-    if (error) throw error;
-    return data;
   }
 };
