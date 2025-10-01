@@ -475,6 +475,28 @@ export type Database = {
       }
     }
     Views: {
+      trainers_directory_public: {
+        Row: {
+          avatarurl: string | null
+          bio: string | null
+          city: string | null
+          created_at: string | null
+          display_name: string | null
+          gallery: string[] | null
+          has_video: boolean | null
+          id: string | null
+          is_verified: boolean | null
+          languages: string[] | null
+          locations: Json | null
+          name: string | null
+          price_from: number | null
+          rating: number | null
+          review_count: number | null
+          services: Json | null
+          specialties: string[] | null
+        }
+        Relationships: []
+      }
       trainers_public_view: {
         Row: {
           avatarurl: string | null
@@ -523,6 +545,17 @@ export type Database = {
           city: string
           id: string
           name: string
+        }[]
+      }
+      get_invitation_for_authed: {
+        Args: { token: string }
+        Returns: {
+          booking_id: string
+          expires_at: string
+          id: string
+          invitation_data: Json
+          status: string
+          trainer_id: string
         }[]
       }
       get_limited_profile_for_chat: {

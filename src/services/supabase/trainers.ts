@@ -36,14 +36,14 @@ export const trainersService = {
       if (error) throw error;
       return data;
     } else {
-      // Unauthenticated users get access to public view only (safe data)
+      // Unauthenticated users use sanitized public directory (SECURITY HARDENED)
       const { data, error } = await supabase
-        .from('trainers_public_view')
+        .from('trainers_directory_public')
         .select('*');
       
       if (error) throw error;
       
-      // Map public view data to include missing fields
+      // Map public view data to include missing fields for type compatibility
       return data?.map(trainer => ({
         ...trainer,
         user_id: null as string | null,
@@ -137,15 +137,15 @@ export const trainersService = {
       if (error) throw error;
       return data;
     } else {
-      // Unauthenticated users get public view only
+      // Unauthenticated users use sanitized public directory (SECURITY HARDENED)
       const { data, error } = await supabase
-        .from('trainers_public_view')
+        .from('trainers_directory_public')
         .select('*')
         .contains('specialties', [specialty]);
       
       if (error) throw error;
       
-      // Map public view data to include missing fields
+      // Map public view data to include missing fields for type compatibility
       return data?.map(trainer => ({
         ...trainer,
         user_id: null as string | null,

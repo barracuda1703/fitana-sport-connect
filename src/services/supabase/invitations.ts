@@ -35,6 +35,21 @@ export const invitationsService = {
     return data;
   },
 
+  /**
+   * SECURITY HARDENED: Retrieve invitation by token for authenticated users only.
+   * This method uses the secure RPC function that:
+   * - Requires authentication
+   * - Only returns data if user is trainer or recipient
+   * - Does not expose sensitive PII
+   */
+  async getByTokenSecure(token: string) {
+    const { data, error } = await supabase
+      .rpc('get_invitation_for_authed', { token });
+    
+    if (error) throw error;
+    return data;
+  },
+
   async updateStatus(id: string, status: Invitation['status']) {
     const { data, error } = await supabase
       .from('invitations')
