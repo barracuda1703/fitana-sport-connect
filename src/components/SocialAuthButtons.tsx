@@ -40,15 +40,15 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({ role, mode
     try {
       setLoading(true);
       
-      const redirectUrl = 'https://fitana.pl';
+      // Store role in localStorage to use after OAuth callback
+      localStorage.setItem('pending_role', role);
+      
+      const redirectUrl = 'https://fitana.pl/auth/callback';
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: redirectUrl,
-          queryParams: {
-            role: role,
-          },
         },
       });
 
