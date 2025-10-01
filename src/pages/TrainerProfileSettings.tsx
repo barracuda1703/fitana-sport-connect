@@ -16,9 +16,10 @@ import { ServiceManagementModal } from '@/components/ServiceManagementModal';
 import { SimpleLanguageSelector } from '@/components/SimpleLanguageSelector';
 import { trainersService } from '@/services/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { sportsCategories } from '@/data/sports';
+import { sportsCategories, getSportName } from '@/data/sports';
 
 const DAYS_OF_WEEK = [
   { id: 'monday', label: 'Poniedziałek' },
@@ -65,6 +66,7 @@ export const TrainerProfileSettings: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { currentLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
