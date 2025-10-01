@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -128,50 +129,79 @@ export const TrainerSettings: React.FC = () => {
                   </div>
                   
                   {availability[day.id]?.enabled && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor={`${day.id}-start`} className="text-sm">Od:</Label>
-                        <Input
-                          id={`${day.id}-start`}
-                          type="time"
-                          value={availability[day.id]?.startTime || '08:00'}
-                          onChange={(e) => {
-                            setAvailability({
-                              ...availability,
-                              [day.id]: {
-                                ...availability[day.id],
-                                startTime: e.target.value
-                              }
-                            });
-                          }}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor={`${day.id}-end`} className="text-sm">Do:</Label>
-                        <Input
-                          id={`${day.id}-end`}
-                          type="time"
-                          value={availability[day.id]?.endTime || '20:00'}
-                          onChange={(e) => {
-                            const startTime = availability[day.id]?.startTime || '08:00';
-                            if (e.target.value <= startTime) {
-                              toast({
-                                title: 'Błąd',
-                                description: 'Godzina końcowa musi być późniejsza niż początkowa',
-                                variant: 'destructive',
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor={`${day.id}-start`} className="text-sm">Od:</Label>
+                          <Input
+                            id={`${day.id}-start`}
+                            type="time"
+                            value={availability[day.id]?.startTime || '08:00'}
+                            onChange={(e) => {
+                              setAvailability({
+                                ...availability,
+                                [day.id]: {
+                                  ...availability[day.id],
+                                  startTime: e.target.value
+                                }
                               });
-                              return;
-                            }
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor={`${day.id}-end`} className="text-sm">Do:</Label>
+                          <Input
+                            id={`${day.id}-end`}
+                            type="time"
+                            value={availability[day.id]?.endTime || '20:00'}
+                            onChange={(e) => {
+                              const startTime = availability[day.id]?.startTime || '08:00';
+                              if (e.target.value <= startTime) {
+                                toast({
+                                  title: 'Błąd',
+                                  description: 'Godzina końcowa musi być późniejsza niż początkowa',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
+                              setAvailability({
+                                ...availability,
+                                [day.id]: {
+                                  ...availability[day.id],
+                                  endTime: e.target.value
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`${day.id}-frequency`} className="text-sm">Częstotliwość treningów:</Label>
+                        <Select
+                          value={availability[day.id]?.frequency || '60'}
+                          onValueChange={(value) => {
                             setAvailability({
                               ...availability,
                               [day.id]: {
                                 ...availability[day.id],
-                                endTime: e.target.value
+                                frequency: value
                               }
                             });
                           }}
-                        />
+                        >
+                          <SelectTrigger id={`${day.id}-frequency`}>
+                            <SelectValue placeholder="Wybierz częstotliwość" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">Co 30 minut</SelectItem>
+                            <SelectItem value="45">Co 45 minut</SelectItem>
+                            <SelectItem value="60">Co godzinę</SelectItem>
+                            <SelectItem value="90">Co 1.5 godziny</SelectItem>
+                            <SelectItem value="120">Co 2 godziny</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}

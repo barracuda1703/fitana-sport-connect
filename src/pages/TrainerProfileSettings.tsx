@@ -492,56 +492,88 @@ export const TrainerProfileSettings: React.FC = () => {
                       </div>
                       
                       {trainerData.availability[day.id]?.enabled && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <Label htmlFor={`${day.id}-start`} className="text-sm">Od:</Label>
-                            <Input
-                              id={`${day.id}-start`}
-                              type="time"
-                              value={trainerData.availability[day.id]?.startTime || '08:00'}
-                              onChange={(e) => {
-                                setTrainerData(prev => ({
-                                  ...prev,
-                                  availability: {
-                                    ...prev.availability,
-                                    [day.id]: {
-                                      ...prev.availability[day.id],
-                                      startTime: e.target.value
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor={`${day.id}-start`} className="text-sm">Od:</Label>
+                              <Input
+                                id={`${day.id}-start`}
+                                type="time"
+                                value={trainerData.availability[day.id]?.startTime || '08:00'}
+                                onChange={(e) => {
+                                  setTrainerData(prev => ({
+                                    ...prev,
+                                    availability: {
+                                      ...prev.availability,
+                                      [day.id]: {
+                                        ...prev.availability[day.id],
+                                        startTime: e.target.value
+                                      }
                                     }
+                                  }));
+                                }}
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor={`${day.id}-end`} className="text-sm">Do:</Label>
+                              <Input
+                                id={`${day.id}-end`}
+                                type="time"
+                                value={trainerData.availability[day.id]?.endTime || '20:00'}
+                                onChange={(e) => {
+                                  const startTime = trainerData.availability[day.id]?.startTime || '08:00';
+                                  if (e.target.value <= startTime) {
+                                    toast({
+                                      title: 'Błąd',
+                                      description: 'Godzina końcowa musi być późniejsza niż początkowa',
+                                      variant: 'destructive',
+                                    });
+                                    return;
                                   }
-                                }));
-                              }}
-                            />
+                                  setTrainerData(prev => ({
+                                    ...prev,
+                                    availability: {
+                                      ...prev.availability,
+                                      [day.id]: {
+                                        ...prev.availability[day.id],
+                                        endTime: e.target.value
+                                      }
+                                    }
+                                  }));
+                                }}
+                              />
+                            </div>
                           </div>
-                          
+
                           <div className="space-y-2">
-                            <Label htmlFor={`${day.id}-end`} className="text-sm">Do:</Label>
-                            <Input
-                              id={`${day.id}-end`}
-                              type="time"
-                              value={trainerData.availability[day.id]?.endTime || '20:00'}
-                              onChange={(e) => {
-                                const startTime = trainerData.availability[day.id]?.startTime || '08:00';
-                                if (e.target.value <= startTime) {
-                                  toast({
-                                    title: 'Błąd',
-                                    description: 'Godzina końcowa musi być późniejsza niż początkowa',
-                                    variant: 'destructive',
-                                  });
-                                  return;
-                                }
+                            <Label htmlFor={`${day.id}-frequency`} className="text-sm">Częstotliwość treningów:</Label>
+                            <Select
+                              value={trainerData.availability[day.id]?.frequency || '60'}
+                              onValueChange={(value) => {
                                 setTrainerData(prev => ({
                                   ...prev,
                                   availability: {
                                     ...prev.availability,
                                     [day.id]: {
                                       ...prev.availability[day.id],
-                                      endTime: e.target.value
+                                      frequency: value
                                     }
                                   }
                                 }));
                               }}
-                            />
+                            >
+                              <SelectTrigger id={`${day.id}-frequency`}>
+                                <SelectValue placeholder="Wybierz częstotliwość" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="30">Co 30 minut</SelectItem>
+                                <SelectItem value="45">Co 45 minut</SelectItem>
+                                <SelectItem value="60">Co godzinę</SelectItem>
+                                <SelectItem value="90">Co 1.5 godziny</SelectItem>
+                                <SelectItem value="120">Co 2 godziny</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                       )}
