@@ -24,20 +24,51 @@ export interface TrainerProfile {
 
 export const trainersService = {
   async getAll() {
-    const { data, error } = await supabase
-      .from('trainers')
-      .select(`
-        *,
-        public_trainer_profiles!trainers_user_id_fkey (
-          id,
-          name,
-          city,
-          avatarurl
-        )
-      `);
+    // Check if user is authenticated to determine which query to use
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (error) throw error;
-    return data;
+    if (user) {
+      // Authenticated users get full access to trainer data
+      const { data, error } = await supabase
+        .from('trainers')
+        .select(`
+          *,
+          public_trainer_profiles!trainers_user_id_fkey (
+            id,
+            name,
+            city,
+            avatarurl
+          )
+        `);
+      
+      if (error) throw error;
+      return data;
+    } else {
+      // Unauthenticated users get access to public view only (safe data)
+      const { data, error } = await supabase
+        .from('trainers_public_view')
+        .select('*');
+      
+      if (error) throw error;
+      
+      // Normalize the data to match the expected trainer structure
+      // Add missing fields that aren't in the public view
+      return data?.map(trainer => ({
+        ...trainer,
+        user_id: null, // Don't expose user_id to unauthenticated users
+        gender: null, // Don't expose gender to unauthenticated users
+        availability: null, // Don't expose availability schedules
+        settings: null, // Don't expose settings
+        off_mode: null, // Don't expose internal state
+        updated_at: trainer.created_at, // Use created_at as fallback
+        public_trainer_profiles: {
+          id: trainer.id,
+          name: trainer.name,
+          city: trainer.city,
+          avatarurl: trainer.avatarurl
+        }
+      })) || [];
+    }
   },
 
   async getById(id: string) {
@@ -120,20 +151,51 @@ export const trainersService = {
   },
 
   async searchBySpecialty(specialty: string) {
-    const { data, error } = await supabase
-      .from('trainers')
-      .select(`
-        *,
-        public_trainer_profiles!trainers_user_id_fkey (
-          id,
-          name,
-          city,
-          avatarurl
-        )
-      `)
-      .contains('specialties', [specialty]);
+    // Check if user is authenticated to determine which query to use
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (error) throw error;
-    return data;
+    if (user) {
+      // Authenticated users get full access
+      const { data, error } = await supabase
+        .from('trainers')
+        .select(`
+          *,
+          public_trainer_profiles!trainers_user_id_fkey (
+            id,
+            name,
+            city,
+            avatarurl
+          )
+        `)
+        .contains('specialties', [specialty]);
+      
+      if (error) throw error;
+      return data;
+    } else {
+      // Unauthenticated users get public view only
+      const { data, error } = await supabase
+        .from('trainers_public_view')
+        .select('*')
+        .contains('specialties', [specialty]);
+      
+      if (error) throw error;
+      
+      // Normalize the data to match the expected trainer structure
+      return data?.map(trainer => ({
+        ...trainer,
+        user_id: null,
+        gender: null,
+        availability: null,
+        settings: null,
+        off_mode: null,
+        updated_at: trainer.created_at,
+        public_trainer_profiles: {
+          id: trainer.id,
+          name: trainer.name,
+          city: trainer.city,
+          avatarurl: trainer.avatarurl
+        }
+      })) || [];
+    }
   }
 };

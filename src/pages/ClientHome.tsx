@@ -30,7 +30,7 @@ import {
 
 interface Trainer {
   id: string;
-  user_id: string;
+  user_id: string | null; // Can be null for unauthenticated users viewing public data
   display_name: string | null;
   bio: string | null;
   specialties: string[];

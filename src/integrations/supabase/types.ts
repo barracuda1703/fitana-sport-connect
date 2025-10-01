@@ -562,6 +562,28 @@ export type Database = {
         }
         Relationships: []
       }
+      trainers_public_view: {
+        Row: {
+          avatarurl: string | null
+          bio: string | null
+          city: string | null
+          created_at: string | null
+          display_name: string | null
+          gallery: string[] | null
+          has_video: boolean | null
+          id: string | null
+          is_verified: boolean | null
+          languages: string[] | null
+          locations: Json | null
+          name: string | null
+          price_from: number | null
+          rating: number | null
+          review_count: number | null
+          services: Json | null
+          specialties: string[] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_invitation_by_token: {
