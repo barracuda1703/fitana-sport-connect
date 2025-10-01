@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, Calendar as CalendarIcon, Check, User, Plus } from 'lucide-react';
+import { ArrowLeft, User, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,10 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingsService, chatsService } from '@/services/supabase';
+import { bookingsService, chatsService, trainersService, invitationsService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface Service {
@@ -53,50 +52,82 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [availableHours] = useState<string[]>(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00']);
-
-  const [existingClients] = useState<Client[]>([
-    { id: 'u-client1', name: 'Kasia Nowak', email: 'kasia@example.com' },
-    { id: 'u-client2', name: 'Marek Kowalski', email: 'marek@example.com' },
-    { id: 'u-client3', name: 'Anna Wiśniewska', email: 'anna@example.com' }
-  ]);
-
-  const [trainerServices] = useState<Service[]>([
-    {
-      id: 'srv-1',
-      name: 'Trening personalny',
-      price: 90,
-      duration: 60,
-      type: 'gym'
-    },
-    {
-      id: 'srv-2', 
-      name: 'Trening boksu',
-      price: 100,
-      duration: 75,
-      type: 'gym'
-    },
-    {
-      id: 'srv-3',
-      name: 'Yoga online',
-      price: 65,
-      duration: 45,
-      type: 'online'
-    }
-  ]);
+  
+  const [existingClients, setExistingClients] = useState<Client[]>([]);
+  const [trainerServices, setTrainerServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isNewClient, setIsNewClient] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setStep('client');
-      setSelectedClient(null);
-      setNewClientMode(false);
-      setNewClientName('');
-      setNewClientEmail('');
-      setSelectedService(null);
-      setSelectedDate(undefined);
-      setSelectedTime('');
-      setNotes('');
+    if (isOpen && user) {
+      loadTrainerData();
+      resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
+
+  const loadTrainerData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Fetch trainer's services
+      const trainerData = await trainersService.getByUserId(user.id);
+      if (trainerData?.services && Array.isArray(trainerData.services)) {
+        const services = (trainerData.services as any[]).map((s: any) => ({
+          id: s.id || crypto.randomUUID(),
+          name: s.name || '',
+          price: s.price || 0,
+          duration: s.duration || 60,
+          type: s.type || 'gym'
+        }));
+        setTrainerServices(services);
+      } else {
+        setTrainerServices([]);
+      }
+
+      // Fetch existing clients from bookings
+      const bookings = await bookingsService.getByUserId(user.id);
+      const clientIds = new Set<string>();
+      const clientsMap = new Map<string, Client>();
+      
+      bookings?.forEach((booking: any) => {
+        if (booking.client_id !== user.id && !clientIds.has(booking.client_id)) {
+          clientIds.add(booking.client_id);
+          if (booking.profiles) {
+            clientsMap.set(booking.client_id, {
+              id: booking.client_id,
+              name: `${booking.profiles.name || ''} ${booking.profiles.surname || ''}`.trim() || 'Klient',
+              email: booking.profiles.email || ''
+            });
+          }
+        }
+      });
+      
+      setExistingClients(Array.from(clientsMap.values()));
+    } catch (error) {
+      console.error('Error loading trainer data:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się załadować danych",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setStep('client');
+    setSelectedClient(null);
+    setNewClientMode(false);
+    setNewClientName('');
+    setNewClientEmail('');
+    setSelectedService(null);
+    setSelectedDate(undefined);
+    setSelectedTime('');
+    setNotes('');
+    setIsNewClient(false);
+  };
 
   const handleClientSelect = (clientId: string) => {
     const client = existingClients.find(c => c.id === clientId);
@@ -106,7 +137,7 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     }
   };
 
-  const handleNewClient = () => {
+  const handleNewClient = async () => {
     if (!newClientName.trim() || !newClientEmail.trim()) {
       toast({
         title: "Błąd walidacji",
@@ -116,13 +147,17 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
       return;
     }
 
+    // Generate a proper UUID for new client
+    const clientId = crypto.randomUUID();
+    
     const newClient: Client = {
-      id: `new-${Date.now()}`,
+      id: clientId,
       name: newClientName.trim(),
       email: newClientEmail.trim()
     };
     
     setSelectedClient(newClient);
+    setIsNewClient(true);
     setNewClientMode(false);
     setStep('service');
   };
@@ -156,15 +191,60 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     const scheduledAt = new Date(selectedDate);
     scheduledAt.setHours(hours, minutes, 0, 0);
     
+    setLoading(true);
     try {
-      await bookingsService.create({
+      // If it's a new client, create profile first
+      if (isNewClient) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: selectedClient.id,
+            email: selectedClient.email,
+            name: selectedClient.name.split(' ')[0] || selectedClient.name,
+            surname: selectedClient.name.split(' ').slice(1).join(' ') || '',
+            role: 'client'
+          });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          throw new Error('Nie udało się utworzyć profilu klienta');
+        }
+
+        // Create invitation record for future email sending
+        await invitationsService.create({
+          trainer_id: user.id,
+          client_email: selectedClient.email,
+          client_name: selectedClient.name,
+          status: 'sent',
+          invitation_data: {
+            service: selectedService.name,
+            date: scheduledAt.toISOString(),
+            notes: notes
+          }
+        });
+      }
+
+      // Create booking - use service name as service_id per schema
+      const booking = await bookingsService.create({
         client_id: selectedClient.id,
         trainer_id: user.id,
-        service_id: selectedService.id,
+        service_id: selectedService.name,
         scheduled_at: scheduledAt.toISOString(),
         status: 'confirmed',
         notes: notes.trim() || undefined,
       });
+
+      // Update invitation with booking_id if new client
+      if (isNewClient && booking) {
+        const invitations = await invitationsService.getByTrainerId(user.id);
+        const latestInvitation = invitations?.[0];
+        if (latestInvitation) {
+          await supabase
+            .from('invitations')
+            .update({ booking_id: booking.id })
+            .eq('id', latestInvitation.id);
+        }
+      }
 
       // Create chat between trainer and client
       await chatsService.createForBooking(selectedClient.id, user.id);
@@ -176,12 +256,15 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
 
       onBookingCreated();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Booking error:', error);
       toast({
         title: "Błąd",
-        description: "Nie udało się dodać treningu",
+        description: error.message || "Nie udało się dodać treningu",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -238,12 +321,27 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {step === 'client' && (
+          {loading && step === 'client' && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          )}
+          
+          {!loading && step === 'client' && (
             <div className="space-y-3">
               {!newClientMode ? (
                 <>
+                  {trainerServices.length === 0 && (
+                    <Card className="bg-muted">
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">
+                          Dodaj usługi w ustawieniach profilu, aby móc dodawać treningi.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
                   <div className="space-y-2">
-                    <Label>Istniejący klienci</Label>
+                    {existingClients.length > 0 && <Label>Istniejący klienci</Label>}
                     {existingClients.map(client => (
                       <Card 
                         key={client.id}
@@ -312,7 +410,16 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
 
           {step === 'service' && (
             <div className="space-y-2">
-              {trainerServices.map(service => (
+              {trainerServices.length === 0 ? (
+                <Card className="bg-muted">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">
+                      Brak dostępnych usług. Dodaj usługi w ustawieniach profilu.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                trainerServices.map(service => (
                 <Card 
                   key={service.id}
                   className="cursor-pointer hover:bg-accent transition-colors"
@@ -330,7 +437,8 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))
+              )}
             </div>
           )}
 
@@ -412,8 +520,16 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
               <Button 
                 className="w-full"
                 onClick={handleConfirmBooking}
+                disabled={loading}
               >
-                Potwierdź rezerwację
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Tworzenie...
+                  </>
+                ) : (
+                  'Potwierdź rezerwację'
+                )}
               </Button>
             </div>
           )}
