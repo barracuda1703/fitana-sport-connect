@@ -54,11 +54,9 @@ export const bookingsService = {
       profileIds.add(booking.trainer_id);
     });
 
-    // Fetch profiles in one batch query
+    // Fetch profiles using secure RPC function
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, name, surname, email, avatarurl')
-      .in('id', Array.from(profileIds));
+      .rpc('get_profiles_for_bookings', { profile_ids: Array.from(profileIds) });
 
     if (profilesError) throw profilesError;
 
@@ -92,11 +90,9 @@ export const bookingsService = {
       profileIds.add(booking.trainer_id);
     });
 
-    // Fetch profiles in one batch query
+    // Fetch profiles using secure RPC function
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, name, surname, email, avatarurl')
-      .in('id', Array.from(profileIds));
+      .rpc('get_profiles_for_bookings', { profile_ids: Array.from(profileIds) });
 
     if (profilesError) throw profilesError;
 
@@ -123,11 +119,11 @@ export const bookingsService = {
     if (bookingError) throw bookingError;
     if (!booking) return null;
 
-    // Fetch client and trainer profiles
+    // Fetch client and trainer profiles using secure RPC function
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, name, surname, email, avatarurl')
-      .in('id', [booking.client_id, booking.trainer_id]);
+      .rpc('get_profiles_for_bookings', { 
+        profile_ids: [booking.client_id, booking.trainer_id] 
+      });
 
     if (profilesError) throw profilesError;
 

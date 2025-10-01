@@ -594,6 +594,16 @@ export type Database = {
           name: string
         }[]
       }
+      get_profiles_for_bookings: {
+        Args: { profile_ids: string[] }
+        Returns: {
+          avatarurl: string
+          email: string
+          id: string
+          name: string
+          surname: string
+        }[]
+      }
       get_trainer_invitations: {
         Args: Record<PropertyKey, never>
         Returns: {
