@@ -14,7 +14,7 @@ import { GoogleMapView } from '@/components/map/GoogleMapView';
 import { LocationPermissionModal } from '@/components/LocationPermissionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocation } from '@/contexts/LocationContext';
+import { useUserLocation } from '@/contexts/LocationContext';
 import { useNavigate } from 'react-router-dom';
 import { trainersService } from '@/services/supabase';
 import { sportsCategories } from '@/data/sports';
@@ -54,7 +54,7 @@ export const ClientHome: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const userLocation = useUserLocation();
   const [activeTab, setActiveTab] = useState('home');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -135,8 +135,8 @@ export const ClientHome: React.FC = () => {
     let filtered = trainers;
     
     // Calculate distances if we have user location or selected city
-    let userLat = location.latitude;
-    let userLng = location.longitude;
+    let userLat = userLocation.latitude;
+    let userLng = userLocation.longitude;
     
     if (!userLat && selectedCity) {
       const city = POLISH_CITIES.find(c => c.name === selectedCity);
@@ -240,7 +240,7 @@ export const ClientHome: React.FC = () => {
     }
 
     setFilteredTrainers(filtered);
-  }, [trainers, selectedCategory, searchQuery, filters, location.latitude, location.longitude, selectedCity]);
+  }, [trainers, selectedCategory, searchQuery, filters, userLocation.latitude, userLocation.longitude, selectedCity]);
 
   // Update URL params when filters change
   useEffect(() => {
@@ -333,7 +333,7 @@ export const ClientHome: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            {(!location.latitude && !location.loading) && (
+            {(!userLocation.latitude && !userLocation.loading) && (
               <Select value={selectedCity} onValueChange={setSelectedCity}>
                 <SelectTrigger className="w-[140px] h-8">
                   <SelectValue placeholder="Miasto" />
@@ -348,7 +348,7 @@ export const ClientHome: React.FC = () => {
               </Select>
             )}
             
-            {location.permission !== 'granted' && !location.loading && (
+            {userLocation.permission !== 'granted' && !userLocation.loading && (
               <Button
                 variant="outline"
                 size="sm"
@@ -360,7 +360,7 @@ export const ClientHome: React.FC = () => {
               </Button>
             )}
             
-            {location.loading && (
+            {userLocation.loading && (
               <span className="text-xs text-muted-foreground">Pobieranie lokalizacji...</span>
             )}
           </div>
@@ -426,8 +426,8 @@ export const ClientHome: React.FC = () => {
             onViewProfile={handleViewProfile}
             onChat={handleChat}
             userLocation={
-              location.latitude && location.longitude
-                ? { lat: location.latitude, lng: location.longitude }
+              userLocation.latitude && userLocation.longitude
+                ? { lat: userLocation.latitude, lng: userLocation.longitude }
                 : selectedCity
                 ? POLISH_CITIES.find(c => c.name === selectedCity) || null
                 : null
@@ -533,11 +533,11 @@ export const ClientHome: React.FC = () => {
       <LocationPermissionModal
         open={showLocationModal}
         onAllow={() => {
-          location.requestLocation();
+          userLocation.requestLocation();
           setShowLocationModal(false);
         }}
         onDeny={() => {
-          location.denyLocation();
+          userLocation.denyLocation();
           setShowLocationModal(false);
         }}
       />
