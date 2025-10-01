@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { isPreviewDomain } from '@/lib/utils';
+import { ExternalLink } from 'lucide-react';
 
 interface SocialAuthButtonsProps {
   role: 'client' | 'trainer';
@@ -14,12 +16,30 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({ role, mode
   const { t } = useLanguage();
   const [loading, setLoading] = React.useState(false);
 
+  // Hide OAuth on preview domains - only available on fitana.pl
+  if (isPreviewDomain()) {
+    return (
+      <div className="p-4 border border-border rounded-lg bg-muted/50">
+        <p className="text-sm text-muted-foreground text-center mb-2">
+          Logowanie przez Google/Apple dostępne tylko na fitana.pl
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => window.location.href = 'https://fitana.pl/auth'}
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Przejdź do fitana.pl
+        </Button>
+      </div>
+    );
+  }
+
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {
       setLoading(true);
       
-      // Always redirect to fitana.pl for OAuth since it's authorized in Google Cloud Console
-      // This ensures OAuth works on both preview and production domains
       const redirectUrl = 'https://fitana.pl';
       
       const { error } = await supabase.auth.signInWithOAuth({
