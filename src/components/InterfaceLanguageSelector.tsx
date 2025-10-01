@@ -40,18 +40,18 @@ export const InterfaceLanguageSelector: React.FC<InterfaceLanguageSelectorProps>
   };
 
   return (
-    <div className={cn("relative w-full", className)} ref={dropdownRef}>
+    <div className={cn("relative", className)} ref={dropdownRef}>
       <Button
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between gap-2"
+        className="gap-2 min-w-[100px]"
       >
-        <span className="font-medium">{currentLanguage.nativeName}</span>
+        <span className="font-medium">{currentLanguage.code.toUpperCase()}</span>
         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </Button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 w-full bg-background border border-border rounded-lg shadow-lg z-[100] overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-48 bg-background border border-border rounded-lg shadow-lg z-[100] overflow-hidden">
           <div className="py-1">
             {languages.map((lang) => (
               <button
