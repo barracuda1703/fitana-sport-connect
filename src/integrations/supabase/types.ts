@@ -475,6 +475,23 @@ export type Database = {
       }
     }
     Views: {
+      trainer_stats_v1: {
+        Row: {
+          completed_trainings: number | null
+          rating: number | null
+          review_count: number | null
+          trainer_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainers_user_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trainers_directory_public: {
         Row: {
           avatarurl: string | null
