@@ -10,6 +10,7 @@ import { TrainerProfileModal } from '@/components/TrainerProfileModal';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { FilterModal, FilterOptions } from '@/components/FilterModal';
 import { LanguageChips } from '@/components/LanguageChips';
+import { GoogleMapView } from '@/components/map/GoogleMapView';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -314,13 +315,12 @@ export const ClientHome: React.FC = () => {
       {/* Trainers List */}
       <section className="px-4 space-y-4">
         {viewMode === 'map' && (
-          <Card className="bg-gradient-card h-64 flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <MapPin className="h-12 w-12 mx-auto mb-2" />
-              <p>Mapa z pinami trenerów</p>
-              <p className="text-sm">(Wymaga klucza API)</p>
-            </div>
-          </Card>
+          <GoogleMapView
+            trainers={filteredTrainers}
+            onBook={handleBookTrainer}
+            onViewProfile={handleViewProfile}
+            onChat={handleChat}
+          />
         )}
         
         {loading ? (

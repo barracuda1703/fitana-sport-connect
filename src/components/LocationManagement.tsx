@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Plus, MapPin, Trash2, Edit } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, MapPin, Trash2, Edit, Star } from 'lucide-react';
+import { useGoogleMaps } from '@/hooks/useGoogleMaps';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -31,6 +32,36 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const { isLoaded } = useGoogleMaps();
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded || !addressInputRef.current || !isAddDialogOpen) return;
+
+    autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+      componentRestrictions: { country: 'pl' },
+      fields: ['formatted_address', 'geometry', 'name', 'place_id'],
+      types: ['gym', 'establishment']
+    });
+
+    autocompleteRef.current.addListener('place_changed', () => {
+      const place = autocompleteRef.current?.getPlace();
+      if (place?.geometry?.location) {
+        setFormData(prev => ({
+          ...prev,
+          name: place.name || prev.name,
+          address: place.formatted_address || prev.address
+        }));
+      }
+    });
+
+    return () => {
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+    };
+  }, [isLoaded, isAddDialogOpen]);
 
   const resetForm = () => {
     setFormData({
@@ -40,18 +71,34 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
     setErrors({});
   };
 
-  const handleAddLocation = () => {
+  const handleAddLocation = async () => {
     try {
       const validatedData = locationSchema.parse(formData);
+      
+      // Geocode the address to get coordinates
+      let coordinates = { lat: 52.2297, lng: 21.0122 };
+      
+      if (isLoaded && formData.address) {
+        try {
+          const geocoder = new google.maps.Geocoder();
+          const result = await geocoder.geocode({ address: formData.address });
+          if (result.results[0]?.geometry?.location) {
+            coordinates = {
+              lat: result.results[0].geometry.location.lat(),
+              lng: result.results[0].geometry.location.lng()
+            };
+          }
+        } catch (error) {
+          console.error('Geocoding error:', error);
+        }
+      }
+
       const newLocation: Location = {
         id: `loc-${Date.now()}`,
         name: validatedData.name,
         address: validatedData.address,
-        coordinates: {
-          lat: 52.2297, // Default Warsaw coordinates
-          lng: 21.0122
-        },
-        radius: 2 // Default radius
+        coordinates,
+        radius: 2
       };
 
       onLocationsChange([...locations, newLocation]);
@@ -178,12 +225,16 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
                 <div className="space-y-2">
                   <Label htmlFor="location-address">Adres</Label>
                   <Input
+                    ref={addressInputRef}
                     id="location-address"
                     value={formData.address}
                     onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="ul. Marszałkowska 1, 00-001 Warszawa"
+                    placeholder="Zacznij wpisywać adres siłowni..."
                   />
                   {errors.address && <p className="text-sm text-destructive">{errors.address}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    Wpisz nazwę lub adres siłowni, aby wybrać z listy
+                  </p>
                 </div>
 
                 <div className="flex justify-end space-x-2">
@@ -208,12 +259,22 @@ export const LocationManagement: React.FC<LocationManagementProps> = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {locations.map((location) => (
+          {locations.map((location, index) => (
             <div key={location.id} className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center space-x-3">
-                <MapPin className="h-5 w-5 text-primary" />
+                <div className="relative">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  {index === 0 && (
+                    <Star className="h-3 w-3 text-warning fill-warning absolute -top-1 -right-1" />
+                  )}
+                </div>
                 <div>
-                  <h4 className="font-medium">{location.name}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium">{location.name}</h4>
+                    {index === 0 && (
+                      <span className="text-xs text-muted-foreground">(główna)</span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">{location.address}</p>
                 </div>
               </div>
