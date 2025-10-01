@@ -222,9 +222,12 @@ export type Database = {
           city: string | null
           created_at: string | null
           email: string
+          geolocation_preference: string | null
           id: string
           language: string | null
+          language_preference: string | null
           name: string
+          pending_role: string | null
           role: string
           surname: string | null
           updated_at: string | null
@@ -234,9 +237,12 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           email: string
+          geolocation_preference?: string | null
           id: string
           language?: string | null
+          language_preference?: string | null
           name: string
+          pending_role?: string | null
           role: string
           surname?: string | null
           updated_at?: string | null
@@ -246,9 +252,12 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           email?: string
+          geolocation_preference?: string | null
           id?: string
           language?: string | null
+          language_preference?: string | null
           name?: string
+          pending_role?: string | null
           role?: string
           surname?: string | null
           updated_at?: string | null

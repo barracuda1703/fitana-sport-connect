@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface GeolocationState {
   latitude: number | null;
@@ -16,19 +17,33 @@ export const useGeolocation = () => {
     loading: false,
     permission: null,
   });
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check saved preference
-    const savedPreference = localStorage.getItem('geolocation_preference');
-    
-    if (savedPreference === 'denied') {
-      setState(prev => ({ ...prev, permission: 'denied' }));
-      return;
-    }
+    // Load geolocation preference from database
+    const loadPreference = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('geolocation_preference')
+          .eq('id', user.id)
+          .single();
+        
+        const savedPreference = profile?.geolocation_preference;
+        
+        if (savedPreference === 'denied') {
+          setState(prev => ({ ...prev, permission: 'denied' }));
+          return;
+        }
 
-    if (savedPreference === 'granted' && 'geolocation' in navigator) {
-      requestLocation();
-    }
+        if (savedPreference === 'granted' && 'geolocation' in navigator) {
+          requestLocation();
+        }
+      }
+    };
+    loadPreference();
   }, []);
 
   const requestLocation = () => {
@@ -44,7 +59,7 @@ export const useGeolocation = () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         setState({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -52,15 +67,27 @@ export const useGeolocation = () => {
           loading: false,
           permission: 'granted',
         });
-        localStorage.setItem('geolocation_preference', 'granted');
+        
+        // Save to database instead of localStorage
+        if (userId) {
+          await supabase
+            .from('profiles')
+            .update({ geolocation_preference: 'granted' })
+            .eq('id', userId);
+        }
       },
-      (error) => {
+      async (error) => {
         let errorMessage = 'Nie udało się pobrać lokalizacji';
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = 'Odmówiono dostępu do lokalizacji';
-            localStorage.setItem('geolocation_preference', 'denied');
+            if (userId) {
+              await supabase
+                .from('profiles')
+                .update({ geolocation_preference: 'denied' })
+                .eq('id', userId);
+            }
             break;
           case error.POSITION_UNAVAILABLE:
             errorMessage = 'Lokalizacja niedostępna';
@@ -86,8 +113,13 @@ export const useGeolocation = () => {
     );
   };
 
-  const denyLocation = () => {
-    localStorage.setItem('geolocation_preference', 'denied');
+  const denyLocation = async () => {
+    if (userId) {
+      await supabase
+        .from('profiles')
+        .update({ geolocation_preference: 'denied' })
+        .eq('id', userId);
+    }
     setState(prev => ({
       ...prev,
       permission: 'denied',
@@ -95,8 +127,13 @@ export const useGeolocation = () => {
     }));
   };
 
-  const resetPermission = () => {
-    localStorage.removeItem('geolocation_preference');
+  const resetPermission = async () => {
+    if (userId) {
+      await supabase
+        .from('profiles')
+        .update({ geolocation_preference: null })
+        .eq('id', userId);
+    }
     setState({
       latitude: null,
       longitude: null,

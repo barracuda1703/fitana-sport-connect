@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserLocation } from '@/contexts/LocationContext';
 import { useNavigate } from 'react-router-dom';
 import { trainersService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { sportsCategories, getSportName } from '@/data/sports';
 import { POLISH_CITIES } from '@/data/cities';
 import {
@@ -99,20 +100,42 @@ export const ClientHome: React.FC = () => {
       setFilters(prev => ({ ...prev, languages }));
     }
 
-    // Check if we should show location permission modal
-    const savedPreference = localStorage.getItem('geolocation_preference');
-    if (!savedPreference && viewMode === 'map') {
-      setShowLocationModal(true);
-    }
+    // Check if we should show location permission modal from database
+    const checkLocationPreference = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('geolocation_preference')
+          .eq('id', user.id)
+          .single();
+        
+        const savedPreference = profile?.geolocation_preference;
+        if (!savedPreference && viewMode === 'map') {
+          setShowLocationModal(true);
+        }
+      }
+    };
+    checkLocationPreference();
   }, []);
 
   // Show location modal when switching to map view for first time
   useEffect(() => {
-    const savedPreference = localStorage.getItem('geolocation_preference');
-    if (!savedPreference && viewMode === 'map') {
-      setShowLocationModal(true);
-    }
-  }, [viewMode]);
+    const checkLocationPreference = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('geolocation_preference')
+          .eq('id', user.id)
+          .single();
+        
+        const savedPreference = profile?.geolocation_preference;
+        if (!savedPreference && viewMode === 'map') {
+          setShowLocationModal(true);
+        }
+      }
+    };
+    checkLocationPreference();
+  }, [viewMode, user]);
 
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LanguageContextType {
   currentLanguage: Language;
@@ -597,25 +598,59 @@ export const useLanguage = () => {
 };
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentLanguage, setCurrentLanguage] = useState<Language>(languages[0]); // Default to Polish
+  const [currentLanguage, setCurrentLanguage] = useState<Language>(languages[0]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for saved language preference first
-    const savedLang = localStorage.getItem('fitana-language');
-    const savedLanguage = savedLang ? languages.find(lang => lang.code === savedLang) : null;
-    
-    if (savedLanguage) {
-      setCurrentLanguage(savedLanguage);
-    } else {
-      // Keep Polish as default regardless of browser language
-      setCurrentLanguage(languages[0]); // Polish
-      localStorage.setItem('fitana-language', 'pl');
-    }
+    // Load language preference from database
+    const loadLanguagePreference = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('language_preference')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.language_preference) {
+          const lang = languages.find(l => l.code === profile.language_preference);
+          if (lang) {
+            setCurrentLanguage(lang);
+          } else {
+            // Default to Polish if preference not found
+            setCurrentLanguage(languages[0]);
+          }
+        } else {
+          // Default to Polish and save it
+          setCurrentLanguage(languages[0]);
+          await supabase
+            .from('profiles')
+            .update({ language_preference: 'pl' })
+            .eq('id', user.id);
+        }
+      } else {
+        // Not logged in, default to Polish
+        setCurrentLanguage(languages[0]);
+      }
+    };
+    loadLanguagePreference();
   }, []);
 
-  const setLanguage = (language: Language) => {
+  const setLanguage = async (language: Language) => {
     setCurrentLanguage(language);
-    localStorage.setItem('fitana-language', language.code);
+    
+    // Save to database if user is logged in
+    if (userId) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ language_preference: language.code })
+        .eq('id', userId);
+      
+      if (error) {
+        console.error('Failed to save language preference:', error);
+      }
+    }
   };
 
   const t = (key: string): string => {

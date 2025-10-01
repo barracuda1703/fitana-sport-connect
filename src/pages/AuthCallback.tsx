@@ -12,20 +12,29 @@ export const AuthCallback: React.FC = () => {
   useEffect(() => {
     const checkTrainerProfile = async () => {
       if (!isLoading && user) {
-        // Check for pending role from OAuth flow
-        const pendingRole = localStorage.getItem('pending_role');
-        if (pendingRole && pendingRole !== user.role) {
-          // Update the user's role if it was set during OAuth
+        // Check for pending role from OAuth flow via URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const pendingRole = urlParams.get('role');
+        
+        // Update role if specified in URL or if user has no role assigned
+        if (pendingRole && (pendingRole !== user.role || !user.role)) {
+          console.log('Updating user role from OAuth:', { pendingRole, currentRole: user.role });
+          
           const { error } = await supabase
             .from('profiles')
-            .update({ role: pendingRole })
+            .update({ 
+              role: pendingRole,
+              pending_role: null // Clear pending_role after successful assignment
+            })
             .eq('id', user.id);
           
           if (!error) {
-            localStorage.removeItem('pending_role');
+            console.log('Role updated successfully, refreshing...');
             // Refresh user data
             window.location.reload();
             return;
+          } else {
+            console.error('Failed to update role:', error);
           }
         }
         
