@@ -40,7 +40,7 @@ export interface Achievement {
 }
 
 export interface Language {
-  code: 'pl' | 'en' | 'uk' | 'ru';
+  code: 'pl' | 'en-GB' | 'uk' | 'ru';
   name: string;
   nativeName: string;
 }

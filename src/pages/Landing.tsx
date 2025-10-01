@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { LanguageSelector } from '@/components/LanguageSelector';
+import { InterfaceLanguageSelector } from '@/components/InterfaceLanguageSelector';
 import { RoleSelection } from '@/components/RoleSelection';
 import fitnessHero from '@/assets/fitness-hero.jpg';
 import { useNavigate } from 'react-router-dom';
@@ -40,10 +39,7 @@ export const Landing: React.FC = () => {
             <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" />
             <span className="font-bold text-xl text-primary">Fitana</span>
           </div>
-        <LanguageSelector 
-          selectedLanguages={[]} 
-          onLanguagesChange={() => {}} 
-        />
+          <InterfaceLanguageSelector />
         </header>
 
         {/* Role Selection Content */}
@@ -73,10 +69,7 @@ export const Landing: React.FC = () => {
           <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" />
           <span className="font-bold text-xl text-primary">Fitana</span>
         </div>
-         <LanguageSelector 
-          selectedLanguages={[]} 
-          onLanguagesChange={() => {}} 
-        />
+        <InterfaceLanguageSelector />
       </header>
 
       {/* Hero Section */}
@@ -118,24 +111,24 @@ export const Landing: React.FC = () => {
               <div className="w-16 h-16 bg-gradient-accent rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🏃‍♀️</span>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Znajdź trenera</h3>
-              <p className="text-muted-foreground">Przeglądaj setki zweryfikowanych trenerów w Twojej okolicy</p>
+              <h3 className="text-xl font-semibold mb-2">{t('landing.feature1.title')}</h3>
+              <p className="text-muted-foreground">{t('landing.feature1.desc')}</p>
             </div>
 
             <div className="text-center p-6 rounded-xl bg-gradient-card shadow-card hover:shadow-floating transition-all duration-200">
               <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">📅</span>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Zarezerwuj trening</h3>
-              <p className="text-muted-foreground">Łatwe rezerwowanie i zarządzanie treningami</p>
+              <h3 className="text-xl font-semibold mb-2">{t('landing.feature2.title')}</h3>
+              <p className="text-muted-foreground">{t('landing.feature2.desc')}</p>
             </div>
 
             <div className="text-center p-6 rounded-xl bg-gradient-card shadow-card hover:shadow-floating transition-all duration-200">
               <div className="w-16 h-16 bg-gradient-accent rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">💬</span>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Komunikuj się</h3>
-              <p className="text-muted-foreground">Bezpośrednia komunikacja z trenerem</p>
+              <h3 className="text-xl font-semibold mb-2">{t('landing.feature3.title')}</h3>
+              <p className="text-muted-foreground">{t('landing.feature3.desc')}</p>
             </div>
           </div>
         </div>
