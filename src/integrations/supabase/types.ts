@@ -586,6 +586,26 @@ export type Database = {
           name: string
         }[]
       }
+      get_limited_profile_for_chat: {
+        Args: { profile_user_id: string }
+        Returns: {
+          avatarurl: string
+          id: string
+          name: string
+        }[]
+      }
+      get_trainer_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          booking_id: string
+          client_name: string
+          created_at: string
+          expires_at: string
+          id: string
+          status: string
+          trainer_id: string
+        }[]
+      }
       users_have_bookings_together: {
         Args: { user_id_1: string; user_id_2: string }
         Returns: boolean

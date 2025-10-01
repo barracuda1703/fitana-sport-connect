@@ -27,11 +27,9 @@ export const invitationsService = {
   },
 
   async getByTrainerId(trainerId: string) {
+    // Use secure RPC function that doesn't expose client_email
     const { data, error } = await supabase
-      .from('invitations')
-      .select('*')
-      .eq('trainer_id', trainerId)
-      .order('created_at', { ascending: false });
+      .rpc('get_trainer_invitations');
     
     if (error) throw error;
     return data;

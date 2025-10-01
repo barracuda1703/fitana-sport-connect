@@ -67,7 +67,7 @@ export const ChatListPage: React.FC = () => {
 
   const getOtherUser = (chat: any) => {
     if (!user) return null;
-    return chat.client_id === user.id ? chat.trainer : chat.client;
+    return chat.client_id === user.id ? (chat as any).trainer : (chat as any).client;
   };
 
   const filteredChats = chats.filter(chat => {

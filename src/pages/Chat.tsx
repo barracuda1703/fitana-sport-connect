@@ -41,7 +41,9 @@ export const ChatPage: React.FC = () => {
         setChat(currentChat);
         
         if (currentChat) {
-          const other = currentChat.client_id === user.id ? currentChat.trainer : currentChat.client;
+          const other = currentChat.client_id === user.id 
+            ? (currentChat as any).trainer 
+            : (currentChat as any).client;
           setOtherUser(other);
         }
 

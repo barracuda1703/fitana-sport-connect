@@ -19,19 +19,38 @@ export interface Message {
 
 export const chatsService = {
   async getByUserId(userId: string) {
-    const { data, error } = await supabase
+    // Get chats with basic data
+    const { data: chatsData, error } = await supabase
       .from('chats')
       .select(`
         *,
-        client:client_id(id, name, surname, avatarurl),
-        trainer:trainer_id(id, name, surname, avatarurl),
         messages(id, content, created_at, sender_id, read_at)
       `)
       .or(`client_id.eq.${userId},trainer_id.eq.${userId}`)
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    if (!chatsData) return [];
+
+    // Fetch limited profile data for each chat participant using secure RPC
+    const chatsWithProfiles = await Promise.all(
+      chatsData.map(async (chat) => {
+        const otherUserId = chat.client_id === userId ? chat.trainer_id : chat.client_id;
+        
+        const { data: profileData } = await supabase
+          .rpc('get_limited_profile_for_chat', { profile_user_id: otherUserId });
+
+        // Add profile data based on role
+        const profile = profileData?.[0];
+        if (chat.client_id === userId) {
+          return { ...chat, trainer: profile };
+        } else {
+          return { ...chat, client: profile };
+        }
+      })
+    );
+
+    return chatsWithProfiles;
   },
 
   async getUnreadCount(chatId: string, userId: string): Promise<number> {
