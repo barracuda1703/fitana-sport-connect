@@ -150,14 +150,17 @@ export const TrainerDashboard: React.FC = () => {
   
   const weeklyStats = getWeeklyStats();
   
+  // Calculate actual stats from bookings instead of using mock data
+  const completedBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'completed');
+  
   const mockStats = {
     todayTrainings: todayBookings.filter(b => b.status === 'confirmed').length,
     pendingBookings: pendingBookings.length,
     weeklyTrainings: weeklyStats.count,
     weeklyEarnings: weeklyStats.earnings,
     todayEarnings: todayBookings.filter(b => b.status === 'confirmed').length * 90,
-    rating: 4.9,
-    completedSessions: 127,
+    rating: 0, // Will be fetched from reviews in the future
+    completedSessions: completedBookings.length,
     weekBreakdown: weeklyStats.breakdown
   };
 
@@ -225,12 +228,12 @@ export const TrainerDashboard: React.FC = () => {
           <Card className="bg-gradient-card shadow-card cursor-pointer hover:shadow-floating transition-all duration-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Ocena
+                Oceny
               </CardTitle>
             </CardHeader>
             <CardContent onClick={() => setIsReviewsModalOpen(true)}>
-              <div className="text-2xl font-bold text-warning">
-                ⭐ {mockStats.rating}
+              <div className="text-sm font-bold text-warning">
+                Zobacz oceny
               </div>
             </CardContent>
           </Card>

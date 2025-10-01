@@ -29,26 +29,62 @@ export const TrainerStatistics: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      // Mock statistics - in real app would fetch from backend
-      setTimeout(() => {
-        const mockStats: TrainerStats = {
-          todayTrainings: 3,
-          weekTrainings: 12,
-          monthTrainings: 48,
-          totalTrainings: 127,
-          averageRating: 4.9,
-          todayEarnings: 270,
-          weekEarnings: 1200,
-          monthEarnings: 4800,
-          totalEarnings: 15600,
-          activeClients: 15,
-          totalClients: 23
+    const loadStats = async () => {
+      if (!user) return;
+      
+      try {
+        // Fetch real bookings data
+        const allBookings = await bookingsService.getByUserId(user.id);
+        
+        const now = new Date();
+        const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // Filter bookings by time periods
+        const todayBookings = allBookings.filter(b => {
+          const bookingDate = new Date(b.scheduled_at);
+          return bookingDate >= startOfDay && (b.status === 'confirmed' || b.status === 'completed');
+        });
+        
+        const weekBookings = allBookings.filter(b => {
+          const bookingDate = new Date(b.scheduled_at);
+          return bookingDate >= startOfWeek && (b.status === 'confirmed' || b.status === 'completed');
+        });
+        
+        const monthBookings = allBookings.filter(b => {
+          const bookingDate = new Date(b.scheduled_at);
+          return bookingDate >= startOfMonth && (b.status === 'confirmed' || b.status === 'completed');
+        });
+        
+        const totalBookings = allBookings.filter(b => b.status === 'confirmed' || b.status === 'completed');
+        
+        // Calculate stats (using 90 PLN as average session price)
+        const sessionPrice = 90;
+        
+        const calculatedStats: TrainerStats = {
+          todayTrainings: todayBookings.length,
+          weekTrainings: weekBookings.length,
+          monthTrainings: monthBookings.length,
+          totalTrainings: totalBookings.length,
+          averageRating: 0, // Will be fetched from reviews in the future
+          todayEarnings: todayBookings.length * sessionPrice,
+          weekEarnings: weekBookings.length * sessionPrice,
+          monthEarnings: monthBookings.length * sessionPrice,
+          totalEarnings: totalBookings.length * sessionPrice,
+          activeClients: new Set(allBookings.filter(b => b.status === 'confirmed' || b.status === 'completed').map(b => b.client_id)).size,
+          totalClients: new Set(allBookings.map(b => b.client_id)).size
         };
-        setStats(mockStats);
+        
+        setStats(calculatedStats);
         setLoading(false);
-      }, 500);
-    }
+      } catch (error) {
+        console.error('Error loading statistics:', error);
+        setLoading(false);
+      }
+    };
+    
+    loadStats();
   }, [user]);
 
   if (!user) return null;
@@ -166,55 +202,64 @@ export const TrainerStatistics: React.FC = () => {
         </Card>
 
         {/* Rating Stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="h-5 w-5" />
-              Oceny i opinie
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center p-6 bg-warning/10 rounded-lg">
-              <div className="text-4xl font-bold text-warning mb-2">
-                ⭐ {stats.averageRating}
+        {stats.totalTrainings > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5" />
+                Oceny i opinie
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center p-6 bg-muted/30 rounded-lg">
+                <div className="text-sm text-muted-foreground">
+                  System ocen będzie dostępny wkrótce
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">Średnia ocena</div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Na podstawie {Math.floor(stats.totalTrainings * 0.8)} opinii
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Performance Insights */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Trendy i spostrzeżenia
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-success/10 rounded-lg">
-              <div className="text-sm font-medium text-success">📈 Wzrost aktywności</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                W tym miesiącu przeprowadziłeś o 25% więcej treningów niż w poprzednim
+        {/* Performance Insights - Only show if trainer has significant activity */}
+        {stats.totalTrainings >= 10 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Twoje postępy
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-success/10 rounded-lg">
+                <div className="text-sm font-medium text-success">💪 Świetna praca!</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Przeprowadziłeś już {stats.totalTrainings} treningów
+                </div>
               </div>
-            </div>
-            <div className="p-4 bg-primary/10 rounded-lg">
-              <div className="text-sm font-medium text-primary">⭐ Wysoka ocena</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Twoja średnia ocena jest wyższa od 89% trenerów na platformie
+              {stats.activeClients > 5 && (
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <div className="text-sm font-medium text-primary">👥 Rosnąca baza klientów</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Masz {stats.activeClients} aktywnych klientów
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+        
+        {stats.totalTrainings === 0 && (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <div className="text-muted-foreground">
+                <p className="text-lg font-semibold mb-2">Zacznij swoją przygodę!</p>
+                <p className="text-sm">
+                  Gdy zaczniesz przyjmować rezerwacje, tutaj zobaczysz swoje statystyki i postępy.
+                </p>
               </div>
-            </div>
-            <div className="p-4 bg-warning/10 rounded-lg">
-              <div className="text-sm font-medium text-warning">👥 Lojalność klientów</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                65% Twoich klientów to stali klienci (powyżej 5 treningów)
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </section>
 
       {/* Bottom Navigation */}

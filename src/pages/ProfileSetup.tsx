@@ -26,6 +26,7 @@ export const ProfileSetup: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<ProfileSetupStep>('basic');
   
   const [formData, setFormData] = useState({
+    name: user?.name || '',
     surname: user?.surname || '',
     city: user?.city || '',
     avatarUrl: user?.avatarUrl || '',
@@ -45,6 +46,7 @@ export const ProfileSetup: React.FC = () => {
       const { error: profileError } = await (supabase as any)
         .from('profiles')
         .update({
+          name: formData.name,
           surname: formData.surname,
           city: formData.city,
           avatarurl: formData.avatarUrl,
@@ -57,7 +59,7 @@ export const ProfileSetup: React.FC = () => {
       if (isTrainer) {
         const trainerData: any = {
           user_id: user?.id,
-          display_name: `${user?.name} ${formData.surname}`,
+          display_name: `${formData.name} ${formData.surname}`,
         };
 
         if (formData.bio) {
@@ -246,13 +248,18 @@ export const ProfileSetup: React.FC = () => {
           {currentStep === 'basic' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Imię</Label>
+                <Label htmlFor="name">Imię *</Label>
                 <Input
                   id="name"
-                  value={user.name}
-                  disabled
-                  className="bg-muted"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="Wprowadź imię"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Możesz zmienić imię zaimportowane z Google
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -381,56 +388,88 @@ export const ProfileSetup: React.FC = () => {
                     </div>
                     
                     {formData.availability[day]?.enabled && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`${day}-start`} className="text-sm">Od:</Label>
-                          <Input
-                            id={`${day}-start`}
-                            type="time"
-                            value={formData.availability[day]?.startTime || '08:00'}
-                            onChange={(e) => {
-                              setFormData({
-                                ...formData,
-                                availability: {
-                                  ...formData.availability,
-                                  [day]: {
-                                    ...formData.availability[day],
-                                    startTime: e.target.value
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`${day}-start`} className="text-sm">Od:</Label>
+                            <Input
+                              id={`${day}-start`}
+                              type="time"
+                              value={formData.availability[day]?.startTime || '08:00'}
+                              onChange={(e) => {
+                                setFormData({
+                                  ...formData,
+                                  availability: {
+                                    ...formData.availability,
+                                    [day]: {
+                                      ...formData.availability[day],
+                                      startTime: e.target.value
+                                    }
                                   }
+                                });
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`${day}-end`} className="text-sm">Do:</Label>
+                            <Input
+                              id={`${day}-end`}
+                              type="time"
+                              value={formData.availability[day]?.endTime || '20:00'}
+                              onChange={(e) => {
+                                const startTime = formData.availability[day]?.startTime || '08:00';
+                                if (e.target.value <= startTime) {
+                                  toast({
+                                    title: 'Błąd',
+                                    description: 'Godzina końcowa musi być późniejsza niż początkowa',
+                                    variant: 'destructive',
+                                  });
+                                  return;
                                 }
-                              });
-                            }}
-                          />
+                                setFormData({
+                                  ...formData,
+                                  availability: {
+                                    ...formData.availability,
+                                    [day]: {
+                                      ...formData.availability[day],
+                                      endTime: e.target.value
+                                    }
+                                  }
+                                });
+                              }}
+                            />
+                          </div>
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor={`${day}-end`} className="text-sm">Do:</Label>
-                          <Input
-                            id={`${day}-end`}
-                            type="time"
-                            value={formData.availability[day]?.endTime || '20:00'}
-                            onChange={(e) => {
-                              const startTime = formData.availability[day]?.startTime || '08:00';
-                              if (e.target.value <= startTime) {
-                                toast({
-                                  title: 'Błąd',
-                                  description: 'Godzina końcowa musi być późniejsza niż początkowa',
-                                  variant: 'destructive',
-                                });
-                                return;
-                              }
+                          <Label htmlFor={`${day}-frequency`} className="text-sm">Częstotliwość treningów:</Label>
+                          <Select
+                            value={formData.availability[day]?.frequency || '60'}
+                            onValueChange={(value) => {
                               setFormData({
                                 ...formData,
                                 availability: {
                                   ...formData.availability,
                                   [day]: {
                                     ...formData.availability[day],
-                                    endTime: e.target.value
+                                    frequency: value
                                   }
                                 }
                               });
                             }}
-                          />
+                          >
+                            <SelectTrigger id={`${day}-frequency`}>
+                              <SelectValue placeholder="Wybierz częstotliwość" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="30">Co 30 minut</SelectItem>
+                              <SelectItem value="45">Co 45 minut</SelectItem>
+                              <SelectItem value="60">Co godzinę</SelectItem>
+                              <SelectItem value="90">Co 1.5 godziny</SelectItem>
+                              <SelectItem value="120">Co 2 godziny</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     )}
