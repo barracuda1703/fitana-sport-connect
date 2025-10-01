@@ -86,13 +86,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "bookings_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       chats: {
@@ -126,24 +119,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "chats_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "chats_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chats_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -226,13 +205,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "manual_blocks_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       messages: {
@@ -273,13 +245,6 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -385,24 +350,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reviews_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "reviews_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -441,13 +392,6 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "time_off_trainer_id_fkey"
-            columns: ["trainer_id"]
-            isOneToOne: false
-            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -527,41 +471,10 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "trainers_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "public_trainer_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
     }
     Views: {
-      public_trainer_profiles: {
-        Row: {
-          avatarurl: string | null
-          city: string | null
-          created_at: string | null
-          id: string | null
-          name: string | null
-        }
-        Insert: {
-          avatarurl?: string | null
-          city?: string | null
-          created_at?: string | null
-          id?: string | null
-          name?: string | null
-        }
-        Update: {
-          avatarurl?: string | null
-          city?: string | null
-          created_at?: string | null
-          id?: string | null
-          name?: string | null
-        }
-        Relationships: []
-      }
       trainers_public_view: {
         Row: {
           avatarurl: string | null
@@ -599,6 +512,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_expired_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_booking_partner_profile: {
         Args: { partner_id: string }
         Returns: {
@@ -633,6 +550,14 @@ export type Database = {
           id: string
           name: string
           surname: string
+        }[]
+      }
+      get_safe_profile_data: {
+        Args: { profile_user_id: string }
+        Returns: {
+          avatarurl: string
+          id: string
+          name: string
         }[]
       }
       get_trainer_invitations: {
