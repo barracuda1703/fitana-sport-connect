@@ -138,6 +138,14 @@ export const ProfileSetup: React.FC = () => {
         });
         return;
       }
+      if (!formData.bio || !formData.bio.trim()) {
+        toast({
+          title: 'Błąd',
+          description: 'Opis jest wymagany dla trenera',
+          variant: 'destructive',
+        });
+        return;
+      }
       setCurrentStep('trainer-locations');
     } else if (currentStep === 'trainer-locations') {
       if (formData.locations.length === 0) {
@@ -198,7 +206,7 @@ export const ProfileSetup: React.FC = () => {
       case 'basic':
         return 'Podstawowe informacje';
       case 'photo':
-        return 'Zdjęcie profilowe';
+        return isTrainer ? 'Zdjęcie profilowe (wymagane)' : 'Zdjęcie profilowe';
       case 'trainer-details':
         return 'Twoja specjalizacja';
       case 'trainer-locations':
@@ -283,7 +291,7 @@ export const ProfileSetup: React.FC = () => {
             </div>
           )}
 
-          {currentStep === 'trainer-details' && (
+           {currentStep === 'trainer-details' && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="mainDiscipline">Główna dyscyplina *</Label>
@@ -305,7 +313,7 @@ export const ProfileSetup: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bio">Krótki opis o sobie</Label>
+                <Label htmlFor="bio">Krótki opis o sobie *</Label>
                 <Textarea
                   id="bio"
                   name="bio"
@@ -313,6 +321,7 @@ export const ProfileSetup: React.FC = () => {
                   onChange={handleInputChange}
                   placeholder="Opowiedz o swoim doświadczeniu..."
                   rows={4}
+                  required
                 />
               </div>
             </div>
@@ -454,17 +463,6 @@ export const ProfileSetup: React.FC = () => {
                 Dodam później
               </Button>
             )}
-            
-            {currentStep === 'trainer-details' && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleSkip}
-                disabled={loading}
-              >
-                Dodam później
-              </Button>
-            )}
 
             <Button
               type="button"
@@ -472,7 +470,10 @@ export const ProfileSetup: React.FC = () => {
               onClick={handleNext}
               disabled={loading}
             >
-              {loading ? 'Zapisywanie...' : (currentStep === 'trainer-availability' || (currentStep === 'photo' && !isTrainer)) ? 'Zapisz i kontynuuj' : 'Dalej'}
+              {loading ? 'Zapisywanie...' : 
+                (currentStep === 'trainer-availability' && isTrainer) ? 'Zakończ konfigurację' :
+                (currentStep === 'photo' && !isTrainer) ? 'Zapisz i kontynuuj' : 
+                'Dalej'}
               {currentStep !== 'trainer-availability' && currentStep !== 'trainer-locations' && <ArrowRight className="h-4 w-4 ml-2" />}
             </Button>
           </div>

@@ -57,7 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .maybeSingle();
             
             if (profile) {
-              setUser(profile as Profile);
+              setUser({
+                ...profile,
+                avatarUrl: profile.avatarurl
+              } as Profile);
             } else if (error) {
               console.error('Error fetching profile:', error);
             }
@@ -80,7 +83,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
         
         if (profile) {
-          setUser(profile as Profile);
+          setUser({
+            ...profile,
+            avatarUrl: profile.avatarurl
+          } as Profile);
         }
       }
       
@@ -105,7 +111,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
       
       if (profile) {
-        setUser(profile as Profile);
+        setUser({
+          ...profile,
+          avatarUrl: profile.avatarurl
+        } as Profile);
       } else if (error) {
         console.error('Error fetching profile:', error);
       }

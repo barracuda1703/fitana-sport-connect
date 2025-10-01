@@ -65,6 +65,21 @@ export const SimplePhotoUploader: React.FC<SimplePhotoUploaderProps> = ({
         .from('avatars')
         .getPublicUrl(filePath);
 
+      // Update profiles table with new avatar URL
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ avatarurl: publicUrl })
+        .eq('id', userId);
+      
+      if (profileError) {
+        console.error('Error updating profile with avatar:', profileError);
+        toast({
+          title: "Ostrzeżenie",
+          description: "Zdjęcie przesłane, ale nie zapisano w profilu",
+          variant: "destructive"
+        });
+      }
+
       onPhotoUploaded(publicUrl);
       
       toast({

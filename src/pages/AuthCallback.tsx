@@ -35,10 +35,19 @@ export const AuthCallback: React.FC = () => {
           try {
             const trainerProfile = await trainersService.getByUserId(user.id);
             
-            // Check if trainer profile exists and has required data
+            // Check if trainer profile exists and has ALL required data
             const hasCompletedProfile = trainerProfile && 
               trainerProfile.specialties && 
-              trainerProfile.specialties.length > 0;
+              trainerProfile.specialties.length > 0 &&
+              trainerProfile.bio &&
+              trainerProfile.bio.trim().length > 0 &&
+              trainerProfile.locations &&
+              Array.isArray(trainerProfile.locations) &&
+              trainerProfile.locations.length > 0 &&
+              trainerProfile.availability &&
+              Array.isArray(trainerProfile.availability) &&
+              trainerProfile.availability.length > 0 &&
+              user.avatarUrl; // Photo is required
             
             if (!hasCompletedProfile) {
               navigate('/profile/setup', { replace: true });
