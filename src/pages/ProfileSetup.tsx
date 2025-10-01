@@ -9,13 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { LocationManagement } from '@/components/LocationManagement';
 import { SimplePhotoUploader } from '@/components/SimplePhotoUploader';
 import { SPORTS_LIST } from '@/data/sports';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
-type ProfileSetupStep = 'basic' | 'photo' | 'trainer-details' | 'trainer-locations';
+type ProfileSetupStep = 'basic' | 'photo' | 'trainer-details' | 'trainer-locations' | 'trainer-availability';
 
 export const ProfileSetup: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ export const ProfileSetup: React.FC = () => {
     bio: '',
     mainDiscipline: '',
     locations: [] as any[],
+    availability: {} as any,
   });
 
   const isTrainer = user?.role === 'trainer';
@@ -68,6 +70,10 @@ export const ProfileSetup: React.FC = () => {
 
         if (formData.locations.length > 0) {
           trainerData.locations = formData.locations;
+        }
+
+        if (formData.availability && Object.keys(formData.availability).length > 0) {
+          trainerData.availability = formData.availability;
         }
 
         const { error: trainerError } = await (supabase as any)
@@ -142,6 +148,19 @@ export const ProfileSetup: React.FC = () => {
         });
         return;
       }
+      setCurrentStep('trainer-availability');
+    } else if (currentStep === 'trainer-availability') {
+      const hasAnyAvailability = Object.values(formData.availability).some(
+        (day: any) => day?.enabled && day?.startTime && day?.endTime
+      );
+      if (!hasAnyAvailability) {
+        toast({
+          title: 'Błąd',
+          description: 'Ustaw dostępność przynajmniej dla jednego dnia',
+          variant: 'destructive',
+        });
+        return;
+      }
       handleSubmit();
     }
   };
@@ -153,6 +172,8 @@ export const ProfileSetup: React.FC = () => {
       setCurrentStep('photo');
     } else if (currentStep === 'trainer-locations') {
       setCurrentStep('trainer-details');
+    } else if (currentStep === 'trainer-availability') {
+      setCurrentStep('trainer-locations');
     }
   };
 
@@ -182,6 +203,8 @@ export const ProfileSetup: React.FC = () => {
         return 'Twoja specjalizacja';
       case 'trainer-locations':
         return 'Lokalizacje treningów';
+      case 'trainer-availability':
+        return 'Godziny dostępności';
       default:
         return '';
     }
@@ -197,6 +220,8 @@ export const ProfileSetup: React.FC = () => {
         return 'Wybierz swoją główną dyscyplinę sportową';
       case 'trainer-locations':
         return 'Dodaj do 5 lokalizacji gdzie prowadzisz treningi';
+      case 'trainer-availability':
+        return 'Ustaw godziny pracy dla każdego dnia tygodnia';
       default:
         return '';
     }
@@ -307,6 +332,105 @@ export const ProfileSetup: React.FC = () => {
             </div>
           )}
 
+          {currentStep === 'trainer-availability' && (
+            <div className="space-y-4">
+              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                const dayLabels = {
+                  monday: 'Poniedziałek',
+                  tuesday: 'Wtorek',
+                  wednesday: 'Środa',
+                  thursday: 'Czwartek',
+                  friday: 'Piątek',
+                  saturday: 'Sobota',
+                  sunday: 'Niedziela'
+                };
+                
+                return (
+                  <div key={day} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={`${day}-enabled`} className="text-base font-semibold">
+                        {dayLabels[day as keyof typeof dayLabels]}
+                      </Label>
+                      <Switch
+                        id={`${day}-enabled`}
+                        checked={formData.availability[day]?.enabled || false}
+                        onCheckedChange={(checked) => {
+                          setFormData({
+                            ...formData,
+                            availability: {
+                              ...formData.availability,
+                              [day]: {
+                                ...formData.availability[day],
+                                enabled: checked,
+                                startTime: formData.availability[day]?.startTime || '08:00',
+                                endTime: formData.availability[day]?.endTime || '20:00'
+                              }
+                            }
+                          });
+                        }}
+                      />
+                    </div>
+                    
+                    {formData.availability[day]?.enabled && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor={`${day}-start`} className="text-sm">Od:</Label>
+                          <Input
+                            id={`${day}-start`}
+                            type="time"
+                            value={formData.availability[day]?.startTime || '08:00'}
+                            onChange={(e) => {
+                              setFormData({
+                                ...formData,
+                                availability: {
+                                  ...formData.availability,
+                                  [day]: {
+                                    ...formData.availability[day],
+                                    startTime: e.target.value
+                                  }
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor={`${day}-end`} className="text-sm">Do:</Label>
+                          <Input
+                            id={`${day}-end`}
+                            type="time"
+                            value={formData.availability[day]?.endTime || '20:00'}
+                            onChange={(e) => {
+                              const startTime = formData.availability[day]?.startTime || '08:00';
+                              if (e.target.value <= startTime) {
+                                toast({
+                                  title: 'Błąd',
+                                  description: 'Godzina końcowa musi być późniejsza niż początkowa',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
+                              setFormData({
+                                ...formData,
+                                availability: {
+                                  ...formData.availability,
+                                  [day]: {
+                                    ...formData.availability[day],
+                                    endTime: e.target.value
+                                  }
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="flex gap-2 mt-6">
             {currentStep !== 'basic' && (
               <Button
@@ -348,16 +472,16 @@ export const ProfileSetup: React.FC = () => {
               onClick={handleNext}
               disabled={loading}
             >
-              {loading ? 'Zapisywanie...' : currentStep === 'trainer-locations' || (currentStep === 'photo' && !isTrainer) ? 'Zapisz i kontynuuj' : 'Dalej'}
-              {currentStep !== 'trainer-locations' && <ArrowRight className="h-4 w-4 ml-2" />}
+              {loading ? 'Zapisywanie...' : (currentStep === 'trainer-availability' || (currentStep === 'photo' && !isTrainer)) ? 'Zapisz i kontynuuj' : 'Dalej'}
+              {currentStep !== 'trainer-availability' && currentStep !== 'trainer-locations' && <ArrowRight className="h-4 w-4 ml-2" />}
             </Button>
           </div>
 
-          {isTrainer && currentStep === 'trainer-locations' && (
+          {isTrainer && currentStep === 'trainer-availability' && (
             <div className="mt-4 p-4 bg-muted rounded-lg">
               <p className="text-sm text-muted-foreground">
-                Po zakończeniu setup'u będziesz mógł dodać więcej szczegółów w ustawieniach trenera,
-                takich jak cennik, dodatkowe specjalizacje i godziny dostępności.
+                Po zakończeniu setup'u będziesz mógł dostosować więcej szczegółów w ustawieniach trenera,
+                takich jak cennik i dodatkowe specjalizacje.
               </p>
             </div>
           )}

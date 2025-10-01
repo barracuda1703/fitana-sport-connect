@@ -463,21 +463,85 @@ export const TrainerProfileSettings: React.FC = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {DAYS_OF_WEEK.map((day) => (
-                    <div key={day.id} className="flex items-center justify-between">
-                      <Label htmlFor={day.id}>{day.label}</Label>
-                      <Switch
-                        id={day.id}
-                        checked={trainerData.availability[day.id]?.enabled || false}
-                        onCheckedChange={(checked) => {
-                          setTrainerData(prev => ({
-                            ...prev,
-                            availability: {
-                              ...prev.availability,
-                              [day.id]: { ...prev.availability[day.id], enabled: checked }
-                            }
-                          }));
-                        }}
-                      />
+                    <div key={day.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`${day.id}-enabled`} className="text-base font-semibold">
+                          {day.label}
+                        </Label>
+                        <Switch
+                          id={`${day.id}-enabled`}
+                          checked={trainerData.availability[day.id]?.enabled || false}
+                          onCheckedChange={(checked) => {
+                            setTrainerData(prev => ({
+                              ...prev,
+                              availability: {
+                                ...prev.availability,
+                                [day.id]: {
+                                  ...prev.availability[day.id],
+                                  enabled: checked,
+                                  startTime: prev.availability[day.id]?.startTime || '08:00',
+                                  endTime: prev.availability[day.id]?.endTime || '20:00'
+                                }
+                              }
+                            }));
+                          }}
+                        />
+                      </div>
+                      
+                      {trainerData.availability[day.id]?.enabled && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`${day.id}-start`} className="text-sm">Od:</Label>
+                            <Input
+                              id={`${day.id}-start`}
+                              type="time"
+                              value={trainerData.availability[day.id]?.startTime || '08:00'}
+                              onChange={(e) => {
+                                setTrainerData(prev => ({
+                                  ...prev,
+                                  availability: {
+                                    ...prev.availability,
+                                    [day.id]: {
+                                      ...prev.availability[day.id],
+                                      startTime: e.target.value
+                                    }
+                                  }
+                                }));
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`${day.id}-end`} className="text-sm">Do:</Label>
+                            <Input
+                              id={`${day.id}-end`}
+                              type="time"
+                              value={trainerData.availability[day.id]?.endTime || '20:00'}
+                              onChange={(e) => {
+                                const startTime = trainerData.availability[day.id]?.startTime || '08:00';
+                                if (e.target.value <= startTime) {
+                                  toast({
+                                    title: 'Błąd',
+                                    description: 'Godzina końcowa musi być późniejsza niż początkowa',
+                                    variant: 'destructive',
+                                  });
+                                  return;
+                                }
+                                setTrainerData(prev => ({
+                                  ...prev,
+                                  availability: {
+                                    ...prev.availability,
+                                    [day.id]: {
+                                      ...prev.availability[day.id],
+                                      endTime: e.target.value
+                                    }
+                                  }
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </CardContent>
