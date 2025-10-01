@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, MapPin, Calendar as CalendarIcon, Check } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Calendar as CalendarIcon, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { bookingsService, chatsService } from '@/services/supabase';
+import { bookingsService, chatsService, availabilityService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface Service {
@@ -41,8 +41,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
   const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -57,28 +58,61 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
     }
   }, [isOpen]);
 
-  // Mock available dates - in real app would fetch from backend
+  // Fetch available dates when service is selected
   useEffect(() => {
-    if (selectedService) {
-      // Generate next 30 days as available
-      const dates: string[] = [];
-      for (let i = 1; i <= 30; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        dates.push(date.toISOString().split('T')[0]);
-      }
-      setAvailableDates(dates);
+    if (selectedService && trainer.user_id) {
+      fetchAvailableDates();
     }
-  }, [selectedService]);
+  }, [selectedService, trainer.user_id]);
 
-  // Mock available hours - in real app would fetch from backend
+  // Fetch available hours when date is selected
   useEffect(() => {
-    if (selectedService && selectedDate) {
-      // Generate available hours
-      const hours = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
-      setAvailableHours(hours);
+    if (selectedService && selectedDate && trainer.user_id) {
+      fetchAvailableHours();
     }
-  }, [selectedService, selectedDate]);
+  }, [selectedService, selectedDate, trainer.user_id]);
+
+  const fetchAvailableDates = async () => {
+    if (!trainer.user_id) return;
+    
+    setLoadingAvailability(true);
+    try {
+      const today = new Date();
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + 30);
+      
+      const dates = await availabilityService.getAvailableDates(trainer.user_id, today, futureDate);
+      setAvailableDates(dates);
+    } catch (error) {
+      console.error('Error fetching available dates:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się pobrać dostępnych terminów",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+
+  const fetchAvailableHours = async () => {
+    if (!trainer.user_id || !selectedDate) return;
+    
+    setLoadingAvailability(true);
+    try {
+      const hours = await availabilityService.getAvailableHours(trainer.user_id, selectedDate);
+      setAvailableHours(hours);
+    } catch (error) {
+      console.error('Error fetching available hours:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się pobrać dostępnych godzin",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -188,8 +222,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   };
 
   const isDateAvailable = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return availableDates.includes(dateStr) && date > new Date();
+    if (date <= new Date()) return true; // Disable past dates
+    return !availableDates.some(availableDate => 
+      availableDate.toISOString().split('T')[0] === date.toISOString().split('T')[0]
+    );
   };
 
   return (
@@ -277,18 +313,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
         {/* Step 2: Date Selection */}
         {step === 'date' && selectedService && (
           <div className="space-y-4">
-            <div className="text-center">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                disabled={(date) => !isDateAvailable(date)}
-                className={cn("mx-auto pointer-events-auto")}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Dostępne terminy dla: <strong>{selectedService.name}</strong>
-            </p>
+            {loadingAvailability ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                <p className="text-sm text-muted-foreground">Ładowanie dostępnych terminów...</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-center">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    disabled={(date) => isDateAvailable(date)}
+                    className={cn("mx-auto pointer-events-auto")}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground text-center">
+                  Dostępne terminy dla: <strong>{selectedService.name}</strong>
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -306,20 +351,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
               <p className="font-medium">{selectedService.name}</p>
             </div>
             
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-              {availableHours.map((time) => (
-                <Button
-                  key={time}
-                  variant={selectedTime === time ? "default" : "outline"}
-                  onClick={() => handleTimeSelect(time)}
-                  className="h-12"
-                >
-                  {time}
-                </Button>
-              ))}
-            </div>
-            
-            {availableHours.length === 0 && (
+            {loadingAvailability ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                <p className="text-sm text-muted-foreground">Ładowanie dostępnych godzin...</p>
+              </div>
+            ) : availableHours.length === 0 ? (
               <Card className="bg-muted/50">
                 <CardContent className="p-4 text-center">
                   <p className="text-sm text-muted-foreground">
@@ -327,6 +364,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
                   </p>
                 </CardContent>
               </Card>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                {availableHours.map((time) => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? "default" : "outline"}
+                    onClick={() => handleTimeSelect(time)}
+                    className="h-12"
+                  >
+                    {time}
+                  </Button>
+                ))}
+              </div>
             )}
           </div>
         )}
