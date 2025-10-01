@@ -367,6 +367,7 @@ export type Database = {
           is_verified: boolean | null
           languages: string[] | null
           locations: Json | null
+          off_mode: boolean | null
           price_from: number | null
           rating: number | null
           review_count: number | null
@@ -388,6 +389,7 @@ export type Database = {
           is_verified?: boolean | null
           languages?: string[] | null
           locations?: Json | null
+          off_mode?: boolean | null
           price_from?: number | null
           rating?: number | null
           review_count?: number | null
@@ -409,6 +411,7 @@ export type Database = {
           is_verified?: boolean | null
           languages?: string[] | null
           locations?: Json | null
+          off_mode?: boolean | null
           price_from?: number | null
           rating?: number | null
           review_count?: number | null

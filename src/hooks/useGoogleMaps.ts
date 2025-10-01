@@ -18,7 +18,7 @@ export const useGoogleMaps = () => {
           
           await new Promise<void>((resolve, reject) => {
             script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load Google Maps'));
+            script.onerror = () => reject(new Error('Failed to load Google Maps. Please check your API key and internet connection.'));
             document.head.appendChild(script);
           });
         }

@@ -134,6 +134,9 @@ export const ClientHome: React.FC = () => {
   useEffect(() => {
     let filtered = trainers;
     
+    // Filter out trainers with off_mode enabled
+    filtered = filtered.filter(trainer => !(trainer as any).off_mode);
+    
     // Calculate distances if we have user location or selected city
     let userLat = userLocation.latitude;
     let userLng = userLocation.longitude;

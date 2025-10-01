@@ -23,3 +23,5 @@ export const sportsCategories = [
   { id: 'running', name: 'Trening biegowy', icon: '🏃‍♂️' },
   { id: 'golf', name: 'Golf', icon: '⛳' },
 ];
+
+export const SPORTS_LIST = sportsCategories.map(sport => sport.name);

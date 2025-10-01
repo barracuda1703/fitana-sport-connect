@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
-import { timeOffService, bookingsService } from '@/services/supabase';
+import { CalendarIcon, Clock, AlertTriangle, Power } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { timeOffService, bookingsService, trainersService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface TimeOffModalProps {
@@ -41,6 +43,26 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
   const [note, setNote] = useState('');
   const [collisions, setCollisions] = useState<Collision[]>([]);
   const [isCheckingCollisions, setIsCheckingCollisions] = useState(false);
+  const [offMode, setOffMode] = useState(false);
+  const [loadingOffMode, setLoadingOffMode] = useState(false);
+
+  // Load current off_mode state
+  useEffect(() => {
+    const loadOffModeState = async () => {
+      try {
+        const trainer = await trainersService.getByUserId(trainerId);
+        if (trainer) {
+          setOffMode(trainer.off_mode || false);
+        }
+      } catch (error) {
+        console.error('Error loading off mode state:', error);
+      }
+    };
+    
+    if (isOpen && trainerId) {
+      loadOffModeState();
+    }
+  }, [isOpen, trainerId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -102,6 +124,30 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
     }
   };
 
+  const handleOffModeToggle = async (checked: boolean) => {
+    setLoadingOffMode(true);
+    try {
+      await trainersService.updateByUserId(trainerId, { off_mode: checked });
+      setOffMode(checked);
+      
+      toast({
+        title: checked ? "Tryb OFF włączony" : "Tryb OFF wyłączony",
+        description: checked 
+          ? "Nie będziesz widoczny dla użytkowników szukających trenerów"
+          : "Jesteś ponownie widoczny dla użytkowników"
+      });
+    } catch (error) {
+      console.error('Error toggling off mode:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zmienić trybu OFF",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingOffMode(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!startDate || (mode === 'hours' && (!startTime || !endTime))) {
       return;
@@ -152,6 +198,35 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* OFF Mode Toggle */}
+          <Card className="p-4 bg-muted/50 border-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${offMode ? 'bg-destructive/20' : 'bg-primary/20'}`}>
+                  <Power className={`h-5 w-5 ${offMode ? 'text-destructive' : 'text-primary'}`} />
+                </div>
+                <div>
+                  <h4 className="font-semibold">Tryb OFF</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Szybkie wyłączenie dostępności w nagłych wypadkach
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={offMode}
+                onCheckedChange={handleOffModeToggle}
+                disabled={loadingOffMode}
+              />
+            </div>
+            {offMode && (
+              <Alert className="mt-3 border-destructive/50 bg-destructive/10">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Jesteś niewidoczny dla użytkowników. Nowe rezerwacje nie są możliwe.
+                </AlertDescription>
+              </Alert>
+            )}
+          </Card>
           <div className="space-y-2">
             <Label>Tryb</Label>
             <Select value={mode} onValueChange={(value: 'allDay' | 'hours') => setMode(value)}>
