@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_rate_limits: {
+        Row: {
+          created_at: string | null
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           client_id: string
@@ -59,6 +86,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bookings_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       chats: {
@@ -92,10 +126,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "chats_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "chats_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chats_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -106,8 +154,10 @@ export type Database = {
           client_email: string
           client_name: string | null
           created_at: string | null
+          expires_at: string | null
           id: string
           invitation_data: Json
+          invitation_token: string | null
           status: string
           trainer_id: string
           updated_at: string | null
@@ -117,8 +167,10 @@ export type Database = {
           client_email: string
           client_name?: string | null
           created_at?: string | null
+          expires_at?: string | null
           id?: string
           invitation_data?: Json
+          invitation_token?: string | null
           status?: string
           trainer_id: string
           updated_at?: string | null
@@ -128,8 +180,10 @@ export type Database = {
           client_email?: string
           client_name?: string | null
           created_at?: string | null
+          expires_at?: string | null
           id?: string
           invitation_data?: Json
+          invitation_token?: string | null
           status?: string
           trainer_id?: string
           updated_at?: string | null
@@ -172,6 +226,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "manual_blocks_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       messages: {
@@ -212,6 +273,13 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -317,10 +385,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reviews_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -359,6 +441,13 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "public_trainer_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -438,13 +527,65 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "trainers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_trainer_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      public_trainer_profiles: {
+        Row: {
+          avatarurl: string | null
+          city: string | null
+          created_at: string | null
+          id: string | null
+          name: string | null
+        }
+        Insert: {
+          avatarurl?: string | null
+          city?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+        }
+        Update: {
+          avatarurl?: string | null
+          city?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      accept_invitation_by_token: {
+        Args: { token: string; user_id: string }
+        Returns: Json
+      }
+      check_rate_limit: {
+        Args: {
+          max_requests?: number
+          req_endpoint: string
+          req_identifier: string
+          window_minutes?: number
+        }
+        Returns: boolean
+      }
+      get_booking_partner_profile: {
+        Args: { partner_id: string }
+        Returns: {
+          avatarurl: string
+          city: string
+          id: string
+          name: string
+        }[]
+      }
       users_have_bookings_together: {
         Args: { user_id_1: string; user_id_2: string }
         Returns: boolean
