@@ -28,13 +28,11 @@ export const trainersService = {
       .from('trainers')
       .select(`
         *,
-        profiles!trainers_user_id_fkey (
+        public_trainer_profiles!trainers_user_id_fkey (
           id,
           name,
-          surname,
-          email,
-          avatarurl,
-          city
+          city,
+          avatarurl
         )
       `);
     
@@ -47,13 +45,11 @@ export const trainersService = {
       .from('trainers')
       .select(`
         *,
-        profiles!trainers_user_id_fkey (
+        public_trainer_profiles!trainers_user_id_fkey (
           id,
           name,
-          surname,
-          email,
-          avatarurl,
-          city
+          city,
+          avatarurl
         )
       `)
       .eq('id', id)
@@ -128,13 +124,11 @@ export const trainersService = {
       .from('trainers')
       .select(`
         *,
-        profiles!trainers_user_id_fkey (
+        public_trainer_profiles!trainers_user_id_fkey (
           id,
           name,
-          surname,
-          email,
-          avatarurl,
-          city
+          city,
+          avatarurl
         )
       `)
       .contains('specialties', [specialty]);

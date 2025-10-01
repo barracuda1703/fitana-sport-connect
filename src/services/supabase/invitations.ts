@@ -8,6 +8,8 @@ export interface Invitation {
   booking_id?: string;
   status: 'sent' | 'accepted' | 'expired';
   invitation_data: any;
+  invitation_token?: string;
+  expires_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +43,30 @@ export const invitationsService = {
       .update({ status })
       .eq('id', id)
       .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async acceptByToken(token: string, userId: string) {
+    const { data, error } = await supabase
+      .rpc('accept_invitation_by_token', {
+        token,
+        user_id: userId
+      });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async getByToken(token: string) {
+    const { data, error } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('invitation_token', token)
+      .eq('status', 'sent')
+      .gt('expires_at', new Date().toISOString())
       .single();
     
     if (error) throw error;
