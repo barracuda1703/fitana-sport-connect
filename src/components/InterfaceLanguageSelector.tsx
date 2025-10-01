@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Languages } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useLanguage, languages } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
@@ -40,19 +40,18 @@ export const InterfaceLanguageSelector: React.FC<InterfaceLanguageSelectorProps>
   };
 
   return (
-    <div className={cn("relative", className)} ref={dropdownRef}>
+    <div className={cn("relative w-full", className)} ref={dropdownRef}>
       <Button
         variant="outline"
-        size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="gap-2"
+        className="w-full justify-between gap-2"
       >
-        <Languages className="h-4 w-4" />
-        <span className="font-medium">{currentLanguage.code.toUpperCase()}</span>
+        <span className="font-medium">{currentLanguage.nativeName}</span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+        <div className="absolute left-0 top-full mt-2 w-full bg-background border border-border rounded-lg shadow-lg z-[100] overflow-hidden">
           <div className="py-1">
             {languages.map((lang) => (
               <button
