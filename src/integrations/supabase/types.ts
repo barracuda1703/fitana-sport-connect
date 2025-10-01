@@ -604,6 +604,15 @@ export type Database = {
           surname: string
         }[]
       }
+      get_reviewer_profiles: {
+        Args: { reviewer_ids: string[] }
+        Returns: {
+          avatarurl: string
+          id: string
+          name: string
+          surname: string
+        }[]
+      }
       get_trainer_invitations: {
         Args: Record<PropertyKey, never>
         Returns: {

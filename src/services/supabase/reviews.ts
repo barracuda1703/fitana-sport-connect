@@ -18,22 +18,34 @@ export interface Review {
 
 export const reviewsService = {
   async getByTrainerId(trainerId: string) {
-    const { data, error } = await supabase
+    // First, get reviews without JOIN
+    const { data: reviews, error } = await supabase
       .from('reviews')
-      .select(`
-        *,
-        client:profiles!reviews_client_id_fkey (
-          id,
-          name,
-          surname,
-          avatarurl
-        )
-      `)
+      .select('*')
       .eq('trainer_id', trainerId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data;
+    if (!reviews || reviews.length === 0) return [];
+
+    // Collect unique reviewer IDs
+    const reviewerIds = [...new Set(reviews.map(r => r.client_id))];
+
+    // Fetch reviewer profiles using secure RPC function
+    const { data: profiles, error: profilesError } = await supabase
+      .rpc('get_reviewer_profiles', { reviewer_ids: reviewerIds });
+
+    if (profilesError) throw profilesError;
+
+    // Create a map for quick profile lookup
+    const profilesMap = new Map();
+    profiles?.forEach(profile => profilesMap.set(profile.id, profile));
+
+    // Merge reviews with client profile data
+    return reviews.map(review => ({
+      ...review,
+      client: profilesMap.get(review.client_id) || null
+    }));
   },
 
   async create(review: Omit<Review, 'id' | 'created_at' | 'updated_at'>) {
