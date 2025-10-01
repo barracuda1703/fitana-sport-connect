@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Star, MapPin, Clock, CheckCircle, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { reviewsService } from '@/services/supabase/reviews';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Trainer {
   id: string;
@@ -37,23 +39,27 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
   onBook, 
   onChat 
 }) => {
-  // Mock reviews data
-  const reviews = [
-    {
-      id: '1',
-      clientName: 'Marcin K.',
-      rating: 5,
-      comment: 'Świetny trener! Bardzo profesjonalne podejście i indywidualne dostosowanie ćwiczeń.',
-      date: '2024-01-15'
-    },
-    {
-      id: '2', 
-      clientName: 'Agata S.',
-      rating: 5,
-      comment: 'Polecam! Anna potrafi zmotywować i wytłumaczyć każde ćwiczenie.',
-      date: '2024-01-10'
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+
+  useEffect(() => {
+    if (isOpen && trainer.id) {
+      loadReviews();
     }
-  ];
+  }, [isOpen, trainer.id]);
+
+  const loadReviews = async () => {
+    try {
+      setLoadingReviews(true);
+      const data = await reviewsService.getByTrainerId(trainer.id);
+      setReviews(data || []);
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -151,25 +157,38 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
               <CardTitle className="text-base">Opinie klientów</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {reviews.map((review) => (
-                <div key={review.id}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">{review.clientName}</span>
-                    <div className="flex">
-                      {[...Array(review.rating)].map((_, i) => (
-                        <Star key={i} className="h-3 w-3 fill-warning text-warning" />
-                      ))}
+              {loadingReviews ? (
+                <>
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </>
+              ) : reviews.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Brak opinii
+                </p>
+              ) : (
+                reviews.map((review, index) => (
+                  <div key={review.id}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm">
+                        {review.profiles?.name || 'Klient'}
+                      </span>
+                      <div className="flex">
+                        {[...Array(review.rating)].map((_, i) => (
+                          <Star key={i} className="h-3 w-3 fill-warning text-warning" />
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {new Date(review.created_at).toLocaleDateString('pl-PL')}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {new Date(review.date).toLocaleDateString('pl-PL')}
-                    </span>
+                    <p className="text-sm text-muted-foreground">{review.comment}</p>
+                    {index !== reviews.length - 1 && (
+                      <Separator className="mt-3" />
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{review.comment}</p>
-                  {review.id !== reviews[reviews.length - 1].id && (
-                    <Separator className="mt-3" />
-                  )}
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
 

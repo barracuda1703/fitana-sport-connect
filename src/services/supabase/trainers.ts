@@ -28,13 +28,23 @@ export const trainersService = {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // Authenticated users get full access to trainer data
+      // Authenticated users get full access to trainer data with profile info
       const { data, error } = await supabase
         .from('trainers')
-        .select('*');
+        .select(`
+          *,
+          profiles!trainers_user_id_fkey(avatarurl, name, city)
+        `);
       
       if (error) throw error;
-      return data;
+      
+      // Flatten the profiles data into trainer object
+      return data?.map(trainer => ({
+        ...trainer,
+        avatarurl: (trainer as any).profiles?.avatarurl,
+        name: (trainer as any).profiles?.name,
+        city: (trainer as any).profiles?.city,
+      })) || [];
     } else {
       // Unauthenticated users use sanitized public directory (SECURITY HARDENED)
       const { data, error } = await supabase

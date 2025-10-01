@@ -20,6 +20,7 @@ import { trainersService } from '@/services/supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { sportsCategories, getSportName } from '@/data/sports';
 import { POLISH_CITIES } from '@/data/cities';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Select,
   SelectContent,
@@ -30,8 +31,11 @@ import {
 
 interface Trainer {
   id: string;
-  user_id: string | null; // Can be null for unauthenticated users viewing public data
+  user_id: string | null;
   display_name: string | null;
+  name?: string;
+  city?: string;
+  avatarurl?: string | null;
   bio: string | null;
   specialties: string[];
   services: any;
@@ -473,11 +477,15 @@ export const ClientHome: React.FC = () => {
           <Card key={trainer.id} className="overflow-hidden hover:shadow-card transition-all duration-200 cursor-pointer bg-gradient-card">
             <CardHeader className="pb-3">
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center text-2xl overflow-hidden">
-                  <span className="text-2xl">
-                    {trainer.display_name ? trainer.display_name.charAt(0).toUpperCase() : 'T'}
-                  </span>
-                </div>
+                <Avatar className="w-16 h-16">
+                  {trainer.avatarurl ? (
+                    <AvatarImage src={trainer.avatarurl} alt={trainer.display_name || 'Trener'} />
+                  ) : (
+                    <AvatarFallback className="bg-gradient-accent text-2xl">
+                      {trainer.display_name ? trainer.display_name.charAt(0).toUpperCase() : 'T'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-lg">

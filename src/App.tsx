@@ -16,14 +16,16 @@ import { TrainerDashboard } from "@/pages/TrainerDashboard";
 import { CalendarPage } from "@/pages/Calendar";
 import { ClientCalendarPage } from "@/pages/ClientCalendar";
 import { TrainerCalendarListPage } from '@/pages/TrainerCalendarList';
-import { TrainerProfileSettings } from "@/pages/TrainerProfileSettings";
+import { TrainerSettings } from '@/pages/TrainerSettings';
+import { TrainerProfileSettings } from '@/pages/TrainerProfileSettings';
+import { TrainerStatistics } from '@/pages/TrainerStatistics';
+import { ClientManagement } from "@/pages/ClientManagement";
 import { ProfileSetup } from "@/pages/ProfileSetup";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
 import { ProfilePage } from "@/pages/Profile";
 import { ProfileEdit } from "@/pages/ProfileEdit";
-import { ClientManagement } from "@/pages/ClientManagement";
-import { TrainerStatistics } from "@/pages/TrainerStatistics";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,83 +68,85 @@ const RoleProtectedRoute: React.FC<{
 const AppRoutes: React.FC = () => {
   return (
     <div className="min-h-screen w-full">
-      <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/auth" element={<AuthScreen />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/index" element={<Index />} />
-      <Route path="/client" element={
-        <RoleProtectedRoute allowedRole="client">
-          <ClientHome />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/trainer" element={
-        <RoleProtectedRoute allowedRole="trainer">
-          <TrainerDashboard />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/calendar" element={
-        <RoleProtectedRoute allowedRole="client">
-          <CalendarPage />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/client-calendar" element={
-        <RoleProtectedRoute allowedRole="client">
-          <ClientCalendarPage />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/trainer-dashboard" element={
-        <RoleProtectedRoute allowedRole="trainer">
-          <TrainerDashboard />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/trainer-calendar" element={
-        <RoleProtectedRoute allowedRole="trainer">
-          <TrainerCalendarListPage />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/trainer/settings" element={
-        <RoleProtectedRoute allowedRole="trainer">
-          <TrainerProfileSettings />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/profile/setup" element={
-        <ProtectedRoute>
-          <ProfileSetup />
-        </ProtectedRoute>
-      } />
-      <Route path="/chat" element={
-        <ProtectedRoute>
-          <ChatListPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/chat/:chatId" element={
-        <ProtectedRoute>
-          <ChatPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <ProfilePage />
-        </ProtectedRoute>
-      } />
-      <Route path="/profile/edit" element={
-        <ProtectedRoute>
-          <ProfileEdit />
-        </ProtectedRoute>
-      } />
-      <Route path="/trainer/clients" element={
-        <RoleProtectedRoute allowedRole="trainer">
-          <ClientManagement />
-        </RoleProtectedRoute>
-      } />
-      <Route path="/trainer/statistics" element={
-        <RoleProtectedRoute allowedRole="trainer">
-          <TrainerStatistics />
-        </RoleProtectedRoute>
-      } />
+      <ErrorBoundary>
+        <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/auth" element={<AuthScreen />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/index" element={<Index />} />
+        <Route path="/client" element={
+          <RoleProtectedRoute allowedRole="client">
+            <ClientHome />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/trainer" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <TrainerDashboard />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/calendar" element={
+          <RoleProtectedRoute allowedRole="client">
+            <CalendarPage />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/client-calendar" element={
+          <RoleProtectedRoute allowedRole="client">
+            <ClientCalendarPage />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/trainer-dashboard" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <TrainerDashboard />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/trainer-calendar" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <TrainerCalendarListPage />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/trainer/settings" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <TrainerSettings />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/profile/setup" element={
+          <ProtectedRoute>
+            <ProfileSetup />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat" element={
+          <ProtectedRoute>
+            <ChatListPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat/:chatId" element={
+          <ProtectedRoute>
+            <ChatPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/edit" element={
+          <ProtectedRoute>
+            <ProfileEdit />
+          </ProtectedRoute>
+        } />
+        <Route path="/trainer/clients" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <ClientManagement />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/trainer/statistics" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <TrainerStatistics />
+          </RoleProtectedRoute>
+        } />
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
+      </ErrorBoundary>
     </div>
   );
 };
