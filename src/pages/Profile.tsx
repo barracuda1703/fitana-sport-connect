@@ -1,20 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Settings, LogOut, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { AchievementsCard } from '@/components/AchievementsCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { trainerStatsService, TrainerStats } from '@/services/supabase/trainerStats';
 
 export const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
+  const [trainerStats, setTrainerStats] = useState<TrainerStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'trainer') {
+      setStatsLoading(true);
+      trainerStatsService.getByUserId(user.id)
+        .then(stats => setTrainerStats(stats))
+        .catch(error => console.error('Error loading trainer stats:', error))
+        .finally(() => setStatsLoading(false));
+    }
+  }, [user]);
 
   if (!user) return null;
 
@@ -81,16 +95,33 @@ export const ProfilePage: React.FC = () => {
               <CardTitle>Twoje statystyki</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">4.9</div>
-                  <div className="text-sm text-muted-foreground">Ocena</div>
+              {statsLoading ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <Skeleton className="h-8 w-16 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-12 mx-auto" />
+                  </div>
+                  <div className="text-center">
+                    <Skeleton className="h-8 w-16 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-20 mx-auto" />
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-accent">127</div>
-                  <div className="text-sm text-muted-foreground">Treningów</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      {trainerStats?.rating ?? '—'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Ocena</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-accent">
+                      {trainerStats?.completed_trainings ?? 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Treningów</div>
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         )}

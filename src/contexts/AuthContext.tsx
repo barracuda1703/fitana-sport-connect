@@ -115,6 +115,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...profile,
           avatarUrl: profile.avatarurl
         } as Profile);
+
+        // Auto-create trainer record for new trainers
+        if (profile.role === 'trainer') {
+          const { data: trainerExists } = await supabase
+            .from('trainers')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (!trainerExists) {
+            await supabase
+              .from('trainers')
+              .insert({
+                user_id: session.user.id,
+                display_name: profile.name,
+                specialties: [],
+                languages: [profile.language || 'pl'],
+                locations: [],
+                services: [],
+                availability: [],
+                gallery: [],
+                settings: {}
+              });
+          }
+        }
       } else if (error) {
         console.error('Error fetching profile:', error);
       }

@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, MapPin, DollarSign, Plus } from 'lucide-react';
+import { ArrowLeft, Clock, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BottomNavigation } from '@/components/BottomNavigation';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 import { trainersService } from '@/services/supabase';
+import { toast } from 'sonner';
 
 const DAYS_OF_WEEK = [
   { id: 'monday', label: 'Poniedziałek' },
@@ -25,37 +27,50 @@ const DAYS_OF_WEEK = [
 export const TrainerSettings: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('settings');
+  const [activeTab] = useState('profile');
   const [availability, setAvailability] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadSettings = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       try {
-        console.log('Loading trainer settings for user:', user.id);
+        setError(null);
         const trainer = await trainersService.getByUserId(user.id);
-        console.log('Trainer data loaded:', trainer);
         
-        if (trainer && trainer.availability) {
-          setAvailability(trainer.availability);
+        if (!trainer) {
+          // Auto-create trainer record if it doesn't exist
+          await trainersService.create({
+            user_id: user.id,
+            display_name: user.name,
+            specialties: [],
+            languages: ['pl'],
+            locations: [],
+            services: [],
+            availability: [],
+            gallery: [],
+            settings: {}
+          });
+          setAvailability({});
+        } else {
+          setAvailability(trainer.availability || {});
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading trainer settings:', error);
-        toast({
-          title: "Błąd",
-          description: "Nie udało się załadować ustawień",
-          variant: "destructive"
-        });
+        setError(error.message || 'Nie udało się załadować ustawień');
+        toast.error('Błąd podczas ładowania ustawień');
       } finally {
         setLoading(false);
       }
     };
 
     loadSettings();
-  }, [user, toast]);
+  }, [user]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -65,46 +80,64 @@ export const TrainerSettings: React.FC = () => {
         availability
       });
 
-      toast({
-        title: "Ustawienia zapisane",
-        description: "Twoje preferencje zostały zaktualizowane"
-      });
-    } catch (error) {
+      toast.success('Ustawienia zostały zapisane');
+      navigate('/profile');
+    } catch (error: any) {
       console.error('Error saving trainer settings:', error);
-      toast({
-        title: "Błąd",
-        description: "Nie udało się zapisać ustawień",
-        variant: "destructive"
-      });
+      toast.error(error.message || 'Nie udało się zapisać ustawień');
     }
   };
 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/trainer')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">Ustawienia</h1>
-            <p className="text-muted-foreground">Zarządzaj swoimi preferencjami</p>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background pb-20">
+        <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/profile')}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold flex-1">Ustawienia</h1>
+            <Button onClick={handleSave} disabled={loading}>
+              <Save className="h-4 w-4 mr-2" />
+              Zapisz
+            </Button>
           </div>
-          <Button onClick={handleSave}>Zapisz</Button>
-        </div>
-      </header>
+        </header>
 
-      {loading ? (
-        <div className="p-4">
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">Ładowanie...</p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
+        {error ? (
+          <div className="p-4">
+            <Card className="border-destructive">
+              <CardContent className="p-6 text-center">
+                <p className="text-destructive mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()}>
+                  Spróbuj ponownie
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        ) : loading ? (
+          <div className="p-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-center justify-between p-4">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-6 w-12" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
         <div className="p-4 space-y-4">
           <Card>
             <CardHeader>
@@ -167,11 +200,7 @@ export const TrainerSettings: React.FC = () => {
                             onChange={(e) => {
                               const startTime = availability[day.id]?.startTime || '08:00';
                               if (e.target.value <= startTime) {
-                                toast({
-                                  title: 'Błąd',
-                                  description: 'Godzina końcowa musi być późniejsza niż początkowa',
-                                  variant: 'destructive',
-                                });
+                                toast.error('Godzina końcowa musi być późniejsza niż początkowa');
                                 return;
                               }
                               setAvailability({
@@ -221,11 +250,12 @@ export const TrainerSettings: React.FC = () => {
         </div>
       )}
 
-      <BottomNavigation 
-        userRole="trainer"
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
-    </div>
+        <BottomNavigation 
+          userRole={user?.role || 'trainer'}
+          activeTab={activeTab}
+          onTabChange={() => {}}
+        />
+      </div>
+    </ErrorBoundary>
   );
 };
