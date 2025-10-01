@@ -35,25 +35,33 @@ export const TrainerSettings: React.FC = () => {
       if (!user) return;
 
       try {
+        console.log('Loading trainer settings for user:', user.id);
         const trainer = await trainersService.getByUserId(user.id);
+        console.log('Trainer data loaded:', trainer);
+        
         if (trainer && trainer.availability) {
           setAvailability(trainer.availability);
         }
       } catch (error) {
-        console.error('Error loading settings:', error);
+        console.error('Error loading trainer settings:', error);
+        toast({
+          title: "Błąd",
+          description: "Nie udało się załadować ustawień",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
     };
 
     loadSettings();
-  }, [user]);
+  }, [user, toast]);
 
   const handleSave = async () => {
     if (!user) return;
 
     try {
-      await trainersService.update(user.id, {
+      await trainersService.updateByUserId(user.id, {
         availability
       });
 
@@ -62,6 +70,7 @@ export const TrainerSettings: React.FC = () => {
         description: "Twoje preferencje zostały zaktualizowane"
       });
     } catch (error) {
+      console.error('Error saving trainer settings:', error);
       toast({
         title: "Błąd",
         description: "Nie udało się zapisać ustawień",

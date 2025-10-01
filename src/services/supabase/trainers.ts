@@ -31,15 +31,7 @@ export const trainersService = {
       // Authenticated users get full access to trainer data
       const { data, error } = await supabase
         .from('trainers')
-        .select(`
-          *,
-          public_trainer_profiles!trainers_user_id_fkey (
-            id,
-            name,
-            city,
-            avatarurl
-          )
-        `);
+        .select('*');
       
       if (error) throw error;
       return data;
@@ -51,22 +43,11 @@ export const trainersService = {
       
       if (error) throw error;
       
-      // Normalize the data to match the expected trainer structure
-      // Add missing fields that aren't in the public view
+      // Map public view data to include missing fields
       return data?.map(trainer => ({
         ...trainer,
-        user_id: null, // Don't expose user_id to unauthenticated users
-        gender: null, // Don't expose gender to unauthenticated users
-        availability: null, // Don't expose availability schedules
-        settings: null, // Don't expose settings
-        off_mode: null, // Don't expose internal state
-        updated_at: trainer.created_at, // Use created_at as fallback
-        public_trainer_profiles: {
-          id: trainer.id,
-          name: trainer.name,
-          city: trainer.city,
-          avatarurl: trainer.avatarurl
-        }
+        user_id: null as string | null,
+        gender: null as string | null
       })) || [];
     }
   },
@@ -74,15 +55,7 @@ export const trainersService = {
   async getById(id: string) {
     const { data, error } = await supabase
       .from('trainers')
-      .select(`
-        *,
-        public_trainer_profiles!trainers_user_id_fkey (
-          id,
-          name,
-          city,
-          avatarurl
-        )
-      `)
+      .select('*')
       .eq('id', id)
       .maybeSingle();
     
@@ -158,15 +131,7 @@ export const trainersService = {
       // Authenticated users get full access
       const { data, error } = await supabase
         .from('trainers')
-        .select(`
-          *,
-          public_trainer_profiles!trainers_user_id_fkey (
-            id,
-            name,
-            city,
-            avatarurl
-          )
-        `)
+        .select('*')
         .contains('specialties', [specialty]);
       
       if (error) throw error;
@@ -180,21 +145,11 @@ export const trainersService = {
       
       if (error) throw error;
       
-      // Normalize the data to match the expected trainer structure
+      // Map public view data to include missing fields
       return data?.map(trainer => ({
         ...trainer,
-        user_id: null,
-        gender: null,
-        availability: null,
-        settings: null,
-        off_mode: null,
-        updated_at: trainer.created_at,
-        public_trainer_profiles: {
-          id: trainer.id,
-          name: trainer.name,
-          city: trainer.city,
-          avatarurl: trainer.avatarurl
-        }
+        user_id: null as string | null,
+        gender: null as string | null
       })) || [];
     }
   }
