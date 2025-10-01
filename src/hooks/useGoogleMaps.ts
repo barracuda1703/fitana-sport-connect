@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useGoogleMaps = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -9,9 +8,18 @@ export const useGoogleMaps = () => {
   useEffect(() => {
     const loadMaps = async () => {
       try {
-        if (!GOOGLE_MAPS_API_KEY) {
-          throw new Error('Google Maps API key is not configured. Please contact support.');
+        // Fetch API key from Edge Function
+        const { data, error: fetchError } = await supabase.functions.invoke('get-google-maps-key');
+        
+        if (fetchError) {
+          throw new Error('Nie udało się pobrać klucza API map. Spróbuj odświeżyć stronę.');
         }
+
+        if (!data?.apiKey) {
+          throw new Error('Klucz API map nie jest skonfigurowany. Skontaktuj się z wsparciem.');
+        }
+
+        const GOOGLE_MAPS_API_KEY = data.apiKey;
 
         // Load the Google Maps script dynamically
         if (!window.google) {
