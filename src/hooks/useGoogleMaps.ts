@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyA9Hu1aW3QOB0AhMoFJRsDQ_tjZm273c2o';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 export const useGoogleMaps = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -9,6 +9,10 @@ export const useGoogleMaps = () => {
   useEffect(() => {
     const loadMaps = async () => {
       try {
+        if (!GOOGLE_MAPS_API_KEY) {
+          throw new Error('Google Maps API key is not configured. Please contact support.');
+        }
+
         // Load the Google Maps script dynamically
         if (!window.google) {
           const script = document.createElement('script');
@@ -18,7 +22,7 @@ export const useGoogleMaps = () => {
           
           await new Promise<void>((resolve, reject) => {
             script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load Google Maps. Please check your API key and internet connection.'));
+            script.onerror = () => reject(new Error('Nie udało się załadować mapy. Sprawdź połączenie internetowe.'));
             document.head.appendChild(script);
           });
         }

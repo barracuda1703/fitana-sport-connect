@@ -110,6 +110,14 @@ export const ProfileSetup: React.FC = () => {
       }
       setCurrentStep('photo');
     } else if (currentStep === 'photo') {
+      if (isTrainer && !formData.avatarUrl) {
+        toast({
+          title: 'Błąd',
+          description: 'Dodaj zdjęcie profilowe - jest wymagane dla trenerów',
+          variant: 'destructive',
+        });
+        return;
+      }
       if (isTrainer) {
         setCurrentStep('trainer-details');
       } else {
@@ -149,12 +157,8 @@ export const ProfileSetup: React.FC = () => {
   };
 
   const handleSkip = () => {
-    if (currentStep === 'photo') {
-      if (isTrainer) {
-        setCurrentStep('trainer-details');
-      } else {
-        handleSubmit(true);
-      }
+    if (currentStep === 'photo' && !isTrainer) {
+      handleSubmit(true);
     } else if (currentStep === 'trainer-details') {
       setCurrentStep('trainer-locations');
     }
@@ -188,7 +192,7 @@ export const ProfileSetup: React.FC = () => {
       case 'basic':
         return 'Uzupełnij swoje podstawowe dane';
       case 'photo':
-        return 'Dodaj zdjęcie profilowe aby zwiększyć zaufanie';
+        return isTrainer ? 'Dodaj zdjęcie profilowe (wymagane dla trenerów)' : 'Dodaj zdjęcie profilowe aby zwiększyć zaufanie';
       case 'trainer-details':
         return 'Wybierz swoją główną dyscyplinę sportową';
       case 'trainer-locations':
@@ -316,7 +320,18 @@ export const ProfileSetup: React.FC = () => {
               </Button>
             )}
 
-            {(currentStep === 'photo' || currentStep === 'trainer-details') && (
+            {currentStep === 'photo' && !isTrainer && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleSkip}
+                disabled={loading}
+              >
+                Dodam później
+              </Button>
+            )}
+            
+            {currentStep === 'trainer-details' && (
               <Button
                 type="button"
                 variant="ghost"
