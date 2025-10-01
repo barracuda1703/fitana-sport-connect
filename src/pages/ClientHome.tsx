@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, MapPin, List, Star } from 'lucide-react';
+import { Search, Filter, MapPin, List, Star, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -11,11 +11,21 @@ import { FavoriteButton } from '@/components/FavoriteButton';
 import { FilterModal, FilterOptions } from '@/components/FilterModal';
 import { LanguageChips } from '@/components/LanguageChips';
 import { GoogleMapView } from '@/components/map/GoogleMapView';
+import { LocationPermissionModal } from '@/components/LocationPermissionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from '@/contexts/LocationContext';
 import { useNavigate } from 'react-router-dom';
 import { trainersService } from '@/services/supabase';
 import { sportsCategories } from '@/data/sports';
+import { POLISH_CITIES } from '@/data/cities';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Trainer {
   id: string;
@@ -44,12 +54,15 @@ export const ClientHome: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('home');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [sports] = useState(sportsCategories);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<string>('');
   const [filters, setFilters] = useState<FilterOptions>({
     maxDistance: 50,
     priceRange: [0, 500],
@@ -84,15 +97,54 @@ export const ClientHome: React.FC = () => {
       const languages = langParam.split(',').filter(Boolean);
       setFilters(prev => ({ ...prev, languages }));
     }
+
+    // Check if we should show location permission modal
+    const savedPreference = localStorage.getItem('geolocation_preference');
+    if (!savedPreference && viewMode === 'map') {
+      setShowLocationModal(true);
+    }
   }, []);
+
+  // Show location modal when switching to map view for first time
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('geolocation_preference');
+    if (!savedPreference && viewMode === 'map') {
+      setShowLocationModal(true);
+    }
+  }, [viewMode]);
 
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [filteredTrainers, setFilteredTrainers] = useState<Trainer[]>([]);
 
+  // Calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   useEffect(() => {
     let filtered = trainers;
+    
+    // Calculate distances if we have user location or selected city
+    let userLat = location.latitude;
+    let userLng = location.longitude;
+    
+    if (!userLat && selectedCity) {
+      const city = POLISH_CITIES.find(c => c.name === selectedCity);
+      if (city) {
+        userLat = city.lat;
+        userLng = city.lng;
+      }
+    }
     
     // Apply category filter
     if (selectedCategory) {
@@ -168,8 +220,27 @@ export const ClientHome: React.FC = () => {
       );
     }
 
+    // Sort by distance if we have location
+    if (userLat && userLng) {
+      filtered = filtered.map(trainer => {
+        const trainerLocations = trainer.locations || [];
+        let minDistance = Infinity;
+        
+        trainerLocations.forEach((loc: any) => {
+          if (loc.lat && loc.lng) {
+            const distance = calculateDistance(userLat!, userLng!, loc.lat, loc.lng);
+            if (distance < minDistance) {
+              minDistance = distance;
+            }
+          }
+        });
+        
+        return { ...trainer, distance: minDistance };
+      }).sort((a: any, b: any) => (a.distance || Infinity) - (b.distance || Infinity));
+    }
+
     setFilteredTrainers(filtered);
-  }, [trainers, selectedCategory, searchQuery, filters]);
+  }, [trainers, selectedCategory, searchQuery, filters, location.latitude, location.longitude, selectedCity]);
 
   // Update URL params when filters change
   useEffect(() => {
@@ -238,8 +309,8 @@ export const ClientHome: React.FC = () => {
           />
         </div>
 
-        {/* View Toggle */}
-        <div className="flex justify-between items-center">
+        {/* View Toggle and City Selector */}
+        <div className="flex justify-between items-center gap-2">
           <div className="flex bg-muted rounded-lg p-1">
             <Button
               variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -260,8 +331,42 @@ export const ClientHome: React.FC = () => {
               Mapa
             </Button>
           </div>
+          
+          <div className="flex items-center gap-2">
+            {(!location.latitude && !location.loading) && (
+              <Select value={selectedCity} onValueChange={setSelectedCity}>
+                <SelectTrigger className="w-[140px] h-8">
+                  <SelectValue placeholder="Miasto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {POLISH_CITIES.map((city) => (
+                    <SelectItem key={city.name} value={city.name}>
+                      {city.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
+            {location.permission !== 'granted' && !location.loading && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLocationModal(true)}
+                className="h-8"
+              >
+                <Navigation className="h-4 w-4 mr-1" />
+                Lokalizacja
+              </Button>
+            )}
+            
+            {location.loading && (
+              <span className="text-xs text-muted-foreground">Pobieranie lokalizacji...</span>
+            )}
+          </div>
+          
           <span className="text-sm text-muted-foreground">
-            {filteredTrainers.length} trenerów w pobliżu
+            {filteredTrainers.length} trenerów
           </span>
         </div>
       </header>
@@ -320,6 +425,13 @@ export const ClientHome: React.FC = () => {
             onBook={handleBookTrainer}
             onViewProfile={handleViewProfile}
             onChat={handleChat}
+            userLocation={
+              location.latitude && location.longitude
+                ? { lat: location.latitude, lng: location.longitude }
+                : selectedCity
+                ? POLISH_CITIES.find(c => c.name === selectedCity) || null
+                : null
+            }
           />
         )}
         
@@ -418,6 +530,18 @@ export const ClientHome: React.FC = () => {
       </section>
 
       {/* Modals */}
+      <LocationPermissionModal
+        open={showLocationModal}
+        onAllow={() => {
+          location.requestLocation();
+          setShowLocationModal(false);
+        }}
+        onDeny={() => {
+          location.denyLocation();
+          setShowLocationModal(false);
+        }}
+      />
+      
       {selectedTrainer && (
         <>
           <BookingModal

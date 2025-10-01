@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { LocationProvider } from "@/contexts/LocationContext";
 import { RoleSwitch } from "@/components/RoleSwitch";
 import { Index } from "@/pages/Index";
 import { Landing } from "@/pages/Landing";
@@ -163,9 +164,11 @@ const App = () => {
         <Sonner />
         <LanguageProvider>
           <AuthProvider>
-            <BrowserRouter>
-              <AuthenticatedApp />
-            </BrowserRouter>
+            <LocationProvider>
+              <BrowserRouter>
+                <AuthenticatedApp />
+              </BrowserRouter>
+            </LocationProvider>
           </AuthProvider>
         </LanguageProvider>
       </TooltipProvider>

@@ -36,17 +36,20 @@ interface GoogleMapViewProps {
   onBook: (trainerId: string) => void;
   onViewProfile: (trainerId: string) => void;
   onChat: (trainerId: string) => void;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
   trainers,
   onBook,
   onViewProfile,
-  onChat
+  onChat,
+  userLocation
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const userMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const { isLoaded, error } = useGoogleMaps();
   const [selectedLocation, setSelectedLocation] = useState<LocationGroup | null>(null);
 
@@ -139,6 +142,12 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
       locationGroups.forEach((group) => {
         bounds.extend({ lat: group.lat, lng: group.lng });
       });
+      
+      // Include user location in bounds if available
+      if (userLocation) {
+        bounds.extend(userLocation);
+      }
+      
       mapInstanceRef.current.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
       
       // Don't zoom in too much for single markers
@@ -152,7 +161,50 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
         mapInstanceRef.current.setZoom(12);
       }
     }
-  }, [isLoaded, trainers]);
+  }, [isLoaded, trainers, userLocation]);
+
+  // Add user location marker
+  useEffect(() => {
+    if (!isLoaded || !mapInstanceRef.current || !userLocation) {
+      // Remove user marker if location is not available
+      if (userMarkerRef.current) {
+        userMarkerRef.current.map = null;
+        userMarkerRef.current = null;
+      }
+      return;
+    }
+
+    // Remove existing user marker
+    if (userMarkerRef.current) {
+      userMarkerRef.current.map = null;
+    }
+
+    // Create user location marker
+    const markerDiv = document.createElement('div');
+    markerDiv.innerHTML = `
+      <div style="
+        width: 20px;
+        height: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        cursor: pointer;
+      "></div>
+    `;
+
+    const marker = new google.maps.marker.AdvancedMarkerElement({
+      map: mapInstanceRef.current,
+      position: userLocation,
+      content: markerDiv,
+      title: 'Twoja lokalizacja'
+    });
+
+    userMarkerRef.current = marker;
+
+    // Center map on user location
+    mapInstanceRef.current.setCenter(userLocation);
+  }, [isLoaded, userLocation]);
 
   if (error) {
     return (
