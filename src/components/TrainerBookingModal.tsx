@@ -193,37 +193,6 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     
     setLoading(true);
     try {
-      // If it's a new client, create profile first
-      if (isNewClient) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: selectedClient.id,
-            email: selectedClient.email,
-            name: selectedClient.name.split(' ')[0] || selectedClient.name,
-            surname: selectedClient.name.split(' ').slice(1).join(' ') || '',
-            role: 'client'
-          });
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw new Error('Nie udało się utworzyć profilu klienta');
-        }
-
-        // Create invitation record for future email sending
-        await invitationsService.create({
-          trainer_id: user.id,
-          client_email: selectedClient.email,
-          client_name: selectedClient.name,
-          status: 'sent',
-          invitation_data: {
-            service: selectedService.name,
-            date: scheduledAt.toISOString(),
-            notes: notes
-          }
-        });
-      }
-
       // Create booking - use service name as service_id per schema
       const booking = await bookingsService.create({
         client_id: selectedClient.id,
@@ -234,24 +203,31 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
         notes: notes.trim() || undefined,
       });
 
-      // Update invitation with booking_id if new client
-      if (isNewClient && booking) {
-        const invitations = await invitationsService.getByTrainerId(user.id);
-        const latestInvitation = invitations?.[0];
-        if (latestInvitation) {
-          await supabase
-            .from('invitations')
-            .update({ booking_id: booking.id })
-            .eq('id', latestInvitation.id);
-        }
+      // For new clients, create invitation record (profile will be created when they sign up)
+      if (isNewClient) {
+        await invitationsService.create({
+          trainer_id: user.id,
+          client_email: selectedClient.email,
+          client_name: selectedClient.name,
+          booking_id: booking.id,
+          status: 'sent',
+          invitation_data: {
+            client_id: selectedClient.id,
+            service: selectedService.name,
+            date: scheduledAt.toISOString(),
+            notes: notes
+          }
+        });
+      } else {
+        // Only create chat for existing clients (who already have profiles)
+        await chatsService.createForBooking(selectedClient.id, user.id);
       }
-
-      // Create chat between trainer and client
-      await chatsService.createForBooking(selectedClient.id, user.id);
 
       toast({
         title: "Trening dodany!",
-        description: `Trening z ${selectedClient.name} został dodany do kalendarza.`,
+        description: isNewClient 
+          ? `Trening z ${selectedClient.name} został dodany. Klient otrzyma zaproszenie.`
+          : `Trening z ${selectedClient.name} został dodany do kalendarza.`,
       });
 
       onBookingCreated();
