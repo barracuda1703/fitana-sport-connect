@@ -7,37 +7,59 @@ interface TimeSlot {
   end: string;
 }
 
+// Cache for availability data to improve performance
+const availabilityCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 30000; // 30 seconds
+
 /**
  * Check if a specific time slot is available for a trainer
  */
 export const isTimeSlotAvailable = async (
   trainerId: string,
   datetime: Date,
-  durationMinutes: number
+  durationMinutes: number = 60
 ): Promise<boolean> => {
   const endTime = new Date(datetime.getTime() + durationMinutes * 60000);
-  
-  // Check bookings
   const dateStr = datetime.toISOString().split('T')[0];
-  const bookings = await bookingsService.getByTrainerAndDate(trainerId, dateStr);
   
+  // Batch fetch all availability data for the date
+  const cacheKey = `${trainerId}-${dateStr}`;
+  let availabilityData;
+  
+  const cached = availabilityCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+    availabilityData = cached.data;
+  } else {
+    // Fetch all data in parallel
+    const [bookings, manualBlocks, timeOffs] = await Promise.all([
+      bookingsService.getByTrainerAndDate(trainerId, dateStr),
+      manualBlocksService.getByTrainerId(trainerId),
+      timeOffService.getByTrainerId(trainerId)
+    ]);
+    
+    availabilityData = { bookings, manualBlocks, timeOffs };
+    availabilityCache.set(cacheKey, { data: availabilityData, timestamp: Date.now() });
+  }
+  
+  const { bookings, manualBlocks, timeOffs } = availabilityData;
+  
+  // Check bookings with proper overlap detection
   for (const booking of bookings) {
     const bookingStart = new Date(booking.scheduled_at);
-    const bookingEnd = new Date(bookingStart.getTime() + 60 * 60000); // Assume 60min default
+    // Use actual duration or default to 60 minutes
+    const bookingEnd = new Date(bookingStart.getTime() + durationMinutes * 60000);
     
-    // Check for overlap
+    // Check for any overlap: (StartA < EndB) AND (EndA > StartB)
     if (datetime < bookingEnd && endTime > bookingStart) {
       return false;
     }
   }
   
   // Check manual blocks
-  const manualBlocks = await manualBlocksService.getByTrainerId(trainerId);
   for (const block of manualBlocks) {
     const blockDate = new Date(block.date).toISOString().split('T')[0];
-    const checkDate = datetime.toISOString().split('T')[0];
     
-    if (blockDate === checkDate) {
+    if (blockDate === dateStr) {
       const blockStart = new Date(`${block.date}T${block.start_time}`);
       const blockEnd = new Date(`${block.date}T${block.end_time}`);
       
@@ -47,11 +69,11 @@ export const isTimeSlotAvailable = async (
     }
   }
   
-  // Check time off
-  const timeOffs = await timeOffService.getByTrainerId(trainerId);
+  // Check time off periods
   for (const timeOff of timeOffs) {
     const offStart = new Date(timeOff.start_date);
     const offEnd = new Date(timeOff.end_date);
+    offEnd.setHours(23, 59, 59, 999); // Include the entire end day
     
     if (datetime >= offStart && datetime <= offEnd) {
       return false;
@@ -72,33 +94,40 @@ export const getAvailableDates = async (
   const availableDates: Date[] = [];
   const currentDate = new Date(fromDate);
   
+  // Batch process dates more efficiently
+  const datePromises: Promise<{ date: Date; available: boolean }>[] = [];
+  
   while (currentDate <= toDate) {
-    const dateStr = currentDate.toISOString().split('T')[0];
+    const dateToCheck = new Date(currentDate);
     
-    // Check if trainer has any available slots on this day
-    // For simplicity, check a few common hours (9am, 12pm, 3pm, 6pm)
-    const testHours = [9, 12, 15, 18];
-    let hasAvailableSlot = false;
-    
-    for (const hour of testHours) {
-      const testTime = new Date(currentDate);
-      testTime.setHours(hour, 0, 0, 0);
+    // Check multiple hours in parallel for each date
+    const checkDateAvailability = async (date: Date): Promise<{ date: Date; available: boolean }> => {
+      const testHours = [9, 12, 15, 18];
       
-      const isAvailable = await isTimeSlotAvailable(trainerId, testTime, 60);
-      if (isAvailable) {
-        hasAvailableSlot = true;
-        break;
+      for (const hour of testHours) {
+        const testTime = new Date(date);
+        testTime.setHours(hour, 0, 0, 0);
+        
+        const isAvailable = await isTimeSlotAvailable(trainerId, testTime, 60);
+        if (isAvailable) {
+          return { date: new Date(date), available: true };
+        }
       }
-    }
+      
+      return { date: new Date(date), available: false };
+    };
     
-    if (hasAvailableSlot) {
-      availableDates.push(new Date(currentDate));
-    }
-    
+    datePromises.push(checkDateAvailability(dateToCheck));
     currentDate.setDate(currentDate.getDate() + 1);
   }
   
-  return availableDates;
+  // Wait for all date checks to complete
+  const results = await Promise.all(datePromises);
+  
+  // Filter only available dates
+  return results
+    .filter(result => result.available)
+    .map(result => result.date);
 };
 
 /**
@@ -110,18 +139,25 @@ export const getAvailableHours = async (
 ): Promise<string[]> => {
   const availableHours: string[] = [];
   
-  // Check hours from 6am to 10pm
+  // Check hours from 6am to 10pm in parallel
+  const hourChecks = [];
   for (let hour = 6; hour <= 22; hour++) {
     const testTime = new Date(date);
     testTime.setHours(hour, 0, 0, 0);
     
-    const isAvailable = await isTimeSlotAvailable(trainerId, testTime, 60);
-    if (isAvailable) {
-      availableHours.push(`${hour.toString().padStart(2, '0')}:00`);
-    }
+    hourChecks.push(
+      isTimeSlotAvailable(trainerId, testTime, 60).then(isAvailable => ({
+        hour,
+        isAvailable
+      }))
+    );
   }
   
-  return availableHours;
+  const results = await Promise.all(hourChecks);
+  
+  return results
+    .filter(result => result.isAvailable)
+    .map(result => `${result.hour.toString().padStart(2, '0')}:00`);
 };
 
 /**
@@ -154,9 +190,27 @@ export const getAvailableSlots = async (
   return slots;
 };
 
+/**
+ * Clear cache for a specific trainer and date (call after booking changes)
+ */
+export const clearAvailabilityCache = (trainerId: string, date?: string) => {
+  if (date) {
+    availabilityCache.delete(`${trainerId}-${date}`);
+  } else {
+    // Clear all cache for this trainer
+    const keys = Array.from(availabilityCache.keys());
+    keys.forEach(key => {
+      if (key.startsWith(trainerId)) {
+        availabilityCache.delete(key);
+      }
+    });
+  }
+};
+
 export const availabilityService = {
   isTimeSlotAvailable,
   getAvailableDates,
   getAvailableHours,
-  getAvailableSlots
+  getAvailableSlots,
+  clearAvailabilityCache
 };

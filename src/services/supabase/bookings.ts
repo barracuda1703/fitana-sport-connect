@@ -38,83 +38,109 @@ export interface Booking {
 
 export const bookingsService = {
   async getAll() {
-    const { data, error } = await supabase
+    // Fetch bookings without JOIN
+    const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select(`
-        *,
-        client:profiles!client_id (
-          id,
-          name,
-          surname,
-          email,
-          avatarurl
-        ),
-        trainer:profiles!trainer_id (
-          id,
-          name,
-          surname,
-          email,
-          avatarurl
-        )
-      `)
+      .select('*')
       .order('scheduled_at', { ascending: true });
     
-    if (error) throw error;
-    return data;
+    if (bookingsError) throw bookingsError;
+    if (!bookings || bookings.length === 0) return [];
+
+    // Collect unique profile IDs
+    const profileIds = new Set<string>();
+    bookings.forEach(booking => {
+      profileIds.add(booking.client_id);
+      profileIds.add(booking.trainer_id);
+    });
+
+    // Fetch profiles in one batch query
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, name, surname, email, avatarurl')
+      .in('id', Array.from(profileIds));
+
+    if (profilesError) throw profilesError;
+
+    // Create a map for quick profile lookup
+    const profilesMap = new Map();
+    profiles?.forEach(profile => profilesMap.set(profile.id, profile));
+
+    // Merge bookings with profile data
+    return bookings.map(booking => ({
+      ...booking,
+      client: profilesMap.get(booking.client_id) || null,
+      trainer: profilesMap.get(booking.trainer_id) || null
+    }));
   },
 
   async getByUserId(userId: string) {
-    const { data, error } = await supabase
+    // Fetch bookings without JOIN
+    const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select(`
-        *,
-        client:profiles!client_id (
-          id,
-          name,
-          surname,
-          email,
-          avatarurl
-        ),
-        trainer:profiles!trainer_id (
-          id,
-          name,
-          surname,
-          email,
-          avatarurl
-        )
-      `)
+      .select('*')
       .or(`client_id.eq.${userId},trainer_id.eq.${userId}`)
       .order('scheduled_at', { ascending: true });
     
-    if (error) throw error;
-    return data;
+    if (bookingsError) throw bookingsError;
+    if (!bookings || bookings.length === 0) return [];
+
+    // Collect unique profile IDs
+    const profileIds = new Set<string>();
+    bookings.forEach(booking => {
+      profileIds.add(booking.client_id);
+      profileIds.add(booking.trainer_id);
+    });
+
+    // Fetch profiles in one batch query
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, name, surname, email, avatarurl')
+      .in('id', Array.from(profileIds));
+
+    if (profilesError) throw profilesError;
+
+    // Create a map for quick profile lookup
+    const profilesMap = new Map();
+    profiles?.forEach(profile => profilesMap.set(profile.id, profile));
+
+    // Merge bookings with profile data
+    return bookings.map(booking => ({
+      ...booking,
+      client: profilesMap.get(booking.client_id) || null,
+      trainer: profilesMap.get(booking.trainer_id) || null
+    }));
   },
 
   async getById(id: string) {
-    const { data, error } = await supabase
+    // Fetch booking without JOIN
+    const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select(`
-        *,
-        client:profiles!client_id (
-          id,
-          name,
-          surname,
-          email,
-          avatarurl
-        ),
-        trainer:profiles!trainer_id (
-          id,
-          name,
-          surname,
-          email,
-          avatarurl
-        )
-      `)
+      .select('*')
       .eq('id', id)
       .maybeSingle();
     
-    if (error) throw error;
-    return data;
+    if (bookingError) throw bookingError;
+    if (!booking) return null;
+
+    // Fetch client and trainer profiles
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, name, surname, email, avatarurl')
+      .in('id', [booking.client_id, booking.trainer_id]);
+
+    if (profilesError) throw profilesError;
+
+    // Create a map for quick profile lookup
+    const profilesMap = new Map();
+    profiles?.forEach(profile => profilesMap.set(profile.id, profile));
+
+    // Merge booking with profile data
+    return {
+      ...booking,
+      client: profilesMap.get(booking.client_id) || null,
+      trainer: profilesMap.get(booking.trainer_id) || null
+    };
   },
 
   async create(booking: any) {

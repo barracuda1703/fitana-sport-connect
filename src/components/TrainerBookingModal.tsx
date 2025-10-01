@@ -191,6 +191,16 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     const scheduledAt = new Date(selectedDate);
     scheduledAt.setHours(hours, minutes, 0, 0);
     
+    // Validate date is not in the past
+    if (scheduledAt <= new Date()) {
+      toast({
+        title: "Błąd walidacji",
+        description: "Nie można zarezerwować treningu w przeszłości.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setLoading(true);
     try {
       // Create booking - use service name as service_id per schema

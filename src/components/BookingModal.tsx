@@ -154,6 +154,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
       const scheduledAt = new Date(selectedDate);
       scheduledAt.setHours(hours, minutes, 0, 0);
       
+      // Validate date is not in the past
+      if (scheduledAt <= new Date()) {
+        toast({
+          title: "Błąd walidacji",
+          description: "Nie można zarezerwować treningu w przeszłości.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       // Use service name as identifier since services don't have explicit IDs
       const serviceIdentifier = selectedService.name;
       

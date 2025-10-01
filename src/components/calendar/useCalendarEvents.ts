@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { bookingsService, manualBlocksService, timeOffService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { CalendarEvent } from './CalendarGrid';
 
 interface UseCalendarEventsProps {
@@ -140,6 +141,60 @@ export const useCalendarEvents = ({ role, userId }: UseCalendarEventsProps) => {
     };
 
     loadEvents();
+
+    // Set up real-time subscription for bookings
+    const channel = supabase
+      .channel('calendar-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: role === 'trainer' 
+            ? `trainer_id=eq.${userId}`
+            : `client_id=eq.${userId}`
+        },
+        () => {
+          // Reload events when bookings change
+          loadEvents();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'manual_blocks',
+          filter: `trainer_id=eq.${userId}`
+        },
+        () => {
+          // Reload events when manual blocks change
+          if (role === 'trainer') {
+            loadEvents();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_off',
+          filter: `trainer_id=eq.${userId}`
+        },
+        () => {
+          // Reload events when time off changes
+          if (role === 'trainer') {
+            loadEvents();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [role, userId]);
 
   return { events, loading, error };
