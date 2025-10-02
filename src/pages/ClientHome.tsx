@@ -50,7 +50,6 @@ interface Trainer {
   is_verified: boolean | null;
   has_video: boolean | null;
   gender: string | null;
-  gallery: string[];
 }
 
 const sportsCategoriesWithColors = sportsCategories.map((sport, index) => ({

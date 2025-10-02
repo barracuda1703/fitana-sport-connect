@@ -24,7 +24,8 @@ interface Trainer {
   is_verified: boolean | null;
   has_video: boolean | null;
   gender: string | null;
-  gallery: string[];
+  avatarurl?: string | null;
+  city?: string;
 }
 
 interface LocationGroup {
@@ -287,13 +288,13 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
                 <Card key={trainer.id} className="p-4">
                   <div className="flex items-start gap-3">
                     <Avatar className="w-12 h-12">
-                      {trainer.gallery?.[0] ? (
-                        <AvatarImage src={trainer.gallery[0]} alt={trainer.display_name || 'Trener'} />
-                      ) : (
-                        <AvatarFallback>
-                          {trainer.display_name?.charAt(0) || 'T'}
-                        </AvatarFallback>
-                      )}
+                      <AvatarImage 
+                        src={trainer.avatarurl || '/placeholder.svg'} 
+                        alt={trainer.display_name || 'Trener'} 
+                      />
+                      <AvatarFallback>
+                        {trainer.display_name?.charAt(0) || 'T'}
+                      </AvatarFallback>
                     </Avatar>
                     
                     <div className="flex-1 min-w-0">

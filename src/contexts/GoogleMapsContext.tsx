@@ -16,96 +16,76 @@ const GoogleMapsContext = createContext<GoogleMapsContextType | undefined>(undef
 export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [apiKey] = useState<string | null>(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || null);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
-  const loadingPromiseRef = useRef<Promise<void> | null>(null);
+  const loaderRef = useRef<Loader | null>(null);
+  const MAX_RETRIES = 3;
 
-  const fetchApiKey = async (): Promise<string> => {
-    // Check localStorage cache first
-    const cached = localStorage.getItem('google_maps_api_key');
-    if (cached) {
-      console.log('Using cached Google Maps API key');
-      return cached;
-    }
+  const loadGoogleMapsScript = async () => {
+    try {
+      setError(null);
+      setIsRetrying(retryCount > 0);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase.functions.invoke('get-google-maps-key');
-    if (error) throw error;
-    if (!data?.apiKey) throw new Error('No API key received');
-    
-    // Cache the key in localStorage
-    localStorage.setItem('google_maps_api_key', data.apiKey);
-    console.log('Google Maps API key fetched and cached');
-    
-    return data.apiKey;
-  };
-
-  const loadGoogleMapsScript = async (attempt: number = 1): Promise<void> => {
-    // If already loading, wait for that promise
-    if (loadingPromiseRef.current) {
-      console.log('Google Maps loading already in progress, waiting...');
-      return loadingPromiseRef.current;
-    }
-
-    // Create new loading promise
-    loadingPromiseRef.current = (async () => {
-      try {
-        console.log(`Loading Google Maps... (attempt ${attempt}/3)`);
-        setRetryCount(attempt);
-        
-        const key = await fetchApiKey();
-        setApiKey(key);
-
-        const loader = new Loader({
-          apiKey: key,
-          version: 'weekly',
-          libraries: ['places', 'marker'],
-        });
-
-        // Load the Google Maps script - TypeScript workaround
-        await (loader as any).load();
-        
-        setIsLoaded(true);
-        setError(null);
-        setIsRetrying(false);
-        console.log('Google Maps loaded successfully');
-        loadingPromiseRef.current = null;
-      } catch (err) {
-        console.error(`Google Maps loading attempt ${attempt} failed:`, err);
-        
-        if (attempt < 3) {
-          const delay = Math.pow(2, attempt) * 1000;
-          console.log(`Retrying in ${delay}ms...`);
-          setIsRetrying(true);
-          loadingPromiseRef.current = null;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return loadGoogleMapsScript(attempt + 1);
-        }
-        
-        setError(err instanceof Error ? err : new Error('Failed to load Google Maps'));
-        setIsLoaded(false);
-        setIsRetrying(false);
-        loadingPromiseRef.current = null;
+      if (!apiKey) {
+        throw new Error('VITE_GOOGLE_MAPS_API_KEY not found in environment variables. Please add it to your .env file.');
       }
-    })();
+      
+      // Singleton pattern - create loader only once
+      if (!loaderRef.current) {
+        loaderRef.current = new Loader({
+          apiKey: apiKey,
+          version: 'weekly',
+          libraries: ['places', 'marker']
+        });
+      }
 
-    return loadingPromiseRef.current;
+      // @ts-ignore - Loader.load() exists but TS types may be outdated
+      await loaderRef.current.load();
+      setIsLoaded(true);
+      
+      console.log('Google Maps loaded successfully');
+    } catch (err) {
+      console.error('Error loading Google Maps:', err);
+      const error = err as Error;
+      
+      // Map common errors to friendly messages
+      let userFriendlyMessage = error.message;
+      if (error.message.includes('InvalidKey')) {
+        userFriendlyMessage = 'Nieprawidłowy klucz API Google Maps';
+      } else if (error.message.includes('RefererNotAllowed')) {
+        userFriendlyMessage = 'Domena nie jest autoryzowana w Google Console';
+      } else if (error.message.includes('ApiNotActivated')) {
+        userFriendlyMessage = 'Google Maps API nie jest włączone';
+      } else if (error.message.includes('BillingNotEnabled')) {
+        userFriendlyMessage = 'Rozliczenia Google Cloud nie są włączone';
+      }
+      
+      setError(new Error(userFriendlyMessage));
+      setIsRetrying(false);
+
+      // Exponential backoff retry
+      if (retryCount < MAX_RETRIES) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`Retrying in ${delay}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+        }, delay);
+      }
+    }
   };
 
   const retryLoad = () => {
     setError(null);
     setRetryCount(0);
     setIsRetrying(true);
-    loadingPromiseRef.current = null;
-    loadGoogleMapsScript(1);
+    loaderRef.current = null;
+    loadGoogleMapsScript();
   };
 
   useEffect(() => {
-    loadGoogleMapsScript(1);
-  }, []);
+    loadGoogleMapsScript();
+  }, [retryCount]);
 
   return (
     <GoogleMapsContext.Provider value={{ isLoaded, error, apiKey, retryCount, isRetrying, retryLoad }}>

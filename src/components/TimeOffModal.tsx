@@ -314,7 +314,7 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
               className="flex-1"
               disabled={!startDate || (mode === 'hours' && (!startTime || !endTime))}
             >
-              Zapisz
+              Zapisz wolne
             </Button>
           </div>
         </div>

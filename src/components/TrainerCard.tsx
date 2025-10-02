@@ -23,7 +23,6 @@ interface Trainer {
   is_verified: boolean | null;
   has_video: boolean | null;
   gender: string | null;
-  gallery: string[];
   distance?: number;
 }
 
@@ -42,8 +41,6 @@ export const TrainerCard: React.FC<TrainerCardProps> = ({
   onChat,
   showDistance = false
 }) => {
-  const imageUrl = trainer.gallery?.[0] || trainer.avatarurl;
-
   return (
     <Card 
       className="overflow-hidden hover:shadow-lg transition-all duration-200 bg-card cursor-pointer"
@@ -53,9 +50,11 @@ export const TrainerCard: React.FC<TrainerCardProps> = ({
         <div className="flex items-center gap-3">
           {/* Avatar */}
           <Avatar className="h-16 w-16 flex-shrink-0">
-            {imageUrl ? (
-              <AvatarImage src={imageUrl} alt={trainer.display_name || 'Trener'} />
-            ) : null}
+            <AvatarImage 
+              src={trainer.avatarurl || '/placeholder.svg'} 
+              alt={trainer.display_name || 'Trener'} 
+              className="object-cover"
+            />
             <AvatarFallback className="text-xl">
               {trainer.display_name?.charAt(0) || 'T'}
             </AvatarFallback>

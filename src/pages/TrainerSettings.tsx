@@ -267,9 +267,7 @@ export const TrainerSettings: React.FC = () => {
                 <CardContent>
                   <PhotoUploaderWithUpload
                     profilePhoto={avatarUrl}
-                    gallery={[]}
                     onProfilePhotoChange={(url) => setAvatarUrl(url || '')}
-                    onGalleryChange={() => {}}
                     userId={user.id}
                     role="trainer"
                   />

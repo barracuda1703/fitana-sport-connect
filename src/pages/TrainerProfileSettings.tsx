@@ -36,7 +36,6 @@ interface TrainerData {
   bio: string;
   specialties: string[];
   languages: string[];
-  gallery: string[];
   locations: any[];
   services: any[];
   availability: any;
@@ -76,7 +75,6 @@ export const TrainerProfileSettings: React.FC = () => {
     bio: '',
     specialties: [],
     languages: [],
-    gallery: [],
     locations: [],
     services: [],
     availability: {},
@@ -114,7 +112,6 @@ export const TrainerProfileSettings: React.FC = () => {
             bio: trainer.bio || '',
             specialties: Array.isArray(trainer.specialties) ? trainer.specialties : [],
             languages: Array.isArray(trainer.languages) ? trainer.languages : [],
-            gallery: Array.isArray(trainer.gallery) ? trainer.gallery : [],
             locations: Array.isArray(trainer.locations) ? trainer.locations : [],
             services: Array.isArray(trainer.services) ? trainer.services : [],
             availability: typeof trainer.availability === 'object' && trainer.availability !== null ? trainer.availability as any : {},
@@ -264,33 +261,18 @@ export const TrainerProfileSettings: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Zdjęcia */}
+              {/* Zdjęcia - Usunięto galerię, tylko pojedynczy avatar */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Camera className="h-5 w-5" />
-                    Zdjęcia profilu
+                    Zdjęcie profilowe
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <PhotoUploader
-                    profilePhoto={trainerData.gallery[0] || undefined}
-                    gallery={trainerData.gallery.slice(1)}
-                    onProfilePhotoChange={(photo) => {
-                      const newGallery = [...trainerData.gallery];
-                      if (photo) {
-                        newGallery[0] = photo;
-                      } else {
-                        newGallery.shift();
-                      }
-                      setTrainerData(prev => ({ ...prev, gallery: newGallery }));
-                    }}
-                    onGalleryChange={(photos) => {
-                      const profilePhoto = trainerData.gallery[0];
-                      const newGallery = profilePhoto ? [profilePhoto, ...photos] : photos;
-                      setTrainerData(prev => ({ ...prev, gallery: newGallery }));
-                    }}
-                  />
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Zmień zdjęcie profilowe w zakładce Profil → Ustawienia profilu trenera
+                  </p>
                 </CardContent>
               </Card>
 

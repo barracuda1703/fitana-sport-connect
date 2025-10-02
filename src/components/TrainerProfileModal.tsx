@@ -21,7 +21,8 @@ interface Trainer {
   review_count: number | null;
   is_verified: boolean | null;
   has_video: boolean | null;
-  gallery: string[];
+  avatarurl?: string | null;
+  city?: string;
 }
 
 interface TrainerProfileModalProps {

@@ -70,46 +70,7 @@ export const uploadAvatar = async (
  * @param file - File to upload
  * @returns Public URL of uploaded file
  */
-export const uploadGalleryPhoto = async (
-  trainerId: string,
-  file: File
-): Promise<UploadResult> => {
-  // Validate file
-  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  if (!validTypes.includes(file.type)) {
-    throw new Error('Nieprawidłowy typ pliku. Dozwolone: JPG, PNG, WEBP');
-  }
-
-  const maxSize = 5 * 1024 * 1024; // 5MB
-  if (file.size > maxSize) {
-    throw new Error('Plik jest za duży. Maksymalny rozmiar: 5MB');
-  }
-
-  // Create unique filename
-  const timestamp = Date.now();
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${trainerId}/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-  const filePath = `trainer-gallery/${fileName}`;
-
-  // Upload to storage (we'll use avatars bucket for now since trainer-gallery might not exist)
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
-
-  if (uploadError) {
-    throw new Error(`Błąd uploadu: ${uploadError.message}`);
-  }
-
-  // Get public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(filePath);
-
-  return { url: publicUrl, path: filePath };
-};
+// Gallery feature removed - keeping only single avatar per user
 
 /**
  * Upload chat image to Supabase Storage

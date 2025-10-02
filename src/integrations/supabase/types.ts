@@ -466,7 +466,6 @@ export type Database = {
           bio: string | null
           created_at: string | null
           display_name: string | null
-          gallery: string[] | null
           gender: string | null
           has_video: boolean | null
           id: string
@@ -488,7 +487,6 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           display_name?: string | null
-          gallery?: string[] | null
           gender?: string | null
           has_video?: boolean | null
           id?: string
@@ -510,7 +508,6 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           display_name?: string | null
-          gallery?: string[] | null
           gender?: string | null
           has_video?: boolean | null
           id?: string
@@ -563,7 +560,6 @@ export type Database = {
           city: string | null
           created_at: string | null
           display_name: string | null
-          gallery: string[] | null
           has_video: boolean | null
           id: string | null
           is_verified: boolean | null
@@ -585,7 +581,6 @@ export type Database = {
           city: string | null
           created_at: string | null
           display_name: string | null
-          gallery: string[] | null
           has_video: boolean | null
           id: string | null
           is_verified: boolean | null
@@ -672,6 +667,19 @@ export type Database = {
           avatarurl: string
           id: string
           name: string
+        }[]
+      }
+      get_trainer_available_slots: {
+        Args: {
+          p_duration_min?: number
+          p_timezone?: string
+          p_trainer_id: string
+          p_window_end?: string
+          p_window_start?: string
+        }
+        Returns: {
+          slot_end: string
+          slot_start: string
         }[]
       }
       get_trainer_invitations: {
