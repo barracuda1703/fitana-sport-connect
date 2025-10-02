@@ -48,7 +48,7 @@ export function useSupabaseChat({
   useEffect(() => {
     if (!chatId || !userId) return;
 
-    console.log('[Supabase Chat] Initializing channel:', chatId);
+    console.log('[Supabase Chat] useEffect triggered - Initializing channel:', { chatId, userId, timestamp: Date.now() });
     setChannelStatus('connecting');
     setError(null);
 
@@ -153,8 +153,9 @@ export function useSupabaseChat({
 
     // Subscribe to channel with timeout
     subscribeTimeoutRef.current = setTimeout(() => {
-      if (channelStatus === 'connecting') {
-        console.error('[Supabase Chat] Subscribe timeout');
+      // Check if channel still exists (not yet subscribed)
+      if (channelRef.current) {
+        console.error('[Supabase Chat] Subscribe timeout after 10s');
         setChannelStatus('error');
         setError(new Error('Timeout podczas łączenia z czatem'));
       }
@@ -165,7 +166,7 @@ export function useSupabaseChat({
         clearTimeout(subscribeTimeoutRef.current);
       }
       
-      console.log('[Supabase Chat] Subscribe status:', status, err);
+      console.log('[Supabase Chat] Subscribe callback:', { status, err, timestamp: Date.now() });
       
       if (status === 'SUBSCRIBED') {
         setChannelStatus('connected');
@@ -186,10 +187,10 @@ export function useSupabaseChat({
     });
 
     return () => {
-      console.log('[Supabase Chat] Cleaning up channel');
+      console.log('[Supabase Chat] useEffect cleanup triggered');
       cleanup();
     };
-  }, [chatId, userId, onNewMessage, onTyping, onPresence, cleanup, channelStatus]);
+  }, [chatId, userId, onNewMessage, onTyping, onPresence]);
 
   // Publish typing indicator
   const publishTyping = useCallback(async (isTyping: boolean) => {
