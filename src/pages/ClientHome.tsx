@@ -9,6 +9,8 @@ import { BookingModal } from '@/components/BookingModal';
 import { TrainerProfileModal } from '@/components/TrainerProfileModal';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { FilterModal, FilterOptions } from '@/components/FilterModal';
+import { TrainerCard } from '@/components/TrainerCard';
+import { QuickBookingSheet } from '@/components/QuickBookingSheet';
 import { LanguageChips } from '@/components/LanguageChips';
 import { GoogleMapView } from '@/components/map/GoogleMapView';
 import { LocationPermissionModal } from '@/components/LocationPermissionModal';
@@ -16,7 +18,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserLocation } from '@/contexts/LocationContext';
 import { useNavigate } from 'react-router-dom';
-import { trainersService } from '@/services/supabase';
+import { trainersService, availabilityService } from '@/services/supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { sportsCategories, getSportName } from '@/data/sports';
 import { POLISH_CITIES } from '@/data/cities';
@@ -81,6 +83,9 @@ export const ClientHome: React.FC = () => {
     languages: []
   });
   const [loading, setLoading] = useState(true);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityCache, setAvailabilityCache] = useState<Map<string, boolean>>(new Map());
+  const [showQuickBooking, setShowQuickBooking] = useState(false);
 
   useEffect(() => {
     const loadTrainers = async () => {
@@ -146,6 +151,7 @@ export const ClientHome: React.FC = () => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [filteredTrainers, setFilteredTrainers] = useState<Trainer[]>([]);
+  const [trainersWithAvailability, setTrainersWithAvailability] = useState<(Trainer & { availableToday?: boolean })[]>([]);
 
   // Calculate distance between two coordinates (Haversine formula)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -160,11 +166,58 @@ export const ClientHome: React.FC = () => {
     return R * c;
   };
 
+  // Check trainers availability for "availableToday" filter
   useEffect(() => {
-    let filtered = trainers;
+    if (!filters.availableToday) {
+      setTrainersWithAvailability(trainers);
+      return;
+    }
+
+    const checkAvailability = async () => {
+      setAvailabilityLoading(true);
+      const today = new Date();
+      const cache = new Map(availabilityCache);
+      
+      const trainersWithCheck = await Promise.all(
+        trainers.map(async (trainer) => {
+          if (!trainer.user_id) return { ...trainer, availableToday: false };
+          
+          // Check cache first
+          const cacheKey = `${trainer.user_id}-${today.toISOString().split('T')[0]}`;
+          if (cache.has(cacheKey)) {
+            return { ...trainer, availableToday: cache.get(cacheKey) };
+          }
+          
+          try {
+            const hours = await availabilityService.getAvailableHours(trainer.user_id, today);
+            const isAvailable = hours.length > 0;
+            cache.set(cacheKey, isAvailable);
+            return { ...trainer, availableToday: isAvailable };
+          } catch (error) {
+            console.error('Error checking availability:', error);
+            return { ...trainer, availableToday: false };
+          }
+        })
+      );
+      
+      setAvailabilityCache(cache);
+      setTrainersWithAvailability(trainersWithCheck);
+      setAvailabilityLoading(false);
+    };
+
+    checkAvailability();
+  }, [trainers, filters.availableToday]);
+
+  useEffect(() => {
+    let filtered = trainersWithAvailability;
     
     // Filter out trainers with off_mode enabled
     filtered = filtered.filter(trainer => !(trainer as any).off_mode);
+    
+    // Apply availableToday filter
+    if (filters.availableToday) {
+      filtered = filtered.filter(trainer => trainer.availableToday === true);
+    }
     
     // Calculate distances if we have user location or selected city
     let userLat = userLocation.latitude;
@@ -272,7 +325,7 @@ export const ClientHome: React.FC = () => {
     }
 
     setFilteredTrainers(filtered);
-  }, [trainers, selectedCategory, searchQuery, filters, userLocation.latitude, userLocation.longitude, selectedCity]);
+  }, [trainersWithAvailability, selectedCategory, searchQuery, filters, userLocation.latitude, userLocation.longitude, selectedCity]);
 
   // Update URL params when filters change
   useEffect(() => {
@@ -309,6 +362,14 @@ export const ClientHome: React.FC = () => {
   const handleChat = (trainerId: string) => {
     const chatId = `chat-${user?.id}-${trainerId}`;
     navigate(`/chat/${chatId}`);
+  };
+
+  const handleQuickBook = (trainerId: string) => {
+    const trainer = trainers.find(t => t.id === trainerId);
+    if (trainer) {
+      setSelectedTrainer(trainer);
+      setShowQuickBooking(true);
+    }
   };
 
   return (
@@ -399,7 +460,7 @@ export const ClientHome: React.FC = () => {
           </div>
           
           <span className="text-sm text-muted-foreground">
-            {filteredTrainers.length} trenerów
+            {availabilityLoading ? 'Sprawdzanie dostępności...' : `${filteredTrainers.length} trenerów`}
           </span>
         </div>
       </header>
@@ -469,101 +530,23 @@ export const ClientHome: React.FC = () => {
           />
         )}
         
-        {loading ? (
+        {loading || availabilityLoading ? (
           <Card className="bg-gradient-card">
             <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">Ładowanie trenerów...</p>
+              <p className="text-muted-foreground">
+                {loading ? 'Ładowanie trenerów...' : 'Sprawdzanie dostępności...'}
+              </p>
             </CardContent>
           </Card>
         ) : viewMode === 'list' && filteredTrainers.map((trainer) => (
-          <Card key={trainer.id} className="overflow-hidden hover:shadow-card transition-all duration-200 cursor-pointer bg-gradient-card">
-            <CardHeader className="pb-3">
-              <div className="flex items-start gap-4">
-                <Avatar className="w-16 h-16">
-                  {trainer.avatarurl ? (
-                    <AvatarImage src={trainer.avatarurl} alt={trainer.display_name || 'Trener'} />
-                  ) : (
-                    <AvatarFallback className="bg-gradient-accent text-2xl">
-                      {trainer.display_name ? trainer.display_name.charAt(0).toUpperCase() : 'T'}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-lg">
-                      {trainer.display_name || 'Trener'}
-                    </h3>
-                    <FavoriteButton trainerId={trainer.id} size="sm" />
-                    {trainer.is_verified && (
-                      <Badge variant="secondary" className="bg-success/20 text-success">
-                        ✓
-                      </Badge>
-                    )}
-                    {trainer.has_video && (
-                      <Badge variant="outline" className="text-primary">
-                        📹
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-warning text-warning" />
-                      <span className="font-medium">{trainer.rating || 0}</span>
-                      <span className="text-sm text-muted-foreground">({trainer.review_count || 0})</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {trainer.specialties?.map((specialty) => (
-                      <Badge key={specialty} variant="secondary" className="text-xs">
-                        {specialty}
-                      </Badge>
-                    ))}
-                  </div>
-                  {trainer.languages && trainer.languages.length > 0 && (
-                    <div className="mb-2">
-                      <LanguageChips 
-                        languages={trainer.languages} 
-                        maxDisplay={3} 
-                        size="sm"
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-primary">
-                    od {trainer.price_from || 0} zł
-                  </div>
-                  <div className="text-sm text-muted-foreground">za sesję</div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex gap-2">
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => handleBookTrainer(trainer.id)}
-                >
-                  Zarezerwuj
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleViewProfile(trainer.id)}
-                >
-                  Profil
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => handleChat(trainer.id)}
-                >
-                  💬
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <TrainerCard
+            key={trainer.id}
+            trainer={trainer}
+            onQuickBook={handleQuickBook}
+            onViewProfile={handleViewProfile}
+            onChat={handleChat}
+            showDistance={!!(userLocation.latitude || selectedCity)}
+          />
         ))}
       </section>
 
@@ -604,6 +587,16 @@ export const ClientHome: React.FC = () => {
             onChat={() => {
               setShowProfileModal(false);
               handleChat(selectedTrainer.id);
+            }}
+          />
+          <QuickBookingSheet
+            trainerId={selectedTrainer.user_id || selectedTrainer.id}
+            trainerName={selectedTrainer.display_name || selectedTrainer.name || 'Trener'}
+            services={Array.isArray(selectedTrainer.services) ? selectedTrainer.services : []}
+            isOpen={showQuickBooking}
+            onClose={() => {
+              setShowQuickBooking(false);
+              setSelectedTrainer(null);
             }}
           />
         </>

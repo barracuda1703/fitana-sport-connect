@@ -384,9 +384,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
             </div>
             
             {loadingAvailability ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                <p className="text-sm text-muted-foreground">Ładowanie dostępnych godzin...</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {[...Array(9)].map((_, i) => (
+                    <div key={i} className="h-12 bg-muted animate-pulse rounded-md" />
+                  ))}
+                </div>
               </div>
             ) : availableHours.length === 0 ? (
               <Card className="bg-muted/50">

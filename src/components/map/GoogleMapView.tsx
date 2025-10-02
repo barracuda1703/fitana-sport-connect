@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGoogleMaps } from '@/hooks/useGoogleMaps';
 import { TrainerMarker } from './TrainerMarker';
-import { TrainerPopup } from './TrainerPopup';
 import { Card } from '@/components/ui/card';
-import { MapPin } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Star } from 'lucide-react';
 
 interface Trainer {
   id: string;
@@ -179,18 +183,46 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
       userMarkerRef.current.map = null;
     }
 
-    // Create user location marker
+    // Create user location marker with pulsating animation
     const markerDiv = document.createElement('div');
     markerDiv.innerHTML = `
-      <div style="
-        width: 20px;
-        height: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: 3px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        cursor: pointer;
-      "></div>
+      <div style="position: relative;">
+        <div style="
+          width: 20px;
+          height: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          cursor: pointer;
+          position: relative;
+          z-index: 2;
+        "></div>
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 20px;
+          height: 20px;
+          background: rgba(102, 126, 234, 0.3);
+          border-radius: 50%;
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          z-index: 1;
+        "></div>
+      </div>
+      <style>
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          50% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(2);
+          }
+        }
+      </style>
     `;
 
     const marker = new google.maps.marker.AdvancedMarkerElement({
@@ -234,14 +266,88 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
       <div ref={mapRef} className="w-full h-[500px] rounded-lg overflow-hidden shadow-lg" />
       
       {selectedLocation && (
-        <TrainerPopup
-          trainers={selectedLocation.trainers}
-          locationName={selectedLocation.name}
-          onClose={() => setSelectedLocation(null)}
-          onBook={onBook}
-          onViewProfile={onViewProfile}
-          onChat={onChat}
-        />
+        <Drawer open={!!selectedLocation} onOpenChange={() => setSelectedLocation(null)}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  {selectedLocation.name}
+                </span>
+                <DrawerClose asChild>
+                  <Button variant="ghost" size="icon">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </DrawerClose>
+              </DrawerTitle>
+            </DrawerHeader>
+            
+            <div className="px-4 pb-4 space-y-3 max-h-[60vh] overflow-y-auto">
+              {selectedLocation.trainers.map((trainer) => (
+                <Card key={trainer.id} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="w-12 h-12">
+                      {trainer.gallery?.[0] ? (
+                        <AvatarImage src={trainer.gallery[0]} alt={trainer.display_name || 'Trener'} />
+                      ) : (
+                        <AvatarFallback>
+                          {trainer.display_name?.charAt(0) || 'T'}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold truncate">{trainer.display_name || 'Trener'}</h4>
+                        {trainer.is_verified && (
+                          <Badge variant="secondary" className="text-xs">✓</Badge>
+                        )}
+                      </div>
+                      
+                      {trainer.rating && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                          <Star className="h-3 w-3 fill-warning text-warning" />
+                          <span>{trainer.rating.toFixed(1)}</span>
+                          <span>({trainer.review_count || 0})</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {trainer.specialties?.slice(0, 2).map((specialty, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {specialty}
+                          </Badge>
+                        ))}
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => {
+                            onBook(trainer.id);
+                            setSelectedLocation(null);
+                          }}
+                        >
+                          Zarezerwuj
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            onViewProfile(trainer.id);
+                            setSelectedLocation(null);
+                          }}
+                        >
+                          Profil
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </DrawerContent>
+        </Drawer>
       )}
     </>
   );

@@ -6,3 +6,4 @@ export * from './timeOff';
 export * from './invitations';
 export * from './availability';
 export * from './upload';
+export * from './favorites';
