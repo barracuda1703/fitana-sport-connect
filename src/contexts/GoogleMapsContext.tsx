@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { Loader } from '@googlemaps/js-api-loader';
 import { supabase } from '@/integrations/supabase/client';
 
 interface GoogleMapsContextType {
@@ -18,6 +19,7 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [apiKey] = useState<string | null>(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || null);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const loaderRef = useRef<Loader | null>(null);
   const MAX_RETRIES = 3;
 
   const loadGoogleMapsScript = async () => {
@@ -29,28 +31,19 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw new Error('VITE_GOOGLE_MAPS_API_KEY not found in environment variables. Please add it to your .env file.');
       }
       
-      // Use new functional API from @googlemaps/js-api-loader v2
-      // @ts-ignore - We're using the global window.google after script loads
-      if (!window.google?.maps) {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&v=weekly`;
-        script.async = true;
-        script.defer = true;
-        
-        // Add timeout to prevent infinite loading
-        await Promise.race([
-          new Promise((resolve, reject) => {
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          }),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Google Maps loading timeout')), 10000)
-          )
-        ]);
+      // Singleton pattern - create loader only once
+      if (!loaderRef.current) {
+        loaderRef.current = new Loader({
+          apiKey: apiKey,
+          version: 'weekly',
+          libraries: ['places', 'marker']
+        });
       }
-      
+
+      // @ts-ignore - Loader.load() exists but TS types may be outdated
+      await loaderRef.current.load();
       setIsLoaded(true);
+      
       console.log('Google Maps loaded successfully');
     } catch (err) {
       console.error('Error loading Google Maps:', err);
@@ -86,12 +79,13 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setError(null);
     setRetryCount(0);
     setIsRetrying(true);
+    loaderRef.current = null;
     loadGoogleMapsScript();
   };
 
   useEffect(() => {
     loadGoogleMapsScript();
-  }, [retryCount, apiKey]);
+  }, [retryCount]);
 
   return (
     <GoogleMapsContext.Provider value={{ isLoaded, error, apiKey, retryCount, isRetrying, retryLoad }}>

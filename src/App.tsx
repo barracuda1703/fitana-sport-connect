@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LocationProvider } from "@/contexts/LocationContext";
+import { GoogleMapsProvider } from "@/contexts/GoogleMapsContext";
 import { AblyProvider } from "@/contexts/AblyContext";
 
 import { Index } from "@/pages/Index";
@@ -43,8 +44,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
   
-  if (!user || !user.id || !user.email || !user.role) {
-    return <Navigate to="/auth" replace />;
+  if (!user) {
+    return <Navigate to="/" replace />;
   }
   
   return <>{children}</>;
@@ -64,8 +65,8 @@ const RoleProtectedRoute: React.FC<{
     );
   }
   
-  if (!user || !user.id || !user.email || !user.role) {
-    return <Navigate to="/auth" replace />;
+  if (!user) {
+    return <Navigate to="/" replace />;
   }
   
   if (user.role !== allowedRole) {
@@ -181,9 +182,11 @@ const App = () => {
           <AuthProvider>
             <AblyProvider>
               <LocationProvider>
-                <BrowserRouter>
-                  <AuthenticatedApp />
-                </BrowserRouter>
+                <GoogleMapsProvider>
+                  <BrowserRouter>
+                    <AuthenticatedApp />
+                  </BrowserRouter>
+                </GoogleMapsProvider>
               </LocationProvider>
             </AblyProvider>
           </AuthProvider>

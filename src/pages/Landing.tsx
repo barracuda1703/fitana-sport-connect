@@ -15,6 +15,12 @@ export const Landing: React.FC = () => {
   const [showRoleSelection, setShowRoleSelection] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'client' | 'trainer' | null>(null);
 
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (user) {
+      navigate(user.role === 'client' ? '/client' : '/trainer');
+    }
+  }, [user, navigate]);
 
   const handleGetStarted = () => {
     setShowRoleSelection(true);

@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { PhotoUploader } from '@/components/PhotoUploader';
-import { GoogleMapsProvider } from '@/contexts/GoogleMapsContext';
 import { LocationManagement } from '@/components/LocationManagement';
 import { ServiceManagementModal } from '@/components/ServiceManagementModal';
 import { SimpleLanguageSelector } from '@/components/SimpleLanguageSelector';
@@ -188,8 +187,7 @@ export const TrainerProfileSettings: React.FC = () => {
   if (!user) return null;
 
   return (
-    <GoogleMapsProvider>
-      <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
         <div className="flex items-center gap-3">
@@ -769,7 +767,6 @@ export const TrainerProfileSettings: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-      </div>
-    </GoogleMapsProvider>
+    </div>
   );
 };
