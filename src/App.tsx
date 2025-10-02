@@ -159,7 +159,8 @@ const AppRoutes: React.FC = () => {
             <ProfileSetup />
           </ProtectedRoute>
         } />
-        <Route path="/chat-list" element={
+        {/* Chat routes */}
+        <Route path="/chat" element={
           <ProtectedRoute>
             <ChatListPage />
           </ProtectedRoute>
@@ -171,6 +172,13 @@ const AppRoutes: React.FC = () => {
             </ErrorBoundary>
           </ProtectedRoute>
         } />
+        
+        {/* Legacy redirects */}
+        <Route path="/chat-list" element={<Navigate to="/chat" replace />} />
+        <Route path="/messages" element={<Navigate to="/chat" replace />} />
+        <Route path="/wiadomosci" element={<Navigate to="/chat" replace />} />
+        <Route path="/client/messages" element={<Navigate to="/chat" replace />} />
+        <Route path="/trainer/messages" element={<Navigate to="/chat" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       </ErrorBoundary>

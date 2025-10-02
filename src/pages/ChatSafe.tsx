@@ -93,6 +93,19 @@ export const ChatSafePage: React.FC = () => {
         
         const chats = await chatsService.getByUserId(user.id);
         const currentChat = chats?.find(c => c.id === chatId);
+        
+        // Verify user is a participant
+        if (!currentChat) {
+          console.warn('[Chat] User is not a participant of this chat');
+          toast({
+            title: "Brak dostępu",
+            description: "Nie masz dostępu do tej rozmowy",
+            variant: "destructive"
+          });
+          navigate('/chat', { replace: true });
+          return;
+        }
+        
         setChat(currentChat);
         
         if (currentChat) {
@@ -127,7 +140,7 @@ export const ChatSafePage: React.FC = () => {
     };
 
     loadChat();
-  }, [chatId, user, toast]);
+  }, [chatId, user, toast, navigate]);
 
   // Process queued messages when connected
   useEffect(() => {
