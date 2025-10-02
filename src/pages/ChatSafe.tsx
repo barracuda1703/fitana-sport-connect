@@ -18,9 +18,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { chatsService } from '@/services/supabase/chats';
 import { uploadChatImage } from '@/services/supabase/upload';
-import { useAblyChat } from '@/hooks/useAblyChat';
+import { useSupabaseChat } from '@/hooks/useSupabaseChat';
 import { supabase } from '@/integrations/supabase/client';
-import { FEATURE_FLAGS } from '@/lib/featureFlags';
 
 interface ChatMessage {
   id: string;
@@ -43,12 +42,10 @@ export const ChatSafePage: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [sending, setSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const messageQueueRef = useRef<ChatMessage[]>([]);
 
   const handleNewMessage = useCallback((message: ChatMessage) => {
     setMessages((prev) => {
@@ -61,17 +58,18 @@ export const ChatSafePage: React.FC = () => {
   }, []);
 
   const {
-    channelState,
+    channelStatus,
     error: channelError,
+    isOtherUserOnline,
     publishTyping,
     reconnect,
     isConnected,
-  } = useAblyChat({
+  } = useSupabaseChat({
     chatId: chatId || '',
     userId: user?.id || '',
-    onMessage: handleNewMessage,
+    onNewMessage: handleNewMessage,
     onTyping: setIsTyping,
-    onPresence: setIsOtherUserOnline,
+    onPresence: (online) => console.log('[Chat] Other user online:', online),
   });
 
   const scrollToBottom = () => {
@@ -141,28 +139,7 @@ export const ChatSafePage: React.FC = () => {
     loadChat();
   }, [chatId, user, toast, navigate]);
 
-  // Process queued messages when connected
-  useEffect(() => {
-    if (isConnected && messageQueueRef.current.length > 0) {
-      console.debug('[Chat] Processing', messageQueueRef.current.length, 'queued messages');
-      messageQueueRef.current.forEach(async (msg) => {
-        // Send via API which will publish to Ably
-        try {
-          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-send`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            },
-            body: JSON.stringify({ chatId, message: msg }),
-          });
-        } catch (err) {
-          console.error('[Chat] Failed to send queued message:', err);
-        }
-      });
-      messageQueueRef.current = [];
-    }
-  }, [isConnected, chatId]);
+  // No more message queue needed - realtime delivery via postgres_changes
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -221,31 +198,34 @@ export const ChatSafePage: React.FC = () => {
       };
       handleNewMessage(tempMessage);
 
-      // Send via API which persists to DB and publishes to Ably
-      const { data: sessionData } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionData.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          chatId,
-          content,
-          imageUrl,
-        }),
-      });
+      // Direct DB insert - postgres_changes will deliver to subscribers
+      const { data: dbMessage, error: insertError } = await supabase
+        .from('messages')
+        .insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          content: content,
+          image_url: imageUrl || null,
+        })
+        .select()
+        .single();
 
-      if (!res.ok) {
-        throw new Error(`Send failed: ${res.status}`);
-      }
+      if (insertError) throw insertError;
 
-      const { message: dbMessage } = await res.json();
+      // Update chat timestamp
+      await supabase
+        .from('chats')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', chatId);
 
       // Replace temp message with DB message
       setMessages(prev => prev.map(m => 
         m.id === tempMessage.id 
-          ? { ...m, id: dbMessage.id, timestamp: new Date(dbMessage.created_at).getTime() }
+          ? { 
+              ...m, 
+              id: dbMessage.id, 
+              timestamp: new Date(dbMessage.created_at!).getTime() 
+            }
           : m
       ));
 
@@ -255,13 +235,20 @@ export const ChatSafePage: React.FC = () => {
 
       // Stop typing indicator
       publishTyping(false).catch(console.error);
-    } catch (error) {
+      
+      toast({
+        title: "Wiadomość wysłana",
+      });
+    } catch (error: any) {
       console.error('[Chat] Error sending message:', error);
       toast({
         title: "Błąd",
         description: "Nie udało się wysłać wiadomości",
         variant: "destructive"
       });
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
     } finally {
       setSending(false);
     }
@@ -289,40 +276,40 @@ export const ChatSafePage: React.FC = () => {
   if (!user) return null;
 
   const getConnectionStatus = () => {
-    switch (channelState) {
-      case 'attached':
+    switch (channelStatus) {
+      case 'connected':
         return isOtherUserOnline ? 'Online' : 'Offline';
-      case 'attaching':
       case 'connecting':
         return 'Łączenie...';
       case 'disconnected':
-      case 'suspended':
-        // Don't show error - Ably reconnects automatically
-        return 'Łączenie...';
-      case 'failed':
+        return 'Rozłączony';
+      case 'error':
         return 'Błąd połączenia';
       default:
-        return 'Łączenie...';
+        return 'Inicjalizacja...';
     }
   };
 
   const getConnectionColor = () => {
-    if (channelState === 'attached' && isOtherUserOnline) {
+    if (channelStatus === 'connected' && isOtherUserOnline) {
       return 'bg-green-500';
     }
-    if (channelState === 'attached' && !isOtherUserOnline) {
+    if (channelStatus === 'connected' && !isOtherUserOnline) {
       return 'bg-gray-400';
     }
-    if (channelState === 'connecting' || channelState === 'attaching' || channelState === 'disconnected' || channelState === 'suspended') {
+    if (channelStatus === 'connecting') {
       return 'bg-yellow-500 animate-pulse';
     }
-    return 'bg-red-500';
+    if (channelStatus === 'disconnected' || channelStatus === 'error') {
+      return 'bg-red-500';
+    }
+    return 'bg-gray-400';
   };
 
   const canSendMessages = !sending && isConnected;
   
   // Show reconnect button only for persistent failures
-  const showReconnectButton = channelState === 'failed' && channelError;
+  const showReconnectButton = channelStatus === 'error' && channelError;
 
   return (
     <div className="min-h-screen bg-background pb-20 flex flex-col">
@@ -360,7 +347,7 @@ export const ChatSafePage: React.FC = () => {
           <AlertDescription className="flex items-center justify-between">
             <div>
               <p className="font-medium">Nie można połączyć z czatem</p>
-              <p className="text-xs mt-1">{channelError}</p>
+              <p className="text-xs mt-1">{channelError?.message}</p>
             </div>
             <Button size="sm" variant="outline" onClick={reconnect}>
               <RefreshCw className="h-3 w-3 mr-1" />

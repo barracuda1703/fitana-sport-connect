@@ -1,15 +1,15 @@
 /**
- * Feature flags for realtime chat
+ * Feature flags for Supabase Realtime chat
  */
 export const FEATURE_FLAGS = {
-  // Ably realtime chat - always enabled
-  ABLY_ENABLED: true,
+  // Supabase Realtime (enabled by default)
+  USE_SUPABASE_REALTIME: true,
   
-  // Require realtime (no polling fallback)
-  ABLY_REQUIRE_REALTIME: true,
+  // Supabase channel subscribe timeout (ms)
+  SUPABASE_CHANNEL_TIMEOUT: 10000, // 10 seconds timeout for channel subscribe
   
-  // Ably channel attach timeout (ms)
-  ABLY_ATTACH_TIMEOUT: 10000, // 10 seconds timeout for channel attach
+  // Presence heartbeat interval (ms)
+  SUPABASE_PRESENCE_HEARTBEAT: 30000, // 30 seconds heartbeat
 } as const;
 
 export type FeatureFlags = typeof FEATURE_FLAGS;
