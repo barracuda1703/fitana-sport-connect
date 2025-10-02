@@ -45,27 +45,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
-    // Set up auth state listener
+    let mounted = true;
+    console.debug('[auth] AuthProvider mounting');
+
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.debug('[auth] event:', event, 'expires_at:', session?.expires_at);
+        
+        if (!mounted) return;
+        
         setSession(session);
         
         if (session?.user) {
-          // Defer profile fetch
+          // Defer profile fetch to avoid blocking
           setTimeout(async () => {
+            if (!mounted) return;
+            
             const { data: profile, error } = await (supabase as any)
               .from('profiles')
               .select('*')
               .eq('id', session.user.id)
               .maybeSingle();
             
-            if (profile) {
+            if (mounted && profile) {
               setUser({
                 ...profile,
                 avatarUrl: profile.avatarurl
               } as Profile);
             } else if (error) {
-              console.error('Error fetching profile:', error);
+              console.error('[auth] Error fetching profile:', error);
             }
           }, 0);
         } else {
@@ -74,8 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Check for existing session
+    // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.debug('[auth] Initial session check:', session?.user?.id);
+      
+      if (!mounted) return;
+      
       setSession(session);
       
       if (session?.user) {
@@ -85,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('id', session.user.id)
           .maybeSingle();
         
-        if (profile) {
+        if (mounted && profile) {
           setUser({
             ...profile,
             avatarUrl: profile.avatarurl
@@ -93,11 +106,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      setIsLoading(false);
-      setBootstrapped(true);
+      if (mounted) {
+        setIsLoading(false);
+        setBootstrapped(true);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    // Monitor storage changes for multi-tab logout
+    const handleStorageChange = (e: StorageEvent) => {
+      if (String(e.key).includes('auth-token')) {
+        console.debug('[auth] storage change detected:', e.key);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const logout = async () => {

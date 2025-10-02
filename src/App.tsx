@@ -36,6 +36,7 @@ const queryClient = new QueryClient();
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading, bootstrapped } = useAuth();
   
+  // Don't redirect while still loading - wait for auth to settle
   if (!bootstrapped || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -44,10 +45,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
   
+  // Only redirect if definitely not authenticated
   if (!user) {
+    console.debug('[auth] ProtectedRoute: no user, redirecting to /');
     return <Navigate to="/" replace />;
   }
   
+  console.debug('[auth] ProtectedRoute: user authenticated:', user.id);
   return <>{children}</>;
 };
 
@@ -57,6 +61,7 @@ const RoleProtectedRoute: React.FC<{
 }> = ({ children, allowedRole }) => {
   const { user, isLoading, bootstrapped } = useAuth();
   
+  // Don't redirect while still loading
   if (!bootstrapped || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -66,13 +71,16 @@ const RoleProtectedRoute: React.FC<{
   }
   
   if (!user) {
+    console.debug('[auth] RoleProtectedRoute: no user, redirecting to /');
     return <Navigate to="/" replace />;
   }
   
   if (user.role !== allowedRole) {
+    console.debug('[auth] RoleProtectedRoute: wrong role, redirecting');
     return <Navigate to={user.role === 'client' ? '/client' : '/trainer'} replace />;
   }
   
+  console.debug('[auth] RoleProtectedRoute: user authorized:', user.id, user.role);
   return <>{children}</>;
 };
 

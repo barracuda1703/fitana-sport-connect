@@ -55,9 +55,12 @@ export const AuthScreen: React.FC = () => {
         .single();
 
       if (profile && profile.role !== role) {
+        console.warn('[auth] Role mismatch, logging out');
         await supabase.auth.signOut();
         throw new Error(`Ten email jest zarejestrowany jako ${profile.role === 'client' ? 'klient' : 'trener'}`);
       }
+      
+      console.debug('[auth] Login successful for user:', data.user.id);
 
       toast({
         title: t('success'),

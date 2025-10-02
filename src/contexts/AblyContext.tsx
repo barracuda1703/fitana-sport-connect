@@ -53,71 +53,36 @@ export const AblyProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Create Ably Realtime client with token auth and retry logic
         const client = new Ably.Realtime({
           authCallback: async (tokenParams, callback) => {
-            const startTime = performance.now();
-            let lastError: any = null;
-            
-            // Try up to 3 times with session refresh
-            for (let attempt = 1; attempt <= 3; attempt++) {
-              try {
-                console.log(`[Ably] Token request attempt ${attempt}/3`);
-                
-                // Refresh session before each attempt to ensure fresh token
-                const { data: { session: refreshedSession }, error: refreshError } = 
-                  await supabase.auth.refreshSession();
-                
-                if (refreshError || !refreshedSession) {
-                  console.error(`[Ably] Session refresh failed on attempt ${attempt}:`, refreshError);
-                  lastError = refreshError || new Error('No session after refresh');
-                  
-                  // Wait before retry with exponential backoff
-                  if (attempt < 3) {
-                    const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-                    console.log(`[Ably] Waiting ${backoffMs}ms before retry...`);
-                    await new Promise(resolve => setTimeout(resolve, backoffMs));
-                    continue;
-                  }
-                  break;
-                }
-
-                console.log('[Ably] Session refreshed, requesting token...');
-                const { data, error } = await supabase.functions.invoke('ably-token', {
-                  headers: {
-                    Authorization: `Bearer ${refreshedSession.access_token}`,
-                  },
-                });
-
-                if (error) {
-                  console.error(`[Ably] Token error on attempt ${attempt}:`, error);
-                  lastError = error;
-                  
-                  if (attempt < 3) {
-                    const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-                    await new Promise(resolve => setTimeout(resolve, backoffMs));
-                    continue;
-                  }
-                  break;
-                }
-
-                const elapsed = Math.round(performance.now() - startTime);
-                console.log(`[Ably] Token received successfully in ${elapsed}ms`);
-                callback(null, data);
+            try {
+              console.log('[Ably] Requesting token...');
+              
+              // Get EXISTING session - DO NOT refresh/destroy it
+              const { data: { session } } = await supabase.auth.getSession();
+              
+              if (!session?.access_token) {
+                console.warn('[Ably] No active session, disabling realtime');
+                callback('No active session', null);
                 return;
-              } catch (error) {
-                console.error(`[Ably] Error on attempt ${attempt}:`, error);
-                lastError = error;
-                
-                if (attempt < 3) {
-                  const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-                  await new Promise(resolve => setTimeout(resolve, backoffMs));
-                  continue;
-                }
               }
+
+              const { data, error } = await supabase.functions.invoke('ably-token', {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+              });
+
+              if (error) {
+                console.warn('[Ably] Token error (keeping session intact):', error.message);
+                callback(error.message, null);
+                return;
+              }
+
+              console.log('[Ably] Token received successfully');
+              callback(null, data);
+            } catch (error: any) {
+              console.warn('[Ably] Token fetch failed (keeping session intact):', error?.message);
+              callback(error?.message || 'Unknown error', null);
             }
-            
-            // All attempts failed
-            const errorMessage = lastError instanceof Error ? lastError.message : 'Auth failed after 3 attempts';
-            console.error('[Ably] All token attempts failed:', errorMessage);
-            callback(errorMessage, null);
           },
           echoMessages: false,
           disconnectedRetryTimeout: 5000,
