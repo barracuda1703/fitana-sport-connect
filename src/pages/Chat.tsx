@@ -2,67 +2,42 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   Send, 
-  MoreVertical, 
   MessageCircle,
   Paperclip,
-  Image as ImageIcon,
-  Copy,
-  Edit2,
-  Trash2,
   Loader2,
-  AlertCircle,
-  Smile
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAbly } from '@/contexts/AblyContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { chatsService } from '@/services/supabase';
+import { AblyChatService, AblyMessage } from '@/services/ably/chats';
 import { uploadChatImage } from '@/services/supabase/upload';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-interface OptimisticMessage {
-  id: string;
-  chat_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  image_url?: string;
-  message_type?: string;
-  isOptimistic?: boolean;
-  isUploading?: boolean;
-  uploadError?: boolean;
-}
-
-const REACTION_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
 
 export const ChatPage: React.FC = () => {
   const { user } = useAuth();
+  const { chatClient, isConnected } = useAbly();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('messages');
-  const [messages, setMessages] = useState<any[]>([]);
-  const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
+  const [messages, setMessages] = useState<AblyMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [chat, setChat] = useState<any>(null);
   const [otherUser, setOtherUser] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editingContent, setEditingContent] = useState('');
-  const [showReactions, setShowReactions] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
+  const [sending, setSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const ablyChatServiceRef = useRef<AblyChatService | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -70,8 +45,17 @@ export const ChatPage: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, optimisticMessages]);
+  }, [messages]);
 
+  // Initialize Ably chat service
+  useEffect(() => {
+    if (chatClient && !ablyChatServiceRef.current) {
+      ablyChatServiceRef.current = new AblyChatService(chatClient);
+      console.log('Ably chat service initialized');
+    }
+  }, [chatClient]);
+
+  // Load chat metadata from Supabase
   useEffect(() => {
     const loadChat = async () => {
       if (!chatId || !user) return;
@@ -90,9 +74,6 @@ export const ChatPage: React.FC = () => {
           setOtherUser(other);
         }
 
-        const msgs = await chatsService.getMessages(chatId);
-        setMessages(msgs || []);
-
         await chatsService.markChatAsRead(chatId, user.id);
       } catch (error) {
         console.error('Error loading chat:', error);
@@ -102,31 +83,53 @@ export const ChatPage: React.FC = () => {
     };
 
     loadChat();
+  }, [chatId, user]);
 
-    const unsubscribe = chatsService.subscribeToMessages(chatId, (newMessage) => {
-      // Remove optimistic message if it exists
-      setOptimisticMessages(prev => 
-        prev.filter(m => m.id !== newMessage.id)
-      );
-      
-      // Update or add message
-      setMessages(prev => {
-        const exists = prev.find(m => m.id === newMessage.id);
-        if (exists) {
-          return prev.map(m => m.id === newMessage.id ? newMessage : m);
-        }
-        return [...prev, newMessage];
-      });
+  // Subscribe to Ably messages
+  useEffect(() => {
+    if (!chatId || !ablyChatServiceRef.current) return;
 
-      if (newMessage.sender_id !== user?.id) {
-        chatsService.markAsRead(newMessage.id);
+    console.log('Subscribing to Ably messages for chat:', chatId);
+
+    const unsubscribeMessages = ablyChatServiceRef.current.subscribeToMessages(
+      chatId,
+      (message) => {
+        console.log('Received Ably message:', message);
+        setMessages((prev) => {
+          // Avoid duplicates
+          if (prev.find(m => m.id === message.id)) {
+            return prev;
+          }
+          return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
+        });
       }
-    });
+    );
+
+    const unsubscribeTyping = ablyChatServiceRef.current.subscribeToTyping(
+      chatId,
+      (typing, userId) => {
+        if (userId !== user?.id) {
+          setIsTyping(typing);
+        }
+      }
+    );
+
+    const unsubscribePresence = ablyChatServiceRef.current.subscribeToPresence(
+      chatId,
+      (online) => {
+        setIsOtherUserOnline(online);
+      }
+    );
+
+    // Set presence
+    ablyChatServiceRef.current.setPresence(chatId, { status: 'online' });
 
     return () => {
-      unsubscribe();
+      unsubscribeMessages();
+      unsubscribeTyping();
+      unsubscribePresence();
     };
-  }, [chatId, user]);
+  }, [chatId, user, ablyChatServiceRef.current]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,156 +164,64 @@ export const ChatPage: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if ((!newMessage.trim() && !selectedImage) || !user || !chatId) return;
+    if ((!newMessage.trim() && !selectedImage) || !user || !chatId || !ablyChatServiceRef.current) return;
 
-    const tempId = `temp-${Date.now()}`;
+    setSending(true);
     
     try {
+      let imageUrl: string | undefined;
+
       if (selectedImage) {
-        // Optimistic image message
-        const optimisticMsg: OptimisticMessage = {
-          id: tempId,
-          chat_id: chatId,
-          sender_id: user.id,
-          content: newMessage.trim() || '',
-          image_url: imagePreview!,
-          message_type: 'image',
-          created_at: new Date().toISOString(),
-          isOptimistic: true,
-          isUploading: true
-        };
-
-        setOptimisticMessages(prev => [...prev, optimisticMsg]);
-        setNewMessage('');
-        setSelectedImage(null);
-        setImagePreview(null);
-
-        // Upload image
         const { url } = await uploadChatImage(user.id, chatId, selectedImage);
-        
-        // Send message with image URL
-        await chatsService.sendMessage(chatId, user.id, newMessage.trim() || '📷');
-        
-        // Update with real image URL (this will be replaced by realtime)
-        setOptimisticMessages(prev => 
-          prev.map(m => m.id === tempId ? { ...m, isUploading: false, image_url: url } : m)
-        );
-      } else {
-        // Optimistic text message
-        const optimisticMsg: OptimisticMessage = {
-          id: tempId,
-          chat_id: chatId,
-          sender_id: user.id,
-          content: newMessage.trim(),
-          created_at: new Date().toISOString(),
-          isOptimistic: true
-        };
+        imageUrl = url;
+      }
 
-        setOptimisticMessages(prev => [...prev, optimisticMsg]);
-        setNewMessage('');
+      await ablyChatServiceRef.current.sendMessage(
+        chatId, 
+        newMessage.trim() || '📷', 
+        imageUrl
+      );
 
-        // Send message
-        await chatsService.sendMessage(chatId, user.id, newMessage.trim());
+      setNewMessage('');
+      setSelectedImage(null);
+      setImagePreview(null);
+
+      // Stop typing indicator
+      if (ablyChatServiceRef.current) {
+        ablyChatServiceRef.current.stopTyping(chatId);
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      
-      // Mark as error
-      setOptimisticMessages(prev => 
-        prev.map(m => m.id === tempId ? { ...m, uploadError: true, isUploading: false } : m)
-      );
-
       toast({
         title: "Błąd",
         description: "Nie udało się wysłać wiadomości",
         variant: "destructive"
       });
+    } finally {
+      setSending(false);
     }
   };
 
-  const handleRetry = async (tempId: string) => {
-    const msg = optimisticMessages.find(m => m.id === tempId);
-    if (!msg || !user || !chatId) return;
+  const handleTyping = (value: string) => {
+    setNewMessage(value);
 
-    setOptimisticMessages(prev => 
-      prev.map(m => m.id === tempId ? { ...m, uploadError: false, isUploading: true } : m)
-    );
+    if (!ablyChatServiceRef.current || !chatId) return;
 
-    try {
-      await chatsService.sendMessage(chatId, user.id, msg.content);
-      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
-    } catch (error) {
-      setOptimisticMessages(prev => 
-        prev.map(m => m.id === tempId ? { ...m, uploadError: true, isUploading: false } : m)
-      );
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
+
+    // Start typing
+    ablyChatServiceRef.current.startTyping(chatId);
+
+    // Stop typing after 2 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      if (ablyChatServiceRef.current) {
+        ablyChatServiceRef.current.stopTyping(chatId);
+      }
+    }, 2000);
   };
-
-  const handleEditMessage = async (messageId: string) => {
-    if (!editingContent.trim()) return;
-
-    try {
-      await chatsService.editMessage(messageId, editingContent.trim());
-      setEditingMessageId(null);
-      setEditingContent('');
-      toast({
-        title: "Sukces",
-        description: "Wiadomość została edytowana"
-      });
-    } catch (error) {
-      toast({
-        title: "Błąd",
-        description: "Nie udało się edytować wiadomości",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!user) return;
-
-    try {
-      await chatsService.deleteMessageForUser(messageId, user.id);
-      toast({
-        title: "Sukces",
-        description: "Wiadomość została usunięta"
-      });
-    } catch (error) {
-      toast({
-        title: "Błąd",
-        description: "Nie udało się usunąć wiadomości",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleCopyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Skopiowano",
-      description: "Tekst został skopiowany do schowka"
-    });
-  };
-
-  const handleReaction = async (messageId: string, emoji: string) => {
-    if (!user) return;
-
-    try {
-      await chatsService.addReaction(messageId, user.id, emoji);
-      setShowReactions(null);
-    } catch (error) {
-      toast({
-        title: "Błąd",
-        description: "Nie udało się dodać reakcji",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const allMessages = [
-    ...messages.filter((m: any) => !m.deleted_for_users?.includes(user?.id)),
-    ...optimisticMessages
-  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   if (!user) return null;
 
@@ -332,7 +243,9 @@ export const ChatPage: React.FC = () => {
               <h2 className="font-semibold">
                 {`${otherUser?.name || ''} ${otherUser?.surname || ''}`.trim() || 'Użytkownik'}
               </h2>
-              <p className="text-xs text-muted-foreground">Aktywny</p>
+              <p className="text-xs text-muted-foreground">
+                {!isConnected ? 'Łączenie...' : isOtherUserOnline ? 'Online' : 'Offline'}
+              </p>
             </div>
           </div>
         </div>
@@ -341,15 +254,15 @@ export const ChatPage: React.FC = () => {
       <div className="flex-1 p-4 overflow-y-auto space-y-3">
         {loading ? (
           <p className="text-center text-muted-foreground">Ładowanie...</p>
-        ) : allMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
             <p>Brak wiadomości</p>
+            <p className="text-xs mt-2">Rozpocznij rozmowę!</p>
           </div>
         ) : (
-          allMessages.map((msg) => {
-            const isOwn = msg.sender_id === user?.id;
-            const isEditing = editingMessageId === msg.id;
+          messages.map((msg) => {
+            const isOwn = msg.senderId === user?.id;
 
             return (
               <div
@@ -362,129 +275,39 @@ export const ChatPage: React.FC = () => {
                       isOwn
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
-                    } ${msg.isUploading ? 'opacity-50' : ''}`}
+                    }`}
                   >
-                    {msg.image_url && (
+                    {msg.metadata?.image_url && (
                       <img 
-                        src={msg.image_url} 
+                        src={msg.metadata.image_url} 
                         alt="Załącznik"
-                        className={`rounded-lg max-w-full mb-2 ${msg.isUploading ? 'blur-sm' : ''}`}
+                        className="rounded-lg max-w-full mb-2"
                       />
                     )}
                     
-                    {isEditing ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={editingContent}
-                          onChange={(e) => setEditingContent(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleEditMessage(msg.id)}
-                          className="text-sm"
-                          autoFocus
-                        />
-                        <Button size="sm" onClick={() => handleEditMessage(msg.id)}>
-                          <Send className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-sm">{msg.content}</p>
-                        {msg.edited_at && (
-                          <span className="text-xs opacity-50 ml-2">(edytowano)</span>
-                        )}
-                      </>
-                    )}
+                    <p className="text-sm">{msg.text}</p>
 
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-xs opacity-70">
-                        {new Date(msg.created_at).toLocaleTimeString('pl-PL', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                      
-                      {msg.isUploading && <Loader2 className="h-3 w-3 animate-spin" />}
-                      {msg.uploadError && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleRetry(msg.id)}
-                          className="h-5 px-2 text-xs"
-                        >
-                          Ponów
-                        </Button>
-                      )}
-
-                      {!msg.isOptimistic && isOwn && !isEditing && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-5 w-5">
-                              <MoreVertical className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setEditingMessageId(msg.id);
-                              setEditingContent(msg.content);
-                            }}>
-                              <Edit2 className="h-3 w-3 mr-2" />
-                              Edytuj
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCopyText(msg.content)}>
-                              <Copy className="h-3 w-3 mr-2" />
-                              Kopiuj tekst
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteMessage(msg.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3 mr-2" />
-                              Usuń dla mnie
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
+                    <p className="text-xs opacity-70 mt-1">
+                      {new Date(msg.timestamp).toLocaleTimeString('pl-PL', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
                   </div>
-
-                  {/* Reactions */}
-                  {!msg.isOptimistic && (
-                    <div className="flex gap-1 flex-wrap">
-                      {msg.reactions?.map((reaction: any, idx: number) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleReaction(msg.id, reaction.emoji)}
-                          className={`text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/80 ${
-                            reaction.user_id === user.id ? 'ring-1 ring-primary' : ''
-                          }`}
-                        >
-                          {reaction.emoji}
-                        </button>
-                      ))}
-                      
-                      <DropdownMenu open={showReactions === msg.id} onOpenChange={(open) => setShowReactions(open ? msg.id : null)}>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6">
-                            <Smile className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {REACTION_EMOJIS.map((emoji) => (
-                            <DropdownMenuItem 
-                              key={emoji}
-                              onClick={() => handleReaction(msg.id, emoji)}
-                            >
-                              <span className="text-lg">{emoji}</span>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  )}
                 </div>
               </div>
             );
           })
         )}
+        
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-muted rounded-2xl px-4 py-2">
+              <p className="text-xs text-muted-foreground">Pisze...</p>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
@@ -510,38 +333,33 @@ export const ChatPage: React.FC = () => {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-            onChange={handleImageSelect}
+            accept="image/*"
             className="hidden"
+            onChange={handleImageSelect}
           />
-          
           <Button
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
+            disabled={sending || !isConnected}
           >
             <Paperclip className="h-4 w-4" />
           </Button>
-
           <Input
-            placeholder="Napisz wiadomość..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            onChange={(e) => handleTyping(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+            placeholder={isConnected ? "Wpisz wiadomość..." : "Łączenie..."}
             className="flex-1"
+            disabled={sending || !isConnected}
           />
-          
-          <Button onClick={handleSendMessage} size="icon">
-            <Send className="h-4 w-4" />
+          <Button onClick={handleSendMessage} disabled={sending || !isConnected}>
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
       </div>
 
-      <BottomNavigation 
-        userRole={user.role === 'trainer' ? 'trainer' : 'client'}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <BottomNavigation activeTab="chat" userRole={user.role as 'client' | 'trainer'} onTabChange={() => {}} />
     </div>
   );
 };

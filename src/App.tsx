@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LocationProvider } from "@/contexts/LocationContext";
 import { GoogleMapsProvider } from "@/contexts/GoogleMapsContext";
+import { AblyProvider } from "@/contexts/AblyContext";
 
 import { Index } from "@/pages/Index";
 import { Landing } from "@/pages/Landing";
@@ -179,13 +180,15 @@ const App = () => {
         <Sonner />
         <LanguageProvider>
           <AuthProvider>
-            <LocationProvider>
-              <GoogleMapsProvider>
-                <BrowserRouter>
-                  <AuthenticatedApp />
-                </BrowserRouter>
-              </GoogleMapsProvider>
-            </LocationProvider>
+            <AblyProvider>
+              <LocationProvider>
+                <GoogleMapsProvider>
+                  <BrowserRouter>
+                    <AuthenticatedApp />
+                  </BrowserRouter>
+                </GoogleMapsProvider>
+              </LocationProvider>
+            </AblyProvider>
           </AuthProvider>
         </LanguageProvider>
       </TooltipProvider>
