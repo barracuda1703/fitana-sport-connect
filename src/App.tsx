@@ -12,6 +12,7 @@ import { Landing } from "@/pages/Landing";
 import { AuthScreen } from "@/pages/AuthScreen";
 import { AuthCallback } from "@/pages/AuthCallback";
 import { ClientHome } from "@/pages/ClientHome";
+import { ClientSettings } from "@/pages/ClientSettings";
 import { TrainerDashboard } from "@/pages/TrainerDashboard";
 import { CalendarPage } from "@/pages/Calendar";
 import { ClientCalendarPage } from "@/pages/ClientCalendar";
@@ -87,17 +88,12 @@ const AppRoutes: React.FC = () => {
             <ClientHome />
           </RoleProtectedRoute>
         } />
-        <Route path="/trainer" element={
-          <RoleProtectedRoute allowedRole="trainer">
-            <TrainerDashboard />
-          </RoleProtectedRoute>
-        } />
-        <Route path="/calendar" element={
+        <Route path="/client/settings" element={
           <RoleProtectedRoute allowedRole="client">
-            <CalendarPage />
+            <ClientSettings />
           </RoleProtectedRoute>
         } />
-        <Route path="/client-calendar" element={
+        <Route path="/client/calendar" element={
           <RoleProtectedRoute allowedRole="client">
             <ClientCalendarPage />
           </RoleProtectedRoute>

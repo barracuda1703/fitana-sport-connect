@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import fitanaLogo from '@/assets/fitana-logo.png';
 
 interface Trainer {
   id: string;
@@ -314,7 +315,8 @@ export const ClientHome: React.FC = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 mb-4">
+          <img src={fitanaLogo} alt="Fitana" className="h-8" />
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 

@@ -11,6 +11,7 @@ export type Profile = {
   city?: string;
   language?: string;
   avatarUrl?: string;
+  bio?: string;
   password?: string;
   created_at: string;
   updated_at: string;

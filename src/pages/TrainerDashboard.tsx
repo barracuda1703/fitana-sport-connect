@@ -12,6 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { bookingsService, type Booking } from '@/services/supabase';
+import fitanaLogo from '@/assets/fitana-logo.png';
 
 export const TrainerDashboard: React.FC = () => {
   const { t } = useLanguage();
@@ -168,9 +169,12 @@ export const TrainerDashboard: React.FC = () => {
     <div className="min-h-screen bg-background pb-20">
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Panel trenera</h1>
-            <p className="text-muted-foreground">Zarządzaj swoimi treningami</p>
+          <div className="flex items-center gap-3">
+            <img src={fitanaLogo} alt="Fitana" className="h-8" />
+            <div>
+              <h1 className="text-2xl font-bold">Panel trenera</h1>
+              <p className="text-muted-foreground">Zarządzaj swoimi treningami</p>
+            </div>
           </div>
           <Button variant="outline" size="icon" onClick={() => navigate('/trainer/settings')}>
             <Settings className="h-4 w-4" />
