@@ -112,6 +112,55 @@ export const uploadGalleryPhoto = async (
 };
 
 /**
+ * Upload chat image to Supabase Storage
+ * @param userId - User ID for folder organization
+ * @param chatId - Chat ID for folder organization
+ * @param file - File to upload
+ * @returns Public URL of uploaded file
+ */
+export const uploadChatImage = async (
+  userId: string,
+  chatId: string,
+  file: File
+): Promise<UploadResult> => {
+  // Validate file
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    throw new Error('Nieprawidłowy typ pliku. Dozwolone: JPG, PNG, GIF, WEBP');
+  }
+
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    throw new Error('Plik jest za duży. Maksymalny rozmiar: 5MB');
+  }
+
+  // Create unique filename
+  const timestamp = Date.now();
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const filePath = `${userId}/${chatId}/${fileName}`;
+
+  // Upload to storage
+  const { error: uploadError } = await supabase.storage
+    .from('chat-attachments')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (uploadError) {
+    throw new Error(`Błąd uploadu: ${uploadError.message}`);
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('chat-attachments')
+    .getPublicUrl(filePath);
+
+  return { url: publicUrl, path: filePath };
+};
+
+/**
  * Delete file from storage
  * @param filePath - Path to file in storage
  * @param bucket - Storage bucket name

@@ -146,6 +146,77 @@ export const chatsService = {
     if (error) throw error;
   },
 
+  async editMessage(messageId: string, content: string) {
+    const { error } = await supabase
+      .from('messages')
+      .update({ 
+        content,
+        edited_at: new Date().toISOString()
+      })
+      .eq('id', messageId);
+    
+    if (error) throw error;
+  },
+
+  async deleteMessageForUser(messageId: string, userId: string) {
+    // Soft delete - add user to deleted_for_users array
+    const { data: message } = await supabase
+      .from('messages')
+      .select('deleted_for_users')
+      .eq('id', messageId)
+      .single();
+
+    const deletedForUsers = message?.deleted_for_users || [];
+    
+    const { error } = await supabase
+      .from('messages')
+      .update({ 
+        deleted_for_users: [...deletedForUsers, userId]
+      })
+      .eq('id', messageId);
+    
+    if (error) throw error;
+  },
+
+  async addReaction(messageId: string, userId: string, emoji: string) {
+    const { data: message } = await supabase
+      .from('messages')
+      .select('reactions')
+      .eq('id', messageId)
+      .single();
+
+    const reactions = (message?.reactions as any[]) || [];
+    
+    // Check if user already reacted with this emoji
+    const existingReaction = reactions.find(
+      (r: any) => r.user_id === userId && r.emoji === emoji
+    );
+
+    if (existingReaction) {
+      // Remove reaction
+      const updatedReactions = reactions.filter(
+        (r: any) => !(r.user_id === userId && r.emoji === emoji)
+      );
+      
+      const { error } = await supabase
+        .from('messages')
+        .update({ reactions: updatedReactions as any })
+        .eq('id', messageId);
+      
+      if (error) throw error;
+    } else {
+      // Add reaction
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          reactions: [...reactions, { user_id: userId, emoji }] as any
+        })
+        .eq('id', messageId);
+      
+      if (error) throw error;
+    }
+  },
+
   subscribeToMessages(chatId: string, callback: (message: Message) => void) {
     const channel = supabase
       .channel(`messages:${chatId}`)
@@ -153,6 +224,18 @@ export const chatsService = {
         'postgres_changes',
         {
           event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `chat_id=eq.${chatId}`
+        },
+        (payload) => {
+          callback(payload.new as Message);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'messages',
           filter: `chat_id=eq.${chatId}`

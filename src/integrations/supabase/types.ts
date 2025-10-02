@@ -212,7 +212,12 @@ export type Database = {
           chat_id: string
           content: string
           created_at: string | null
+          deleted_for_users: string[] | null
+          edited_at: string | null
           id: string
+          image_url: string | null
+          message_type: string | null
+          reactions: Json | null
           read_at: string | null
           sender_id: string
         }
@@ -220,7 +225,12 @@ export type Database = {
           chat_id: string
           content: string
           created_at?: string | null
+          deleted_for_users?: string[] | null
+          edited_at?: string | null
           id?: string
+          image_url?: string | null
+          message_type?: string | null
+          reactions?: Json | null
           read_at?: string | null
           sender_id: string
         }
@@ -228,7 +238,12 @@ export type Database = {
           chat_id?: string
           content?: string
           created_at?: string | null
+          deleted_for_users?: string[] | null
+          edited_at?: string | null
           id?: string
+          image_url?: string | null
+          message_type?: string | null
+          reactions?: Json | null
           read_at?: string | null
           sender_id?: string
         }
