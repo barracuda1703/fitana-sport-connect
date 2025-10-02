@@ -31,10 +31,14 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, bootstrapped } = useAuth();
   
-  if (isLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  if (!bootstrapped || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
   }
   
   if (!user) {
@@ -48,10 +52,14 @@ const RoleProtectedRoute: React.FC<{
   children: React.ReactNode; 
   allowedRole: 'client' | 'trainer' 
 }> = ({ children, allowedRole }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, bootstrapped } = useAuth();
   
-  if (isLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  if (!bootstrapped || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
   }
   
   if (!user) {
@@ -152,10 +160,14 @@ const AppRoutes: React.FC = () => {
 };
 
 const AuthenticatedApp: React.FC = () => {
-  const { user, isLoading } = useAuth();
+  const { bootstrapped, isLoading } = useAuth();
   
-  if (isLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  if (!bootstrapped || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    );
   }
 
   return <AppRoutes />;

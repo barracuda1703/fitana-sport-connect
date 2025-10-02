@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+
+type AuthMode = 'select' | 'register' | 'login';
 
 export const AuthScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export const AuthScreen: React.FC = () => {
   
   const role = (location.state?.role as 'client' | 'trainer') || 'client';
   
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
+  const [authMode, setAuthMode] = useState<AuthMode>('select');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -109,7 +110,7 @@ export const AuthScreen: React.FC = () => {
         description: 'Konto zostało utworzone. Sprawdź email aby potwierdzić rejestrację.',
       });
 
-      setActiveTab('signin');
+      setAuthMode('login');
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -117,13 +118,168 @@ export const AuthScreen: React.FC = () => {
     }
   };
 
+  // Auth mode selection screen
+  if (authMode === 'select') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Button
+            variant="ghost"
+            className="mb-4"
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Powrót
+          </Button>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {role === 'client' ? 'Klient' : 'Trener'}
+              </CardTitle>
+              <CardDescription>
+                Wybierz sposób kontynuowania
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => setAuthMode('register')}
+              >
+                Zarejestruj się
+              </Button>
+              <Button
+                className="w-full"
+                size="lg"
+                variant="outline"
+                onClick={() => setAuthMode('login')}
+              >
+                Zaloguj się
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Register screen
+  if (authMode === 'register') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Button
+            variant="ghost"
+            className="mb-4"
+            onClick={() => setAuthMode('select')}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Powrót
+          </Button>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Rejestracja</CardTitle>
+              <CardDescription>
+                Utwórz nowe konto jako {role === 'client' ? 'klient' : 'trener'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSignUp} className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Imię</Label>
+                  <Input
+                    id="signup-name"
+                    type="text"
+                    value={signUpData.name}
+                    onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    value={signUpData.email}
+                    onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Hasło</Label>
+                  <div className="relative">
+                    <Input
+                      id="signup-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={signUpData.password}
+                      onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm">Potwierdź hasło</Label>
+                  <Input
+                    id="signup-confirm"
+                    type={showPassword ? 'text' : 'password'}
+                    value={signUpData.confirmPassword}
+                    onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Tworzenie konta...' : 'Utwórz konto'}
+                </Button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Lub kontynuuj z
+                    </span>
+                  </div>
+                </div>
+
+                <SocialAuthButtons role={role} mode="signup" />
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Login screen
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Button
           variant="ghost"
           className="mb-4"
-          onClick={() => navigate('/')}
+          onClick={() => setAuthMode('select')}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Powrót
@@ -131,164 +287,69 @@ export const AuthScreen: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>
-              {role === 'client' ? 'Klient' : 'Trener'}
-            </CardTitle>
+            <CardTitle>Logowanie</CardTitle>
             <CardDescription>
-              {activeTab === 'signin' 
-                ? 'Zaloguj się do swojego konta' 
-                : 'Utwórz nowe konto'}
+              Zaloguj się do swojego konta {role === 'client' ? 'klienta' : 'trenera'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Logowanie</TabsTrigger>
-                <TabsTrigger value="signup">Rejestracja</TabsTrigger>
-              </TabsList>
+            <form onSubmit={handleSignIn} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor="signin-email">Email</Label>
+                <Input
+                  id="signin-email"
+                  type="email"
+                  value={signInData.email}
+                  onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
+                  required
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      value={signInData.email}
-                      onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Hasło</Label>
-                    <div className="relative">
-                      <Input
-                        id="signin-password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={signInData.password}
-                        onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Logowanie...' : 'Zaloguj się'}
+              <div className="space-y-2">
+                <Label htmlFor="signin-password">Hasło</Label>
+                <div className="relative">
+                  <Input
+                    id="signin-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={signInData.password}
+                    onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
+                </div>
+              </div>
 
-                  <div className="relative my-4">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Lub kontynuuj z
-                      </span>
-                    </div>
-                  </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Logowanie...' : 'Zaloguj się'}
+              </Button>
 
-                  <SocialAuthButtons role={role} mode="signin" />
-                </form>
-              </TabsContent>
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Lub kontynuuj z
+                  </span>
+                </div>
+              </div>
 
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Imię</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      value={signUpData.name}
-                      onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      value={signUpData.email}
-                      onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Hasło</Label>
-                    <div className="relative">
-                      <Input
-                        id="signup-password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={signUpData.password}
-                        onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                        required
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-confirm">Potwierdź hasło</Label>
-                    <Input
-                      id="signup-confirm"
-                      type={showPassword ? 'text' : 'password'}
-                      value={signUpData.confirmPassword}
-                      onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Tworzenie konta...' : 'Utwórz konto'}
-                  </Button>
-
-                  <div className="relative my-4">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Lub kontynuuj z
-                      </span>
-                    </div>
-                  </div>
-
-                  <SocialAuthButtons role={role} mode="signup" />
-                </form>
-              </TabsContent>
-            </Tabs>
+              <SocialAuthButtons role={role} mode="signin" />
+            </form>
           </CardContent>
         </Card>
       </div>

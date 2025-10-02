@@ -20,6 +20,7 @@ interface AuthContextType {
   user: Profile | null;
   session: Session | null;
   isLoading: boolean;
+  bootstrapped: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -40,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
@@ -91,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       setIsLoading(false);
+      setBootstrapped(true);
     });
 
     return () => subscription.unsubscribe();
@@ -147,8 +150,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const value = React.useMemo(
-    () => ({ user, session, isLoading, logout, refreshUser }),
-    [user, session, isLoading]
+    () => ({ user, session, isLoading, bootstrapped, logout, refreshUser }),
+    [user, session, isLoading, bootstrapped]
   );
 
   return (
