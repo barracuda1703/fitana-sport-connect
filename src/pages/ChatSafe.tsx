@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  ArrowLeft, 
-  Send, 
-  MessageCircle,
-  Paperclip,
-  Loader2,
-  WifiOff,
-  RefreshCw,
-} from 'lucide-react';
+import { ArrowLeft, Send, MessageCircle, Paperclip, Loader as Loader2, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BottomNavigation } from '@/components/BottomNavigation';
