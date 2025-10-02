@@ -29,25 +29,43 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.error('Auth error:', userError);
       throw new Error('Unauthorized');
     }
 
-    const { chatId } = await req.json();
-    
-    // Verify user has access to this chat
-    const { data: chat, error: chatError } = await supabase
-      .from('chats')
-      .select('*')
-      .eq('id', chatId)
-      .or(`client_id.eq.${user.id},trainer_id.eq.${user.id}`)
-      .single();
+    console.log('Generating Ably token for user:', user.id);
 
-    if (chatError || !chat) {
+    const { userId } = await req.json();
+    
+    if (userId !== user.id) {
+      console.error('User ID mismatch:', userId, 'vs', user.id);
       return new Response(
-        JSON.stringify({ error: 'Access denied to this chat' }),
+        JSON.stringify({ error: 'User ID mismatch' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get all chats for this user to create capabilities
+    const { data: userChats, error: chatsError } = await supabase
+      .from('chats')
+      .select('id')
+      .or(`client_id.eq.${user.id},trainer_id.eq.${user.id}`);
+
+    if (chatsError) {
+      console.error('Error fetching user chats:', chatsError);
+      return new Response(
+        JSON.stringify({ error: 'Error fetching chats' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create capability object for all user's chats
+    const capabilities: Record<string, string[]> = {};
+    (userChats || []).forEach(chat => {
+      capabilities[`chat-${chat.id}`] = ['subscribe', 'publish', 'presence', 'history'];
+    });
+
+    console.log('Creating token with capabilities for', Object.keys(capabilities).length, 'chats');
 
     const ablyApiKey = Deno.env.get('ABLY_API_KEY');
     if (!ablyApiKey) {
@@ -57,13 +75,11 @@ serve(async (req) => {
     // Parse the API key to get key name and secret
     const [keyName, keySecret] = ablyApiKey.split(':');
     
-    // Create Ably token request with capability for specific room
+    // Create Ably token request with capabilities for all user's chats
     const tokenRequest = {
       keyName,
       clientId: user.id,
-      capability: JSON.stringify({
-        [`chat-${chatId}`]: ['subscribe', 'publish', 'presence', 'history']
-      }),
+      capability: JSON.stringify(capabilities),
       timestamp: Date.now(),
       ttl: 3600000, // 1 hour
     };
@@ -91,7 +107,7 @@ serve(async (req) => {
       mac,
     };
 
-    console.log('Generated Ably token for user:', user.id, 'chat:', chatId);
+    console.log('Generated Ably token for user:', user.id);
 
     return new Response(
       JSON.stringify({ token }),

@@ -48,22 +48,24 @@ export const AblyProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               const { data: { session } } = await supabase.auth.getSession();
               if (!session) {
+                console.error('No session found for Ably auth');
                 callback('No session', null);
                 return;
               }
 
+              console.log('Requesting Ably token for user:', user.id);
+              
               const response = await supabase.functions.invoke('ably-token', {
-                body: { chatId: 'default' }, // Will be updated per-room
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                },
+                body: { userId: user.id },
               });
 
               if (response.error) {
+                console.error('Ably token error:', response.error);
                 callback(response.error.message, null);
                 return;
               }
 
+              console.log('Ably token received successfully');
               callback(null, response.data.token);
             } catch (error) {
               console.error('Error getting Ably token:', error);
