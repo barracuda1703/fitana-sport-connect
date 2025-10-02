@@ -25,7 +25,6 @@ import { TrainerStatistics } from '@/pages/TrainerStatistics';
 import { ClientManagement } from "@/pages/ClientManagement";
 import { ProfileSetup } from "@/pages/ProfileSetup";
 import { ChatListPage } from "@/pages/ChatList";
-import { ChatPage } from "@/pages/Chat";
 import { ChatSafePage } from "@/pages/ChatSafe";
 import { ProfilePage } from "@/pages/Profile";
 import { ProfileEdit } from "@/pages/ProfileEdit";

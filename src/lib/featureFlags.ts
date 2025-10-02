@@ -3,7 +3,7 @@
  */
 export const FEATURE_FLAGS = {
   // Ably realtime chat - set to false to use polling fallback
-  ABLY_ENABLED: false,
+  ABLY_ENABLED: true,
   
   // Polling interval when Ably is disabled (ms)
   POLLING_INTERVAL: 10000,

@@ -202,7 +202,8 @@ export const ChatSafePage: React.FC = () => {
       const dbMessage = await chatsService.sendMessage(
         chatId,
         user.id,
-        newMessage.trim() || '📷'
+        newMessage.trim() || '📷',
+        imageUrl
       );
 
       const message: ChatMessage = {
@@ -210,7 +211,7 @@ export const ChatSafePage: React.FC = () => {
         text: dbMessage.content,
         senderId: user.id,
         timestamp: new Date(dbMessage.created_at).getTime(),
-        imageUrl,
+        imageUrl: dbMessage.image_url || imageUrl,
       };
 
       // Add to local state immediately (optimistic)
