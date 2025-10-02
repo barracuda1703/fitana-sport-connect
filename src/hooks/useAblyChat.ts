@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getAblyClient, reconnectAbly } from '@/lib/ablyClient';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
-import { chatsService } from '@/services/supabase/chats';
 import type * as Ably from 'ably';
 
 export type ChannelState = 
@@ -32,46 +31,9 @@ export function useAblyChat({
   const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<Ably.RealtimeChannel | null>(null);
   const attachTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load messages from DB (polling fallback or initial load)
-  const loadMessages = useCallback(async () => {
-    try {
-      const messages = await chatsService.getMessages(chatId);
-      messages.forEach((msg: any) => {
-        onMessage({
-          id: msg.id,
-          text: msg.content,
-          senderId: msg.sender_id,
-          timestamp: new Date(msg.created_at).getTime(),
-          imageUrl: msg.image_url,
-        });
-      });
-    } catch (err: any) {
-      console.error('[useAblyChat] Failed to load messages:', err);
-    }
-  }, [chatId, onMessage]);
-
-  // Setup Ably or polling
+  // Setup Ably realtime (no polling fallback)
   useEffect(() => {
-    if (!FEATURE_FLAGS.ABLY_ENABLED) {
-      console.debug('[useAblyChat] Using polling mode');
-      setChannelState('attached'); // Pretend attached for UI
-      
-      // Initial load
-      loadMessages();
-      
-      // Poll every 10s
-      pollingIntervalRef.current = setInterval(loadMessages, FEATURE_FLAGS.POLLING_INTERVAL);
-      
-      return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      };
-    }
-
-    // Ably mode
     const ably = getAblyClient();
     if (!ably) {
       setChannelState('failed');
@@ -86,14 +48,16 @@ export function useAblyChat({
     channelRef.current = channel;
     setChannelState('attaching');
 
-    // Safety timeout to prevent endless "attaching"
-    attachTimeoutRef.current = setTimeout(() => {
-      if (channelState === 'attaching') {
-        console.warn('[useAblyChat] Attach timeout, falling back to polling');
-        setChannelState('suspended');
-        loadMessages(); // Load messages via polling
-      }
-    }, FEATURE_FLAGS.ABLY_ATTACH_TIMEOUT);
+    // Hard deadline for attach if ABLY_REQUIRE_REALTIME
+    if (FEATURE_FLAGS.ABLY_REQUIRE_REALTIME) {
+      attachTimeoutRef.current = setTimeout(() => {
+        if (channel.state !== 'attached') {
+          console.error('[useAblyChat] Attach timeout');
+          setChannelState('failed');
+          setError('Nie udało się połączyć z czatem');
+        }
+      }, FEATURE_FLAGS.ABLY_ATTACH_TIMEOUT);
+    }
 
     // Monitor channel state
     const handleAttached = () => {
@@ -108,7 +72,7 @@ export function useAblyChat({
     const handleFailed = (stateChange: Ably.ChannelStateChange) => {
       console.error('[useAblyChat] Channel failed:', stateChange.reason?.message);
       setChannelState('failed');
-      setError(stateChange.reason?.message || 'Unknown error');
+      setError(stateChange.reason?.message || 'Błąd połączenia');
       if (attachTimeoutRef.current) {
         clearTimeout(attachTimeoutRef.current);
       }
@@ -117,11 +81,19 @@ export function useAblyChat({
     const handleSuspended = () => {
       console.warn('[useAblyChat] Channel suspended');
       setChannelState('suspended');
+      setError('Połączenie zawieszone');
+    };
+
+    const handleDisconnected = () => {
+      console.warn('[useAblyChat] Channel disconnected');
+      setChannelState('disconnected');
+      setError('Rozłączono');
     };
 
     channel.on('attached', handleAttached);
     channel.on('failed', handleFailed);
     channel.on('suspended', handleSuspended);
+    channel.on('detached', handleDisconnected);
 
     // Subscribe to messages
     const messageListener = (msg: Ably.Message) => {
@@ -141,22 +113,27 @@ export function useAblyChat({
       channel.subscribe('typing', typingListener);
     }
 
-    // Subscribe to presence
-    if (onPresence) {
-      channel.presence.enter({ status: 'online' });
-      
-      channel.presence.subscribe('enter', (member) => {
-        if (member.clientId !== userId) {
-          onPresence(true);
+    // Presence: join when attached, track all members
+    const updatePresence = async () => {
+      try {
+        const members = await channel.presence.get();
+        const otherMembers = members.filter(m => m.clientId !== userId);
+        if (onPresence) {
+          onPresence(otherMembers.length > 0);
         }
-      });
+      } catch (err) {
+        console.error('[useAblyChat] Failed to get presence:', err);
+      }
+    };
 
-      channel.presence.subscribe('leave', (member) => {
-        if (member.clientId !== userId) {
-          onPresence(false);
-        }
-      });
-    }
+    channel.presence.enter({ status: 'online' });
+    
+    channel.presence.subscribe('enter', () => updatePresence());
+    channel.presence.subscribe('leave', () => updatePresence());
+    channel.presence.subscribe('update', () => updatePresence());
+
+    // Initial presence check
+    updatePresence();
 
     // Attach
     channel.attach();
@@ -173,33 +150,12 @@ export function useAblyChat({
       }
       channelRef.current = null;
     };
-  }, [chatId, userId, onMessage, onTyping, onPresence, loadMessages, channelState]);
-
-  // Publish message
-  const publishMessage = useCallback(
-    async (message: any) => {
-      if (!FEATURE_FLAGS.ABLY_ENABLED || channelState !== 'attached') {
-        // Polling mode or not attached - message will appear on next poll
-        return;
-      }
-
-      const channel = channelRef.current;
-      if (!channel) return;
-
-      try {
-        await channel.publish('message', message);
-      } catch (err: any) {
-        console.error('[useAblyChat] Failed to publish:', err);
-        throw err;
-      }
-    },
-    [channelState]
-  );
+  }, [chatId, userId, onMessage, onTyping, onPresence]);
 
   // Publish typing indicator
   const publishTyping = useCallback(
     async (typing: boolean) => {
-      if (!FEATURE_FLAGS.ABLY_ENABLED || channelState !== 'attached') return;
+      if (channelState !== 'attached') return;
 
       const channel = channelRef.current;
       if (!channel) return;
@@ -218,7 +174,14 @@ export function useAblyChat({
     console.debug('[useAblyChat] Reconnecting...');
     setError(null);
     setChannelState('connecting');
-    reconnectAbly();
+    
+    const ably = getAblyClient();
+    if (ably) {
+      ably.connection.connect();
+      if (ably.auth.authorize) {
+        ably.auth.authorize();
+      }
+    }
     
     if (channelRef.current) {
       channelRef.current.attach();
@@ -228,10 +191,8 @@ export function useAblyChat({
   return {
     channelState,
     error,
-    publishMessage,
     publishTyping,
     reconnect,
     isConnected: channelState === 'attached',
-    isPollingMode: !FEATURE_FLAGS.ABLY_ENABLED,
   };
 }

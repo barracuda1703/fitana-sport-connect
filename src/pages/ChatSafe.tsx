@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { chatsService } from '@/services/supabase/chats';
 import { uploadChatImage } from '@/services/supabase/upload';
 import { useAblyChat } from '@/hooks/useAblyChat';
+import { supabase } from '@/integrations/supabase/client';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
 
 interface ChatMessage {
@@ -62,11 +63,9 @@ export const ChatSafePage: React.FC = () => {
   const {
     channelState,
     error: channelError,
-    publishMessage,
     publishTyping,
     reconnect,
     isConnected,
-    isPollingMode,
   } = useAblyChat({
     chatId: chatId || '',
     userId: user?.id || '',
@@ -146,12 +145,24 @@ export const ChatSafePage: React.FC = () => {
   useEffect(() => {
     if (isConnected && messageQueueRef.current.length > 0) {
       console.debug('[Chat] Processing', messageQueueRef.current.length, 'queued messages');
-      messageQueueRef.current.forEach((msg) => {
-        publishMessage(msg).catch(console.error);
+      messageQueueRef.current.forEach(async (msg) => {
+        // Send via API which will publish to Ably
+        try {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-send`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            },
+            body: JSON.stringify({ chatId, message: msg }),
+          });
+        } catch (err) {
+          console.error('[Chat] Failed to send queued message:', err);
+        }
       });
       messageQueueRef.current = [];
     }
-  }, [isConnected, publishMessage]);
+  }, [isConnected, chatId]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -198,35 +209,45 @@ export const ChatSafePage: React.FC = () => {
         imageUrl = url;
       }
 
-      // Persist to DB first
-      const dbMessage = await chatsService.sendMessage(
-        chatId,
-        user.id,
-        newMessage.trim() || '📷'
-      );
+      const content = newMessage.trim() || '📷';
 
-      const message: ChatMessage = {
-        id: dbMessage.id,
-        text: dbMessage.content,
+      // Optimistic message
+      const tempMessage: ChatMessage = {
+        id: `temp-${Date.now()}`,
+        text: content,
         senderId: user.id,
-        timestamp: new Date(dbMessage.created_at).getTime(),
+        timestamp: Date.now(),
         imageUrl,
       };
+      handleNewMessage(tempMessage);
 
-      // Add to local state immediately (optimistic)
-      handleNewMessage(message);
+      // Send via API which persists to DB and publishes to Ably
+      const { data: sessionData } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          chatId,
+          content,
+          imageUrl,
+        }),
+      });
 
-      // Publish to Ably if connected, otherwise queue
-      if (isConnected) {
-        try {
-          await publishMessage(message);
-        } catch (err) {
-          console.warn('[Chat] Failed to publish, message saved to DB');
-        }
-      } else {
-        console.debug('[Chat] Queuing message (not connected)');
-        messageQueueRef.current.push(message);
+      if (!res.ok) {
+        throw new Error(`Send failed: ${res.status}`);
       }
+
+      const { message: dbMessage } = await res.json();
+
+      // Replace temp message with DB message
+      setMessages(prev => prev.map(m => 
+        m.id === tempMessage.id 
+          ? { ...m, id: dbMessage.id, timestamp: new Date(dbMessage.created_at).getTime() }
+          : m
+      ));
 
       setNewMessage('');
       setSelectedImage(null);
@@ -268,8 +289,6 @@ export const ChatSafePage: React.FC = () => {
   if (!user) return null;
 
   const getConnectionStatus = () => {
-    if (isPollingMode) return 'Tryb offline';
-    
     switch (channelState) {
       case 'attached':
         return isOtherUserOnline ? 'Online' : 'Offline';
@@ -287,15 +306,19 @@ export const ChatSafePage: React.FC = () => {
   };
 
   const getConnectionColor = () => {
-    if (isPollingMode) return 'bg-yellow-500';
-    if (isConnected) return 'bg-green-500';
+    if (channelState === 'attached' && isOtherUserOnline) {
+      return 'bg-green-500';
+    }
+    if (channelState === 'attached' && !isOtherUserOnline) {
+      return 'bg-gray-400';
+    }
     if (channelState === 'connecting' || channelState === 'attaching' || channelState === 'disconnected' || channelState === 'suspended') {
       return 'bg-yellow-500 animate-pulse';
     }
     return 'bg-red-500';
   };
 
-  const canSendMessages = !sending && (isConnected || isPollingMode);
+  const canSendMessages = !sending && isConnected;
 
   return (
     <div className="min-h-screen bg-background pb-20 flex flex-col">
@@ -343,26 +366,16 @@ export const ChatSafePage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Offline mode banner */}
-      {(channelState === 'suspended' || channelState === 'disconnected') && !isPollingMode && (
+      {/* Connection errors */}
+      {(channelState === 'suspended' || channelState === 'disconnected') && (
         <Alert className="m-4">
           <WifiOff className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
-            <span className="text-sm">Offline – wiadomości będą wysłane po połączeniu</span>
+            <span className="text-sm">Łączenie...</span>
             <Button size="sm" variant="outline" onClick={reconnect}>
               <RefreshCw className="h-3 w-3 mr-1" />
-              Połącz
+              Połącz ponownie
             </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Polling mode info */}
-      {isPollingMode && (
-        <Alert className="m-4">
-          <MessageCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            Tryb offline – wiadomości odświeżane co {FEATURE_FLAGS.POLLING_INTERVAL / 1000}s
           </AlertDescription>
         </Alert>
       )}
