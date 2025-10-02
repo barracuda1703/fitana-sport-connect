@@ -99,6 +99,7 @@ const AppRoutes: React.FC = () => {
             <ClientCalendarPage />
           </RoleProtectedRoute>
         } />
+        <Route path="/trainer" element={<Navigate to="/trainer-dashboard" replace />} />
         <Route path="/trainer-dashboard" element={
           <RoleProtectedRoute allowedRole="trainer">
             <TrainerDashboard />

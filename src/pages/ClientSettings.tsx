@@ -16,12 +16,20 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { sportsCategories, getSportName } from '@/data/sports';
 import { useLanguage } from '@/contexts/LanguageContext';
+import type { Language } from '@/types';
+
+const languages: Language[] = [
+  { code: 'pl', name: 'Polish', nativeName: 'Polski' },
+  { code: 'en-GB', name: 'English (UK)', nativeName: 'English (UK)' },
+  { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+];
 
 export const ClientSettings: React.FC = () => {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setLanguage } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -31,14 +39,23 @@ export const ClientSettings: React.FC = () => {
   });
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || '',
-        avatarurl: user.avatarUrl || '',
-        bio: user.bio || '',
-        favorite_sport: ''
-      });
-    }
+    const loadUserData = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('favorite_sport')
+          .eq('id', user.id)
+          .single();
+        
+        setFormData({
+          name: user.name || '',
+          avatarurl: user.avatarUrl || '',
+          bio: user.bio || '',
+          favorite_sport: data?.favorite_sport || ''
+        });
+      }
+    };
+    loadUserData();
   }, [user]);
 
   const handleSave = async () => {
@@ -50,7 +67,9 @@ export const ClientSettings: React.FC = () => {
         .from('profiles')
         .update({
           name: formData.name,
-          bio: formData.bio
+          bio: formData.bio,
+          favorite_sport: formData.favorite_sport || null,
+          avatarurl: formData.avatarurl
         })
         .eq('id', user.id);
 
@@ -177,10 +196,24 @@ export const ClientSettings: React.FC = () => {
               <CardTitle>Język aplikacji</CardTitle>
             </CardHeader>
             <CardContent>
-              <SimpleLanguageSelector
-                selectedLanguages={[]}
-                onLanguagesChange={() => {}}
-              />
+              <Select
+                value={currentLanguage.code}
+                onValueChange={(value) => {
+                  const lang = languages.find(l => l.code === value);
+                  if (lang) setLanguage(lang);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {languages.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.nativeName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
         </div>

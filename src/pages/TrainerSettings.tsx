@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { trainersService } from '@/services/supabase';
 import { sportsCategories, getSportName } from '@/data/sports';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import type { Location, Service } from '@/types';
 
 const DAYS_OF_WEEK = [
@@ -144,6 +145,17 @@ export const TrainerSettings: React.FC = () => {
     }
 
     try {
+      // Save avatar to profiles table
+      if (avatarUrl !== user.avatarUrl) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ avatarurl: avatarUrl })
+          .eq('id', user.id);
+        
+        if (profileError) throw profileError;
+      }
+
+      // Save trainer settings
       await trainersService.updateByUserId(user.id, {
         display_name: displayName,
         bio,

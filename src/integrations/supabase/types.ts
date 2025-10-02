@@ -127,6 +127,49 @@ export type Database = {
           },
         ]
       }
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          trainer_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          trainer_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          trainer_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers_directory_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers_public_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           booking_id: string | null
@@ -271,6 +314,7 @@ export type Database = {
           city: string | null
           created_at: string | null
           email: string
+          favorite_sport: string | null
           geolocation_preference: string | null
           id: string
           language: string | null
@@ -287,6 +331,7 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           email: string
+          favorite_sport?: string | null
           geolocation_preference?: string | null
           id: string
           language?: string | null
@@ -303,6 +348,7 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           email?: string
+          favorite_sport?: string | null
           geolocation_preference?: string | null
           id?: string
           language?: string | null
