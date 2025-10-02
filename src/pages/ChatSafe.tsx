@@ -297,7 +297,8 @@ export const ChatSafePage: React.FC = () => {
         return 'Łączenie...';
       case 'disconnected':
       case 'suspended':
-        return 'Ponowne łączenie...';
+        // Don't show error - Ably reconnects automatically
+        return 'Łączenie...';
       case 'failed':
         return 'Błąd połączenia';
       default:
@@ -319,6 +320,9 @@ export const ChatSafePage: React.FC = () => {
   };
 
   const canSendMessages = !sending && isConnected;
+  
+  // Show reconnect button only for persistent failures
+  const showReconnectButton = channelState === 'failed' && channelError;
 
   return (
     <div className="min-h-screen bg-background pb-20 flex flex-col">
@@ -349,8 +353,8 @@ export const ChatSafePage: React.FC = () => {
         </div>
       </header>
 
-      {/* Connection errors */}
-      {channelState === 'failed' && channelError && (
+      {/* Connection error - only show for persistent failures */}
+      {showReconnectButton && (
         <Alert variant="destructive" className="m-4">
           <WifiOff className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
@@ -358,20 +362,6 @@ export const ChatSafePage: React.FC = () => {
               <p className="font-medium">Nie można połączyć z czatem</p>
               <p className="text-xs mt-1">{channelError}</p>
             </div>
-            <Button size="sm" variant="outline" onClick={reconnect}>
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Połącz
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Connection errors */}
-      {(channelState === 'suspended' || channelState === 'disconnected') && (
-        <Alert className="m-4">
-          <WifiOff className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span className="text-sm">Łączenie...</span>
             <Button size="sm" variant="outline" onClick={reconnect}>
               <RefreshCw className="h-3 w-3 mr-1" />
               Połącz ponownie

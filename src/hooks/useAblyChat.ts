@@ -41,6 +41,15 @@ export function useAblyChat({
       return;
     }
 
+    // Monitor connection state for debugging
+    const connectionStateChange = (stateChange: Ably.ConnectionStateChange) => {
+      console.debug('[useAblyChat] Connection state:', stateChange.current, {
+        previous: stateChange.previous,
+        reason: stateChange.reason?.message,
+      });
+    };
+    ably.connection.on(connectionStateChange);
+
     const channelName = `chat:${chatId}`;
     console.debug('[useAblyChat] Attaching to channel:', channelName);
     
@@ -70,24 +79,44 @@ export function useAblyChat({
     };
 
     const handleFailed = (stateChange: Ably.ChannelStateChange) => {
-      console.error('[useAblyChat] Channel failed:', stateChange.reason?.message);
+      const reason = stateChange.reason;
+      const code = reason?.code;
+      const message = reason?.message || 'Błąd połączenia';
+      
+      console.error('[useAblyChat] Channel failed:', {
+        code,
+        message,
+        statusCode: reason?.statusCode,
+      });
+      
       setChannelState('failed');
-      setError(stateChange.reason?.message || 'Błąd połączenia');
+      
+      // Provide specific error messages based on error code
+      if (code && code >= 40100 && code < 40200) {
+        setError('Błąd autoryzacji - odśwież stronę');
+      } else if (code && code >= 40300 && code < 40400) {
+        setError('Brak dostępu do czatu');
+      } else if (code && code >= 50000) {
+        setError('Błąd serwera - spróbuj ponownie później');
+      } else {
+        setError(message);
+      }
+      
       if (attachTimeoutRef.current) {
         clearTimeout(attachTimeoutRef.current);
       }
     };
 
     const handleSuspended = () => {
-      console.warn('[useAblyChat] Channel suspended');
+      console.warn('[useAblyChat] Channel suspended - will auto-reconnect');
       setChannelState('suspended');
-      setError('Połączenie zawieszone');
+      setError(null); // Don't show error for suspended - Ably will reconnect automatically
     };
 
     const handleDisconnected = () => {
       console.warn('[useAblyChat] Channel disconnected');
       setChannelState('disconnected');
-      setError('Rozłączono');
+      setError(null); // Don't show error for normal disconnect
     };
 
     channel.on('attached', handleAttached);
@@ -113,7 +142,7 @@ export function useAblyChat({
       channel.subscribe('typing', typingListener);
     }
 
-    // Presence: join when attached, track all members
+    // Presence: join AFTER attached, track all members
     const updatePresence = async () => {
       try {
         const members = await channel.presence.get();
@@ -126,16 +155,21 @@ export function useAblyChat({
       }
     };
 
-    channel.presence.enter({ status: 'online' });
-    
+    // Subscribe to presence changes
     channel.presence.subscribe('enter', () => updatePresence());
     channel.presence.subscribe('leave', () => updatePresence());
     channel.presence.subscribe('update', () => updatePresence());
 
-    // Initial presence check
-    updatePresence();
+    // Subscribe to attached event to enter presence
+    channel.once('attached', () => {
+      console.debug('[useAblyChat] Channel attached, entering presence');
+      // Enter presence after successful attach
+      channel.presence.enter({ status: 'online' });
+      // Initial presence check
+      updatePresence();
+    });
 
-    // Attach
+    // Attach channel
     channel.attach();
 
     return () => {
@@ -143,6 +177,12 @@ export function useAblyChat({
       if (attachTimeoutRef.current) {
         clearTimeout(attachTimeoutRef.current);
       }
+      
+      const ably = getAblyClient();
+      if (ably) {
+        ably.connection.off(connectionStateChange);
+      }
+      
       if (channel) {
         channel.presence.leave();
         channel.unsubscribe();
@@ -169,18 +209,16 @@ export function useAblyChat({
     [channelState, userId]
   );
 
-  // Reconnect
+  // Reconnect - only reconnect connection and channel, not auth
   const reconnect = useCallback(() => {
-    console.debug('[useAblyChat] Reconnecting...');
+    console.debug('[useAblyChat] Manual reconnect requested');
     setError(null);
     setChannelState('connecting');
     
     const ably = getAblyClient();
     if (ably) {
+      // Only reconnect connection - Ably will handle token refresh automatically
       ably.connection.connect();
-      if (ably.auth.authorize) {
-        ably.auth.authorize();
-      }
     }
     
     if (channelRef.current) {
