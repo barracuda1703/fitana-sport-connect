@@ -6,7 +6,7 @@ import { InterfaceLanguageSelector } from '@/components/InterfaceLanguageSelecto
 import { RoleSelection } from '@/components/RoleSelection';
 import fitnessHero from '@/assets/fitness-hero.jpg';
 import { useNavigate } from 'react-router-dom';
-import fitanaLogo from '@/assets/fitana-logo-small.webp';
+import fitanaLogo from '@/assets/fitana-logo.png';
 
 export const Landing: React.FC = () => {
   const { t } = useLanguage();

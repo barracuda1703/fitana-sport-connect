@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import fitanaLogo from '@/assets/fitana-logo-small.webp';
+import fitanaLogo from '@/assets/fitana-logo.png';
 
 interface Trainer {
   id: string;
