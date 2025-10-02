@@ -26,6 +26,7 @@ import { ClientManagement } from "@/pages/ClientManagement";
 import { ProfileSetup } from "@/pages/ProfileSetup";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
+import { ChatSafePage } from "@/pages/ChatSafe";
 import { ProfilePage } from "@/pages/Profile";
 import { ProfileEdit } from "@/pages/ProfileEdit";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -98,23 +99,27 @@ const AppRoutes: React.FC = () => {
             <ClientHome />
           </RoleProtectedRoute>
         } />
-        <Route path="/client/settings" element={
-          <RoleProtectedRoute allowedRole="client">
-            <ClientSettings />
-          </RoleProtectedRoute>
-        } />
         <Route path="/client/calendar" element={
           <RoleProtectedRoute allowedRole="client">
             <ClientCalendarPage />
           </RoleProtectedRoute>
         } />
-        <Route path="/trainer" element={<Navigate to="/trainer-dashboard" replace />} />
-        <Route path="/trainer-dashboard" element={
+        <Route path="/client/settings" element={
+          <RoleProtectedRoute allowedRole="client">
+            <ClientSettings />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/trainer" element={
           <RoleProtectedRoute allowedRole="trainer">
             <TrainerDashboard />
           </RoleProtectedRoute>
         } />
-        <Route path="/trainer-calendar" element={
+        <Route path="/trainer/calendar" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <CalendarPage />
+          </RoleProtectedRoute>
+        } />
+        <Route path="/trainer/calendar-list" element={
           <RoleProtectedRoute allowedRole="trainer">
             <TrainerCalendarListPage />
           </RoleProtectedRoute>
@@ -124,84 +129,77 @@ const AppRoutes: React.FC = () => {
             <TrainerSettings />
           </RoleProtectedRoute>
         } />
-        <Route path="/profile/setup" element={
-          <ProtectedRoute>
-            <ProfileSetup />
-          </ProtectedRoute>
+        <Route path="/trainer/profile-settings" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <TrainerProfileSettings />
+          </RoleProtectedRoute>
         } />
-        <Route path="/chat" element={
-          <ProtectedRoute>
-            <ChatListPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/chat/:chatId" element={
-          <ProtectedRoute>
-            <ChatPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        } />
-        <Route path="/profile/edit" element={
-          <ProtectedRoute>
-            <ProfileEdit />
-          </ProtectedRoute>
+        <Route path="/trainer/stats" element={
+          <RoleProtectedRoute allowedRole="trainer">
+            <TrainerStatistics />
+          </RoleProtectedRoute>
         } />
         <Route path="/trainer/clients" element={
           <RoleProtectedRoute allowedRole="trainer">
             <ClientManagement />
           </RoleProtectedRoute>
         } />
-        <Route path="/trainer/statistics" element={
-          <RoleProtectedRoute allowedRole="trainer">
-            <TrainerStatistics />
-          </RoleProtectedRoute>
+        <Route path="/profile/:userId" element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile-edit" element={
+          <ProtectedRoute>
+            <ProfileEdit />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile-setup" element={
+          <ProtectedRoute>
+            <ProfileSetup />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat-list" element={
+          <ProtectedRoute>
+            <ChatListPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/chat/:chatId" element={
+          <ProtectedRoute>
+            <ErrorBoundary>
+              <ChatSafePage />
+            </ErrorBoundary>
+          </ProtectedRoute>
         } />
         <Route path="*" element={<NotFound />} />
-        </Routes>
+      </Routes>
       </ErrorBoundary>
     </div>
   );
 };
 
-const AuthenticatedApp: React.FC = () => {
-  const { bootstrapped, isLoading } = useAuth();
-  
-  if (!bootstrapped || isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  return <AppRoutes />;
-};
-
-const App = () => {
+function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
         <LanguageProvider>
-          <AuthProvider>
-            <AblyProvider>
-              <LocationProvider>
-                <GoogleMapsProvider>
-                  <BrowserRouter>
-                    <AuthenticatedApp />
-                  </BrowserRouter>
-                </GoogleMapsProvider>
-              </LocationProvider>
-            </AblyProvider>
-          </AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AuthProvider>
+                <AblyProvider>
+                  <LocationProvider>
+                    <AppRoutes />
+                  </LocationProvider>
+                </AblyProvider>
+              </AuthProvider>
+            </BrowserRouter>
+          </TooltipProvider>
         </LanguageProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
-};
+}
 
 export default App;

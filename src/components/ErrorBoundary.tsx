@@ -6,22 +6,28 @@ import { AlertCircle } from 'lucide-react';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onReset?: () => void;
 }
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+    this.props.onReset?.();
+  };
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
@@ -39,29 +45,28 @@ export class ErrorBoundary extends Component<Props, State> {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-destructive">
                 <AlertCircle className="h-5 w-5" />
-                Wystąpił błąd
+                Coś poszło nie tak
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Przepraszamy, coś poszło nie tak. Spróbuj odświeżyć stronę.
+                Wystąpił nieoczekiwany błąd. Spróbuj odświeżyć stronę.
               </p>
               {this.state.error && (
-                <details className="text-sm">
-                  <summary className="cursor-pointer text-muted-foreground">
-                    Szczegóły błędu
-                  </summary>
-                  <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
-                    {this.state.error.toString()}
-                  </pre>
-                </details>
+                <div className="bg-muted p-3 rounded-md">
+                  <p className="text-xs font-mono text-muted-foreground break-all">
+                    {this.state.error.message}
+                  </p>
+                </div>
               )}
-              <Button 
-                onClick={() => window.location.reload()} 
-                className="w-full"
-              >
-                Odśwież stronę
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => window.location.reload()} className="flex-1">
+                  Odśwież stronę
+                </Button>
+                <Button onClick={this.handleReset} variant="outline" className="flex-1">
+                  Spróbuj ponownie
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
