@@ -15,16 +15,24 @@ import { useAbly } from '@/contexts/AblyContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { chatsService } from '@/services/supabase';
-import { AblyChatService, AblyMessage } from '@/services/ably/chats';
 import { uploadChatImage } from '@/services/supabase/upload';
+import type * as Ably from 'ably';
+
+interface ChatMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  timestamp: number;
+  imageUrl?: string;
+}
 
 export const ChatPage: React.FC = () => {
   const { user } = useAuth();
-  const { chatClient, isConnected } = useAbly();
+  const { realtimeClient, connectionState, isConnected } = useAbly();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<AblyMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [chat, setChat] = useState<any>(null);
@@ -36,7 +44,7 @@ export const ChatPage: React.FC = () => {
   const [sending, setSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const ablyChatServiceRef = useRef<AblyChatService | null>(null);
+  const channelRef = useRef<Ably.RealtimeChannel | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
@@ -46,14 +54,6 @@ export const ChatPage: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Initialize Ably chat service
-  useEffect(() => {
-    if (chatClient && !ablyChatServiceRef.current) {
-      ablyChatServiceRef.current = new AblyChatService(chatClient);
-      console.log('Ably chat service initialized');
-    }
-  }, [chatClient]);
 
   // Load chat metadata from Supabase
   useEffect(() => {
@@ -76,7 +76,7 @@ export const ChatPage: React.FC = () => {
 
         await chatsService.markChatAsRead(chatId, user.id);
       } catch (error) {
-        console.error('Error loading chat:', error);
+        console.error('[Chat] Error loading chat:', error);
       } finally {
         setLoading(false);
       }
@@ -85,51 +85,84 @@ export const ChatPage: React.FC = () => {
     loadChat();
   }, [chatId, user]);
 
-  // Subscribe to Ably messages
+  // Subscribe to Ably channel
   useEffect(() => {
-    if (!chatId || !ablyChatServiceRef.current) return;
+    if (!chatId || !realtimeClient || !user) return;
 
-    console.log('Subscribing to Ably messages for chat:', chatId);
+    const channelName = `chat:${chatId}`;
+    console.log('[Chat] Attaching to channel:', channelName);
+    
+    const channel = realtimeClient.channels.get(channelName);
+    channelRef.current = channel;
 
-    const unsubscribeMessages = ablyChatServiceRef.current.subscribeToMessages(
-      chatId,
-      (message) => {
-        console.log('Received Ably message:', message);
-        setMessages((prev) => {
-          // Avoid duplicates
-          if (prev.find(m => m.id === message.id)) {
-            return prev;
-          }
-          return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
-        });
-      }
-    );
+    // Monitor channel state
+    channel.on('attached', () => {
+      console.log('[Chat] Channel attached');
+    });
 
-    const unsubscribeTyping = ablyChatServiceRef.current.subscribeToTyping(
-      chatId,
-      (typing, userId) => {
-        if (userId !== user?.id) {
-          setIsTyping(typing);
+    channel.on('failed', (stateChange) => {
+      console.error('[Chat] Channel failed:', stateChange.reason?.message);
+      toast({
+        title: "Błąd połączenia",
+        description: stateChange.reason?.message || "Nie udało się połączyć z czatem",
+        variant: "destructive"
+      });
+    });
+
+    // Subscribe to messages
+    const messageListener = (msg: Ably.Message) => {
+      console.log('[Chat] Received message:', msg.data);
+      const message: ChatMessage = msg.data;
+      
+      setMessages((prev) => {
+        // Avoid duplicates
+        if (prev.find(m => m.id === message.id)) {
+          return prev;
         }
-      }
-    );
+        return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
+      });
+    };
 
-    const unsubscribePresence = ablyChatServiceRef.current.subscribeToPresence(
-      chatId,
-      (online) => {
-        setIsOtherUserOnline(online);
-      }
-    );
+    channel.subscribe('message', messageListener);
 
-    // Set presence
-    ablyChatServiceRef.current.setPresence(chatId, { status: 'online' });
+    // Subscribe to typing indicators
+    const typingListener = (msg: Ably.Message) => {
+      const { userId, typing } = msg.data;
+      if (userId !== user.id) {
+        setIsTyping(typing);
+      }
+    };
+
+    channel.subscribe('typing', typingListener);
+
+    // Subscribe to presence
+    channel.presence.enter({ status: 'online' });
+    
+    channel.presence.subscribe('enter', (member) => {
+      if (member.clientId !== user.id) {
+        console.log('[Chat] User entered:', member.clientId);
+        setIsOtherUserOnline(true);
+      }
+    });
+
+    channel.presence.subscribe('leave', (member) => {
+      if (member.clientId !== user.id) {
+        console.log('[Chat] User left:', member.clientId);
+        setIsOtherUserOnline(false);
+      }
+    });
+
+    // Attach the channel
+    channel.attach();
 
     return () => {
-      unsubscribeMessages();
-      unsubscribeTyping();
-      unsubscribePresence();
+      console.log('[Chat] Cleaning up channel');
+      channel.presence.leave();
+      channel.unsubscribe();
+      channel.detach();
+      channelRef.current = null;
     };
-  }, [chatId, user, ablyChatServiceRef.current]);
+  }, [chatId, realtimeClient, user, toast]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -164,7 +197,7 @@ export const ChatPage: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if ((!newMessage.trim() && !selectedImage) || !user || !chatId || !ablyChatServiceRef.current) return;
+    if ((!newMessage.trim() && !selectedImage) || !user || !chatId || !channelRef.current) return;
 
     setSending(true);
     
@@ -176,22 +209,29 @@ export const ChatPage: React.FC = () => {
         imageUrl = url;
       }
 
-      await ablyChatServiceRef.current.sendMessage(
-        chatId, 
-        newMessage.trim() || '📷', 
-        imageUrl
-      );
+      const message: ChatMessage = {
+        id: `${Date.now()}-${user.id}`,
+        text: newMessage.trim() || '📷',
+        senderId: user.id,
+        timestamp: Date.now(),
+        imageUrl,
+      };
+
+      // Publish message to Ably
+      await channelRef.current.publish('message', message);
+
+      console.log('[Chat] Message sent:', message);
 
       setNewMessage('');
       setSelectedImage(null);
       setImagePreview(null);
 
       // Stop typing indicator
-      if (ablyChatServiceRef.current) {
-        ablyChatServiceRef.current.stopTyping(chatId);
+      if (channelRef.current) {
+        await channelRef.current.publish('typing', { userId: user.id, typing: false });
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('[Chat] Error sending message:', error);
       toast({
         title: "Błąd",
         description: "Nie udało się wysłać wiadomości",
@@ -205,7 +245,7 @@ export const ChatPage: React.FC = () => {
   const handleTyping = (value: string) => {
     setNewMessage(value);
 
-    if (!ablyChatServiceRef.current || !chatId) return;
+    if (!channelRef.current || !chatId || !user) return;
 
     // Clear existing timeout
     if (typingTimeoutRef.current) {
@@ -213,17 +253,28 @@ export const ChatPage: React.FC = () => {
     }
 
     // Start typing
-    ablyChatServiceRef.current.startTyping(chatId);
+    channelRef.current.publish('typing', { userId: user.id, typing: true });
 
     // Stop typing after 2 seconds of inactivity
     typingTimeoutRef.current = setTimeout(() => {
-      if (ablyChatServiceRef.current) {
-        ablyChatServiceRef.current.stopTyping(chatId);
+      if (channelRef.current && user) {
+        channelRef.current.publish('typing', { userId: user.id, typing: false });
       }
     }, 2000);
   };
 
   if (!user) return null;
+
+  const getConnectionStatus = () => {
+    if (connectionState === 'connected') {
+      return isOtherUserOnline ? 'Online' : 'Offline';
+    }
+    if (connectionState === 'connecting') return 'Łączenie...';
+    if (connectionState === 'disconnected') return 'Rozłączono';
+    if (connectionState === 'suspended') return 'Zawieszono';
+    if (connectionState === 'failed') return 'Błąd połączenia';
+    return 'Łączenie...';
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20 flex flex-col">
@@ -244,10 +295,19 @@ export const ChatPage: React.FC = () => {
                 {`${otherUser?.name || ''} ${otherUser?.surname || ''}`.trim() || 'Użytkownik'}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {!isConnected ? 'Łączenie...' : isOtherUserOnline ? 'Online' : 'Offline'}
+                {getConnectionStatus()}
               </p>
             </div>
           </div>
+          {connectionState === 'disconnected' || connectionState === 'suspended' ? (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => realtimeClient?.connect()}
+            >
+              Połącz ponownie
+            </Button>
+          ) : null}
         </div>
       </header>
 
@@ -277,9 +337,9 @@ export const ChatPage: React.FC = () => {
                         : 'bg-muted'
                     }`}
                   >
-                    {msg.metadata?.image_url && (
+                    {msg.imageUrl && (
                       <img 
-                        src={msg.metadata.image_url} 
+                        src={msg.imageUrl} 
                         alt="Załącznik"
                         className="rounded-lg max-w-full mb-2"
                       />

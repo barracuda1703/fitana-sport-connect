@@ -1,16 +1,17 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import * as Ably from 'ably';
-import { ChatClient } from '@ably/chat';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
 interface AblyContextType {
-  chatClient: ChatClient | null;
+  realtimeClient: Ably.Realtime | null;
+  connectionState: string;
   isConnected: boolean;
 }
 
 const AblyContext = createContext<AblyContextType>({
-  chatClient: null,
+  realtimeClient: null,
+  connectionState: 'initialized',
   isConnected: false,
 });
 
@@ -24,7 +25,8 @@ export const useAbly = () => {
 
 export const AblyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [chatClient, setChatClient] = useState<ChatClient | null>(null);
+  const [realtimeClient, setRealtimeClient] = useState<Ably.Realtime | null>(null);
+  const [connectionState, setConnectionState] = useState<string>('initialized');
   const [isConnected, setIsConnected] = useState(false);
   const ablyClientRef = useRef<Ably.Realtime | null>(null);
 
@@ -34,7 +36,8 @@ export const AblyProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (ablyClientRef.current) {
         ablyClientRef.current.close();
         ablyClientRef.current = null;
-        setChatClient(null);
+        setRealtimeClient(null);
+        setConnectionState('closed');
         setIsConnected(false);
       }
       return;
@@ -42,64 +45,87 @@ export const AblyProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAbly = async () => {
       try {
-        // Create Ably client with token auth
-        const realtimeClient = new Ably.Realtime({
+        console.log('[Ably] Initializing for user:', user.id);
+        
+        // Create Ably Realtime client with token auth
+        const client = new Ably.Realtime({
           authCallback: async (tokenParams, callback) => {
             try {
+              console.log('[Ably] Requesting token...');
+              
               const { data: { session } } = await supabase.auth.getSession();
               if (!session) {
-                console.error('No session found for Ably auth');
+                console.error('[Ably] No session found');
                 callback('No session', null);
                 return;
               }
 
-              console.log('Requesting Ably token for user:', user.id);
-              
-              const response = await supabase.functions.invoke('ably-token', {
-                body: { userId: user.id },
+              const { data, error } = await supabase.functions.invoke('ably-token', {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
               });
 
-              if (response.error) {
-                console.error('Ably token error:', response.error);
-                callback(response.error.message, null);
+              if (error) {
+                console.error('[Ably] Token error:', error);
+                callback(error.message, null);
                 return;
               }
 
-              console.log('Ably token received successfully');
-              callback(null, response.data.token);
+              console.log('[Ably] Token received successfully');
+              callback(null, data);
             } catch (error) {
-              console.error('Error getting Ably token:', error);
+              console.error('[Ably] Error getting token:', error);
               callback(error instanceof Error ? error.message : 'Auth failed', null);
             }
           },
-          clientId: user.id,
+          echoMessages: false, // Don't echo our own messages
         });
 
-        ablyClientRef.current = realtimeClient;
+        ablyClientRef.current = client;
+        setRealtimeClient(client);
 
-        // Monitor connection status
-        realtimeClient.connection.on('connected', () => {
-          console.log('Ably connected');
+        // Monitor connection state with diagnostics
+        client.connection.on('connecting', () => {
+          console.log('[Ably] State: connecting');
+          setConnectionState('connecting');
+          setIsConnected(false);
+        });
+
+        client.connection.on('connected', () => {
+          console.log('[Ably] State: connected');
+          setConnectionState('connected');
           setIsConnected(true);
         });
 
-        realtimeClient.connection.on('disconnected', () => {
-          console.log('Ably disconnected');
+        client.connection.on('disconnected', (stateChange) => {
+          console.log('[Ably] State: disconnected', stateChange.reason || '');
+          setConnectionState('disconnected');
           setIsConnected(false);
         });
 
-        realtimeClient.connection.on('failed', () => {
-          console.error('Ably connection failed');
+        client.connection.on('suspended', (stateChange) => {
+          console.warn('[Ably] State: suspended', stateChange.reason || '');
+          setConnectionState('suspended');
           setIsConnected(false);
         });
 
-        // Create chat client
-        const client = new ChatClient(realtimeClient);
-        setChatClient(client);
+        client.connection.on('failed', (stateChange) => {
+          console.error('[Ably] State: failed', stateChange.reason?.message || '');
+          setConnectionState('failed');
+          setIsConnected(false);
+        });
 
-        console.log('Ably chat client initialized');
+        client.connection.on('closed', () => {
+          console.log('[Ably] State: closed');
+          setConnectionState('closed');
+          setIsConnected(false);
+        });
+
+        console.log('[Ably] Client initialized');
       } catch (error) {
-        console.error('Error initializing Ably:', error);
+        console.error('[Ably] Initialization error:', error);
+        setConnectionState('failed');
       }
     };
 
@@ -107,17 +133,18 @@ export const AblyProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       if (ablyClientRef.current) {
-        console.log('Closing Ably connection');
+        console.log('[Ably] Closing connection');
         ablyClientRef.current.close();
         ablyClientRef.current = null;
-        setChatClient(null);
+        setRealtimeClient(null);
+        setConnectionState('closed');
         setIsConnected(false);
       }
     };
   }, [user]);
 
   return (
-    <AblyContext.Provider value={{ chatClient, isConnected }}>
+    <AblyContext.Provider value={{ realtimeClient, connectionState, isConnected }}>
       {children}
     </AblyContext.Provider>
   );

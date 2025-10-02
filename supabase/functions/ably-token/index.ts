@@ -14,7 +14,11 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Missing authorization header');
+      console.error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const supabase = createClient(
@@ -30,20 +34,13 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       console.error('Auth error:', userError);
-      throw new Error('Unauthorized');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Generating Ably token for user:', user.id);
-
-    const { userId } = await req.json();
-    
-    if (userId !== user.id) {
-      console.error('User ID mismatch:', userId, 'vs', user.id);
-      return new Response(
-        JSON.stringify({ error: 'User ID mismatch' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Get all chats for this user to create capabilities
     const { data: userChats, error: chatsError } = await supabase
@@ -62,7 +59,7 @@ serve(async (req) => {
     // Create capability object for all user's chats
     const capabilities: Record<string, string[]> = {};
     (userChats || []).forEach(chat => {
-      capabilities[`chat-${chat.id}`] = ['subscribe', 'publish', 'presence', 'history'];
+      capabilities[`chat:${chat.id}`] = ['subscribe', 'publish', 'presence', 'history'];
     });
 
     console.log('Creating token with capabilities for', Object.keys(capabilities).length, 'chats');
@@ -107,10 +104,10 @@ serve(async (req) => {
       mac,
     };
 
-    console.log('Generated Ably token for user:', user.id);
+    console.log('Generated Ably token successfully for user:', user.id);
 
     return new Response(
-      JSON.stringify({ token }),
+      JSON.stringify(token),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
