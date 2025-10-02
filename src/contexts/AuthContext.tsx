@@ -51,23 +51,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         
         if (session?.user) {
-          // Defer profile fetch
-          setTimeout(async () => {
-            const { data: profile, error } = await (supabase as any)
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-            
-            if (profile) {
-              setUser({
-                ...profile,
-                avatarUrl: profile.avatarurl
-              } as Profile);
-            } else if (error) {
-              console.error('Error fetching profile:', error);
-            }
-          }, 0);
+          // Fetch profile data synchronously
+          const { data: profile, error } = await (supabase as any)
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          
+          if (profile) {
+            setUser({
+              ...profile,
+              avatarUrl: profile.avatarurl
+            } as Profile);
+          } else if (error) {
+            console.error('Error fetching profile:', error);
+          }
         } else {
           setUser(null);
         }

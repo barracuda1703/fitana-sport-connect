@@ -60,7 +60,7 @@ const Index: React.FC = () => {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   if (redirectPath) {

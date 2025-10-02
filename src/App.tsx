@@ -44,8 +44,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
   
-  if (!user) {
-    return <Navigate to="/" replace />;
+  if (!user || !user.id || !user.email || !user.role) {
+    return <Navigate to="/auth" replace />;
   }
   
   return <>{children}</>;
@@ -65,8 +65,8 @@ const RoleProtectedRoute: React.FC<{
     );
   }
   
-  if (!user) {
-    return <Navigate to="/" replace />;
+  if (!user || !user.id || !user.email || !user.role) {
+    return <Navigate to="/auth" replace />;
   }
   
   if (user.role !== allowedRole) {
