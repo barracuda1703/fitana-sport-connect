@@ -266,14 +266,24 @@ export const ChatPage: React.FC = () => {
   if (!user) return null;
 
   const getConnectionStatus = () => {
-    if (connectionState === 'connected') {
-      return isOtherUserOnline ? 'Online' : 'Offline';
+    if (!realtimeClient) return 'Inicjalizacja...';
+    
+    switch (connectionState) {
+      case 'connected':
+        return isOtherUserOnline ? 'Online' : 'Offline';
+      case 'connecting':
+        return 'Łączenie...';
+      case 'disconnected':
+        return 'Sprawdzanie połączenia...';
+      case 'suspended':
+        return 'Ponowne łączenie...';
+      case 'failed':
+        return 'Błąd połączenia';
+      case 'closed':
+        return 'Rozłączono';
+      default:
+        return 'Łączenie...';
     }
-    if (connectionState === 'connecting') return 'Łączenie...';
-    if (connectionState === 'disconnected') return 'Rozłączono';
-    if (connectionState === 'suspended') return 'Zawieszono';
-    if (connectionState === 'failed') return 'Błąd połączenia';
-    return 'Łączenie...';
   };
 
   return (
@@ -294,22 +304,43 @@ export const ChatPage: React.FC = () => {
               <h2 className="font-semibold">
                 {`${otherUser?.name || ''} ${otherUser?.surname || ''}`.trim() || 'Użytkownik'}
               </h2>
-              <p className="text-xs text-muted-foreground">
-                {getConnectionStatus()}
-              </p>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  isConnected ? 'bg-green-500' : 
+                  connectionState === 'connecting' || connectionState === 'disconnected' ? 'bg-yellow-500 animate-pulse' : 
+                  'bg-red-500'
+                }`} />
+                <span className="text-xs text-muted-foreground">
+                  {getConnectionStatus()}
+                </span>
+              </div>
             </div>
           </div>
-          {connectionState === 'disconnected' || connectionState === 'suspended' ? (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => realtimeClient?.connect()}
-            >
-              Połącz ponownie
-            </Button>
-          ) : null}
         </div>
       </header>
+
+      {/* Show error message only when connection permanently failed */}
+      {connectionState === 'failed' && (
+        <div className="p-4 bg-destructive/10 border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-destructive">
+                Nie można połączyć z czatem
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {realtimeClient?.connection.errorReason?.message || 'Sprawdź połączenie internetowe'}
+              </p>
+            </div>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              Odśwież aplikację
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 p-4 overflow-y-auto space-y-3">
         {loading ? (

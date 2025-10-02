@@ -14,13 +14,34 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('Missing authorization header');
+      console.error('[Ably Token] Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Decode JWT directly instead of calling Supabase Auth API
+    let userId: string;
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      userId = payload.sub;
+      
+      if (!userId) {
+        throw new Error('No user ID in token');
+      }
+      
+      console.log('[Ably Token] Decoded user ID from JWT:', userId);
+    } catch (decodeError) {
+      console.error('[Ably Token] JWT decode error:', decodeError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client for data queries only
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -31,25 +52,16 @@ serve(async (req) => {
       }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('Auth error:', userError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Generating Ably token for user:', user.id);
+    console.log('[Ably Token] Generating token for user:', userId);
 
     // Get all chats for this user to create capabilities
     const { data: userChats, error: chatsError } = await supabase
       .from('chats')
       .select('id')
-      .or(`client_id.eq.${user.id},trainer_id.eq.${user.id}`);
+      .or(`client_id.eq.${userId},trainer_id.eq.${userId}`);
 
     if (chatsError) {
-      console.error('Error fetching user chats:', chatsError);
+      console.error('[Ably Token] Error fetching user chats:', chatsError);
       return new Response(
         JSON.stringify({ error: 'Error fetching chats' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -62,7 +74,7 @@ serve(async (req) => {
       capabilities[`chat:${chat.id}`] = ['subscribe', 'publish', 'presence', 'history'];
     });
 
-    console.log('Creating token with capabilities for', Object.keys(capabilities).length, 'chats');
+    console.log('[Ably Token] Creating token with capabilities for', Object.keys(capabilities).length, 'chats');
 
     const ablyApiKey = Deno.env.get('ABLY_API_KEY');
     if (!ablyApiKey) {
@@ -75,7 +87,7 @@ serve(async (req) => {
     // Create Ably token request with capabilities for all user's chats
     const tokenRequest = {
       keyName,
-      clientId: user.id,
+      clientId: userId,
       capability: JSON.stringify(capabilities),
       timestamp: Date.now(),
       ttl: 3600000, // 1 hour
@@ -104,7 +116,7 @@ serve(async (req) => {
       mac,
     };
 
-    console.log('Generated Ably token successfully for user:', user.id);
+    console.log('[Ably Token] Generated successfully for user:', userId, 'with', Object.keys(capabilities).length, 'channels');
 
     return new Response(
       JSON.stringify(token),
