@@ -1,17 +1,9 @@
-import React, { useState } from 'react';
-import { Star, Video, MapPin, MessageCircle, Calendar } from 'lucide-react';
+import React from 'react';
+import { Star, MapPin, Calendar, MessageCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { FavoriteButton } from '@/components/FavoriteButton';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
 
 interface Trainer {
   id: string;
@@ -50,150 +42,101 @@ export const TrainerCard: React.FC<TrainerCardProps> = ({
   onChat,
   showDistance = false
 }) => {
-  const [imageIndex, setImageIndex] = useState(0);
-  const images = trainer.gallery?.length > 0 ? trainer.gallery : [trainer.avatarurl].filter(Boolean);
-  const hasMultipleImages = images.length > 1;
+  const imageUrl = trainer.gallery?.[0] || trainer.avatarurl;
 
   return (
     <Card 
-      className="overflow-hidden hover:shadow-card transition-all duration-200 bg-gradient-card group cursor-pointer"
+      className="overflow-hidden hover:shadow-lg transition-all duration-200 bg-card cursor-pointer"
       onClick={() => onViewProfile(trainer.id)}
     >
-      <CardContent className="p-0">
-        {/* Gallery/Image Section */}
-        <div className="relative h-48 bg-muted">
-          {hasMultipleImages ? (
-            <Carousel className="w-full h-full" opts={{ loop: true }}>
-              <CarouselContent>
-                {images.map((image, index) => (
-                  <CarouselItem key={index}>
-                    <div 
-                      className="h-48 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${image})` }}
-                    />
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="left-2" onClick={(e) => e.stopPropagation()} />
-              <CarouselNext className="right-2" onClick={(e) => e.stopPropagation()} />
-            </Carousel>
-          ) : images[0] ? (
-            <div 
-              className="h-48 bg-cover bg-center"
-              style={{ backgroundImage: `url(${images[0]})` }}
-            />
-          ) : (
-            <div className="h-48 flex items-center justify-center bg-gradient-accent">
-              <Avatar className="w-24 h-24">
-                <AvatarFallback className="text-4xl">
-                  {trainer.display_name?.charAt(0) || 'T'}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          )}
-          
-          {/* Overlays */}
-          <div className="absolute top-3 right-3 flex gap-2">
-            {trainer.has_video && (
-              <Badge className="bg-black/60 backdrop-blur-sm">
-                <Video className="h-3 w-3 mr-1" />
-                Video
-              </Badge>
-            )}
-            <div onClick={(e) => e.stopPropagation()}>
-              <FavoriteButton 
-                trainerId={trainer.user_id || trainer.id} 
-                className="bg-black/60 backdrop-blur-sm hover:bg-black/80"
-              />
-            </div>
-          </div>
-          
-          {trainer.is_verified && (
-            <Badge className="absolute top-3 left-3 bg-success/90 backdrop-blur-sm">
-              ✓ Zweryfikowany
-            </Badge>
-          )}
-        </div>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-3">
+          {/* Avatar */}
+          <Avatar className="h-16 w-16 flex-shrink-0">
+            {imageUrl ? (
+              <AvatarImage src={imageUrl} alt={trainer.display_name || 'Trener'} />
+            ) : null}
+            <AvatarFallback className="text-xl">
+              {trainer.display_name?.charAt(0) || 'T'}
+            </AvatarFallback>
+          </Avatar>
 
-        {/* Content Section */}
-        <div className="p-4">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate">
-                {trainer.display_name || trainer.name || 'Trener'}
-              </h3>
-              {trainer.city && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {trainer.city}
-                  {showDistance && trainer.distance !== undefined && trainer.distance !== Infinity && (
-                    <span className="ml-1">({trainer.distance.toFixed(1)} km)</span>
+          {/* Main Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-base truncate">
+                  {trainer.display_name || trainer.name || 'Trener'}
+                  {trainer.is_verified && (
+                    <Badge variant="secondary" className="ml-2 text-xs">✓</Badge>
                   )}
-                </p>
+                </h3>
+                {trainer.city && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {trainer.city}
+                    {showDistance && trainer.distance !== undefined && trainer.distance !== Infinity && (
+                      <span>• {trainer.distance.toFixed(1)} km</span>
+                    )}
+                  </p>
+                )}
+              </div>
+              
+              {trainer.rating !== null && trainer.rating > 0 && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Star className="h-3 w-3 fill-warning text-warning" />
+                  <span className="text-sm font-medium">{trainer.rating.toFixed(1)}</span>
+                </div>
               )}
             </div>
-            
-            {trainer.rating !== null && trainer.rating > 0 && (
-              <div className="flex items-center gap-1 bg-warning/10 px-2 py-1 rounded">
-                <Star className="h-4 w-4 fill-warning text-warning" />
-                <span className="font-medium">{trainer.rating.toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">({trainer.review_count || 0})</span>
+
+            {/* Specialties & Price */}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+                {trainer.specialties?.slice(0, 2).map((specialty, index) => (
+                  <Badge key={index} variant="outline" className="text-xs py-0 px-1.5">
+                    {specialty}
+                  </Badge>
+                ))}
+                {trainer.specialties?.length > 2 && (
+                  <Badge variant="outline" className="text-xs py-0 px-1.5">
+                    +{trainer.specialties.length - 2}
+                  </Badge>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* Specialties */}
-          <div className="flex flex-wrap gap-1 mb-3">
-            {trainer.specialties?.slice(0, 3).map((specialty, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {specialty}
-              </Badge>
-            ))}
-            {trainer.specialties?.length > 3 && (
-              <Badge variant="outline" className="text-xs">
-                +{trainer.specialties.length - 3}
-              </Badge>
-            )}
-          </div>
-
-          {/* Bio */}
-          {trainer.bio && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-              {trainer.bio}
-            </p>
-          )}
-
-          {/* Price */}
-          {trainer.price_from && (
-            <div className="flex items-center justify-between mb-3 pb-3 border-b">
-              <span className="text-sm text-muted-foreground">Od:</span>
-              <span className="text-lg font-bold text-primary">{trainer.price_from} zł</span>
+              
+              {trainer.price_from && (
+                <span className="text-sm font-bold text-primary flex-shrink-0">
+                  {trainer.price_from} zł
+                </span>
+              )}
             </div>
-          )}
 
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              className="flex-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                onQuickBook(trainer.id);
-              }}
-            >
-              <Calendar className="h-4 w-4 mr-1" />
-              Zarezerwuj
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChat(trainer.user_id || trainer.id);
-              }}
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Button>
+            {/* Actions */}
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                className="flex-1 h-8 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickBook(trainer.id);
+                }}
+              >
+                <Calendar className="h-3 w-3 mr-1" />
+                Zarezerwuj
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="h-8 px-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChat(trainer.user_id || trainer.id);
+                }}
+              >
+                <MessageCircle className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
