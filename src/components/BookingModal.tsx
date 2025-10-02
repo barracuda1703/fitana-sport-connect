@@ -58,6 +58,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
     }
   }, [isOpen]);
 
+  // Stage 4: Subscribe to real-time availability changes
+  useEffect(() => {
+    if (!isOpen || !trainer.user_id) return;
+
+    const unsubscribe = availabilityService.subscribeToAvailabilityChanges(
+      trainer.user_id,
+      () => {
+        // Re-fetch availability when changes occur
+        if (selectedService) {
+          fetchAvailableDates();
+        }
+        if (selectedDate) {
+          fetchAvailableHours();
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isOpen, trainer.user_id, selectedService, selectedDate]);
+
   // Fetch available dates when service is selected
   useEffect(() => {
     if (selectedService && trainer.user_id) {

@@ -139,6 +139,7 @@ export const bookingsService = {
     };
   },
 
+  // Stage 2: Handle booking conflict errors from DB trigger
   async create(booking: any) {
     const { data, error } = await supabase
       .from('bookings')
@@ -146,7 +147,13 @@ export const bookingsService = {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      // Check if it's a conflict error from our trigger
+      if (error.message?.includes('Booking conflict')) {
+        throw new Error('Ten termin został właśnie zarezerwowany. Wybierz inny slot.');
+      }
+      throw error;
+    }
     return data;
   },
 

@@ -207,10 +207,53 @@ export const clearAvailabilityCache = (trainerId: string, date?: string) => {
   }
 };
 
+// Stage 4: Real-time Availability Updates
+export const subscribeToAvailabilityChanges = (
+  trainerId: string,
+  callback: () => void
+) => {
+  const channel = supabase
+    .channel(`availability-${trainerId}`)
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'time_off',
+      filter: `trainer_id=eq.${trainerId}`
+    }, () => {
+      console.log('Time-off changed, clearing cache');
+      clearAvailabilityCache(trainerId);
+      callback();
+    })
+    .on('postgres_changes', { 
+      event: '*', 
+      schema: 'public', 
+      table: 'manual_blocks',
+      filter: `trainer_id=eq.${trainerId}`
+    }, () => {
+      console.log('Manual blocks changed, clearing cache');
+      clearAvailabilityCache(trainerId);
+      callback();
+    })
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'bookings',
+      filter: `trainer_id=eq.${trainerId}`
+    }, () => {
+      console.log('Bookings changed, clearing cache');
+      clearAvailabilityCache(trainerId);
+      callback();
+    })
+    .subscribe();
+  
+  return () => supabase.removeChannel(channel);
+};
+
 export const availabilityService = {
   isTimeSlotAvailable,
   getAvailableDates,
   getAvailableHours,
   getAvailableSlots,
-  clearAvailabilityCache
+  clearAvailabilityCache,
+  subscribeToAvailabilityChanges
 };
