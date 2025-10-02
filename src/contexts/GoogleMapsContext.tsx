@@ -37,11 +37,17 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         script.async = true;
         script.defer = true;
         
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
-        });
+        // Add timeout to prevent infinite loading
+        await Promise.race([
+          new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Google Maps loading timeout')), 10000)
+          )
+        ]);
       }
       
       setIsLoaded(true);
@@ -85,7 +91,7 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     loadGoogleMapsScript();
-  }, [retryCount]);
+  }, [retryCount, apiKey]);
 
   return (
     <GoogleMapsContext.Provider value={{ isLoaded, error, apiKey, retryCount, isRetrying, retryLoad }}>

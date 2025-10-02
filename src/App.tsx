@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LocationProvider } from "@/contexts/LocationContext";
-import { GoogleMapsProvider } from "@/contexts/GoogleMapsContext";
 import { AblyProvider } from "@/contexts/AblyContext";
 
 import { Index } from "@/pages/Index";
@@ -182,11 +181,9 @@ const App = () => {
           <AuthProvider>
             <AblyProvider>
               <LocationProvider>
-                <GoogleMapsProvider>
-                  <BrowserRouter>
-                    <AuthenticatedApp />
-                  </BrowserRouter>
-                </GoogleMapsProvider>
+                <BrowserRouter>
+                  <AuthenticatedApp />
+                </BrowserRouter>
               </LocationProvider>
             </AblyProvider>
           </AuthProvider>

@@ -14,6 +14,7 @@ import { QuickBookingSheet } from '@/components/QuickBookingSheet';
 import { LanguageChips } from '@/components/LanguageChips';
 import { GoogleMapView } from '@/components/map/GoogleMapView';
 import { LocationPermissionModal } from '@/components/LocationPermissionModal';
+import { GoogleMapsProvider } from '@/contexts/GoogleMapsContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserLocation } from '@/contexts/LocationContext';
@@ -372,7 +373,8 @@ export const ClientHome: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <GoogleMapsProvider>
+      <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
         <div className="flex items-center gap-2 mb-4">
@@ -607,6 +609,7 @@ export const ClientHome: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-    </div>
+      </div>
+    </GoogleMapsProvider>
   );
 };

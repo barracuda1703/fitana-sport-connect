@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
+import { GoogleMapsProvider } from '@/contexts/GoogleMapsContext';
 import { LocationManagement } from '@/components/LocationManagement';
 import { SimplePhotoUploader } from '@/components/SimplePhotoUploader';
 import { SPORTS_LIST } from '@/data/sports';
@@ -238,7 +239,8 @@ export const ProfileSetup: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <GoogleMapsProvider>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>{getStepTitle()}</CardTitle>
@@ -527,6 +529,7 @@ export const ProfileSetup: React.FC = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </GoogleMapsProvider>
   );
 };

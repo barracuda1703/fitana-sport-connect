@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { GoogleMapsProvider } from '@/contexts/GoogleMapsContext';
 import { LocationManagement } from '@/components/LocationManagement';
 import { ServiceManagementModal } from '@/components/ServiceManagementModal';
 import { PhotoUploaderWithUpload } from '@/components/PhotoUploaderWithUpload';
@@ -191,7 +192,8 @@ export const TrainerSettings: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-background pb-20">
+      <GoogleMapsProvider>
+        <div className="min-h-screen bg-background pb-20">
         <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <Button 
@@ -524,7 +526,8 @@ export const TrainerSettings: React.FC = () => {
           activeTab={activeTab}
           onTabChange={() => {}}
         />
-      </div>
+        </div>
+      </GoogleMapsProvider>
     </ErrorBoundary>
   );
 };
