@@ -115,18 +115,17 @@ export const chatsService = {
     return data;
   },
 
-  async sendMessage(chatId: string, senderId: string, content: string, imageUrl?: string) {
+  async sendMessage(chatId: string, senderId: string, content: string) {
     const { data, error } = await supabase
       .from('messages')
       .insert({
         chat_id: chatId,
         sender_id: senderId,
-        content,
-        image_url: imageUrl
+        content
       })
       .select()
       .single();
-
+    
     if (error) throw error;
 
     // Update chat updated_at

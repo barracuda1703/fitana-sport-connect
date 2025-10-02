@@ -1,25 +1,22 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   Send, 
   MessageCircle,
   Paperclip,
   Loader2,
-  WifiOff,
-  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAbly } from '@/contexts/AblyContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { chatsService } from '@/services/supabase/chats';
+import { chatsService } from '@/services/supabase';
 import { uploadChatImage } from '@/services/supabase/upload';
-import { useAblyChat } from '@/hooks/useAblyChat';
-import { FEATURE_FLAGS } from '@/lib/featureFlags';
+import type * as Ably from 'ably';
 
 interface ChatMessage {
   id: string;
@@ -29,8 +26,9 @@ interface ChatMessage {
   imageUrl?: string;
 }
 
-export const ChatSafePage: React.FC = () => {
+export const ChatPage: React.FC = () => {
   const { user } = useAuth();
+  const { realtimeClient, connectionState, isConnected } = useAbly();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -46,34 +44,8 @@ export const ChatSafePage: React.FC = () => {
   const [sending, setSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<Ably.RealtimeChannel | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const messageQueueRef = useRef<ChatMessage[]>([]);
-
-  const handleNewMessage = useCallback((message: ChatMessage) => {
-    setMessages((prev) => {
-      // Avoid duplicates
-      if (prev.find(m => m.id === message.id)) {
-        return prev;
-      }
-      return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
-    });
-  }, []);
-
-  const {
-    channelState,
-    error: channelError,
-    publishMessage,
-    publishTyping,
-    reconnect,
-    isConnected,
-    isPollingMode,
-  } = useAblyChat({
-    chatId: chatId || '',
-    userId: user?.id || '',
-    onMessage: handleNewMessage,
-    onTyping: setIsTyping,
-    onPresence: setIsOtherUserOnline,
-  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -93,19 +65,6 @@ export const ChatSafePage: React.FC = () => {
         
         const chats = await chatsService.getByUserId(user.id);
         const currentChat = chats?.find(c => c.id === chatId);
-        
-        // Verify user is a participant
-        if (!currentChat) {
-          console.warn('[Chat] User is not a participant of this chat');
-          toast({
-            title: "Brak dostępu",
-            description: "Nie masz dostępu do tej rozmowy",
-            variant: "destructive"
-          });
-          navigate('/chat', { replace: true });
-          return;
-        }
-        
         setChat(currentChat);
         
         if (currentChat) {
@@ -116,42 +75,94 @@ export const ChatSafePage: React.FC = () => {
         }
 
         await chatsService.markChatAsRead(chatId, user.id);
-
-        // Load messages from DB
-        const dbMessages = await chatsService.getMessages(chatId);
-        const formatted = dbMessages.map((msg: any) => ({
-          id: msg.id,
-          text: msg.content,
-          senderId: msg.sender_id,
-          timestamp: new Date(msg.created_at).getTime(),
-          imageUrl: msg.image_url,
-        }));
-        setMessages(formatted);
       } catch (error) {
         console.error('[Chat] Error loading chat:', error);
-        toast({
-          title: "Błąd",
-          description: "Nie udało się załadować czatu",
-          variant: "destructive"
-        });
       } finally {
         setLoading(false);
       }
     };
 
     loadChat();
-  }, [chatId, user, toast, navigate]);
+  }, [chatId, user]);
 
-  // Process queued messages when connected
+  // Subscribe to Ably channel
   useEffect(() => {
-    if (isConnected && messageQueueRef.current.length > 0) {
-      console.debug('[Chat] Processing', messageQueueRef.current.length, 'queued messages');
-      messageQueueRef.current.forEach((msg) => {
-        publishMessage(msg).catch(console.error);
+    if (!chatId || !realtimeClient || !user) return;
+
+    const channelName = `chat:${chatId}`;
+    console.log('[Chat] Attaching to channel:', channelName);
+    
+    const channel = realtimeClient.channels.get(channelName);
+    channelRef.current = channel;
+
+    // Monitor channel state
+    channel.on('attached', () => {
+      console.log('[Chat] Channel attached');
+    });
+
+    channel.on('failed', (stateChange) => {
+      console.error('[Chat] Channel failed:', stateChange.reason?.message);
+      toast({
+        title: "Błąd połączenia",
+        description: stateChange.reason?.message || "Nie udało się połączyć z czatem",
+        variant: "destructive"
       });
-      messageQueueRef.current = [];
-    }
-  }, [isConnected, publishMessage]);
+    });
+
+    // Subscribe to messages
+    const messageListener = (msg: Ably.Message) => {
+      console.log('[Chat] Received message:', msg.data);
+      const message: ChatMessage = msg.data;
+      
+      setMessages((prev) => {
+        // Avoid duplicates
+        if (prev.find(m => m.id === message.id)) {
+          return prev;
+        }
+        return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
+      });
+    };
+
+    channel.subscribe('message', messageListener);
+
+    // Subscribe to typing indicators
+    const typingListener = (msg: Ably.Message) => {
+      const { userId, typing } = msg.data;
+      if (userId !== user.id) {
+        setIsTyping(typing);
+      }
+    };
+
+    channel.subscribe('typing', typingListener);
+
+    // Subscribe to presence
+    channel.presence.enter({ status: 'online' });
+    
+    channel.presence.subscribe('enter', (member) => {
+      if (member.clientId !== user.id) {
+        console.log('[Chat] User entered:', member.clientId);
+        setIsOtherUserOnline(true);
+      }
+    });
+
+    channel.presence.subscribe('leave', (member) => {
+      if (member.clientId !== user.id) {
+        console.log('[Chat] User left:', member.clientId);
+        setIsOtherUserOnline(false);
+      }
+    });
+
+    // Attach the channel
+    channel.attach();
+
+    return () => {
+      console.log('[Chat] Cleaning up channel');
+      channel.presence.leave();
+      channel.unsubscribe();
+      channel.detach();
+      channelRef.current = null;
+    };
+  }, [chatId, realtimeClient, user, toast]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,7 +197,7 @@ export const ChatSafePage: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if ((!newMessage.trim() && !selectedImage) || !user || !chatId) return;
+    if ((!newMessage.trim() && !selectedImage) || !user || !chatId || !channelRef.current) return;
 
     setSending(true);
     
@@ -198,42 +209,27 @@ export const ChatSafePage: React.FC = () => {
         imageUrl = url;
       }
 
-      // Persist to DB first
-      const dbMessage = await chatsService.sendMessage(
-        chatId,
-        user.id,
-        newMessage.trim() || '📷'
-      );
-
       const message: ChatMessage = {
-        id: dbMessage.id,
-        text: dbMessage.content,
+        id: `${Date.now()}-${user.id}`,
+        text: newMessage.trim() || '📷',
         senderId: user.id,
-        timestamp: new Date(dbMessage.created_at).getTime(),
+        timestamp: Date.now(),
         imageUrl,
       };
 
-      // Add to local state immediately (optimistic)
-      handleNewMessage(message);
+      // Publish message to Ably
+      await channelRef.current.publish('message', message);
 
-      // Publish to Ably if connected, otherwise queue
-      if (isConnected) {
-        try {
-          await publishMessage(message);
-        } catch (err) {
-          console.warn('[Chat] Failed to publish, message saved to DB');
-        }
-      } else {
-        console.debug('[Chat] Queuing message (not connected)');
-        messageQueueRef.current.push(message);
-      }
+      console.log('[Chat] Message sent:', message);
 
       setNewMessage('');
       setSelectedImage(null);
       setImagePreview(null);
 
       // Stop typing indicator
-      publishTyping(false).catch(console.error);
+      if (channelRef.current) {
+        await channelRef.current.publish('typing', { userId: user.id, typing: false });
+      }
     } catch (error) {
       console.error('[Chat] Error sending message:', error);
       toast({
@@ -249,7 +245,7 @@ export const ChatSafePage: React.FC = () => {
   const handleTyping = (value: string) => {
     setNewMessage(value);
 
-    if (!chatId || !user) return;
+    if (!channelRef.current || !chatId || !user) return;
 
     // Clear existing timeout
     if (typingTimeoutRef.current) {
@@ -257,45 +253,38 @@ export const ChatSafePage: React.FC = () => {
     }
 
     // Start typing
-    publishTyping(true).catch(console.error);
+    channelRef.current.publish('typing', { userId: user.id, typing: true });
 
     // Stop typing after 2 seconds of inactivity
     typingTimeoutRef.current = setTimeout(() => {
-      publishTyping(false).catch(console.error);
+      if (channelRef.current && user) {
+        channelRef.current.publish('typing', { userId: user.id, typing: false });
+      }
     }, 2000);
   };
 
   if (!user) return null;
 
   const getConnectionStatus = () => {
-    if (isPollingMode) return 'Tryb offline';
+    if (!realtimeClient) return 'Inicjalizacja...';
     
-    switch (channelState) {
-      case 'attached':
+    switch (connectionState) {
+      case 'connected':
         return isOtherUserOnline ? 'Online' : 'Offline';
-      case 'attaching':
       case 'connecting':
         return 'Łączenie...';
       case 'disconnected':
+        return 'Sprawdzanie połączenia...';
       case 'suspended':
         return 'Ponowne łączenie...';
       case 'failed':
         return 'Błąd połączenia';
+      case 'closed':
+        return 'Rozłączono';
       default:
         return 'Łączenie...';
     }
   };
-
-  const getConnectionColor = () => {
-    if (isPollingMode) return 'bg-yellow-500';
-    if (isConnected) return 'bg-green-500';
-    if (channelState === 'connecting' || channelState === 'attaching' || channelState === 'disconnected' || channelState === 'suspended') {
-      return 'bg-yellow-500 animate-pulse';
-    }
-    return 'bg-red-500';
-  };
-
-  const canSendMessages = !sending && (isConnected || isPollingMode);
 
   return (
     <div className="min-h-screen bg-background pb-20 flex flex-col">
@@ -316,7 +305,11 @@ export const ChatSafePage: React.FC = () => {
                 {`${otherUser?.name || ''} ${otherUser?.surname || ''}`.trim() || 'Użytkownik'}
               </h2>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${getConnectionColor()}`} />
+                <div className={`w-2 h-2 rounded-full ${
+                  isConnected ? 'bg-green-500' : 
+                  connectionState === 'connecting' || connectionState === 'disconnected' ? 'bg-yellow-500 animate-pulse' : 
+                  'bg-red-500'
+                }`} />
                 <span className="text-xs text-muted-foreground">
                   {getConnectionStatus()}
                 </span>
@@ -326,53 +319,32 @@ export const ChatSafePage: React.FC = () => {
         </div>
       </header>
 
-      {/* Connection errors */}
-      {channelState === 'failed' && channelError && (
-        <Alert variant="destructive" className="m-4">
-          <WifiOff className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
+      {/* Show error message only when connection permanently failed */}
+      {connectionState === 'failed' && (
+        <div className="p-4 bg-destructive/10 border-b">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Nie można połączyć z czatem</p>
-              <p className="text-xs mt-1">{channelError}</p>
+              <p className="text-sm font-medium text-destructive">
+                Nie można połączyć z czatem
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {realtimeClient?.connection.errorReason?.message || 'Sprawdź połączenie internetowe'}
+              </p>
             </div>
-            <Button size="sm" variant="outline" onClick={reconnect}>
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Połącz
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              Odśwież aplikację
             </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Offline mode banner */}
-      {(channelState === 'suspended' || channelState === 'disconnected') && !isPollingMode && (
-        <Alert className="m-4">
-          <WifiOff className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span className="text-sm">Offline – wiadomości będą wysłane po połączeniu</span>
-            <Button size="sm" variant="outline" onClick={reconnect}>
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Połącz
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Polling mode info */}
-      {isPollingMode && (
-        <Alert className="m-4">
-          <MessageCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            Tryb offline – wiadomości odświeżane co {FEATURE_FLAGS.POLLING_INTERVAL / 1000}s
-          </AlertDescription>
-        </Alert>
+          </div>
+        </div>
       )}
 
       <div className="flex-1 p-4 overflow-y-auto space-y-3">
         {loading ? (
-          <div className="text-center text-muted-foreground py-8">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-            <p>Ładowanie...</p>
-          </div>
+          <p className="text-center text-muted-foreground">Ładowanie...</p>
         ) : messages.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -460,7 +432,7 @@ export const ChatSafePage: React.FC = () => {
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            disabled={!canSendMessages}
+            disabled={sending || !isConnected}
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -468,11 +440,11 @@ export const ChatSafePage: React.FC = () => {
             value={newMessage}
             onChange={(e) => handleTyping(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-            placeholder={canSendMessages ? "Wpisz wiadomość..." : "Łączenie..."}
+            placeholder={isConnected ? "Wpisz wiadomość..." : "Łączenie..."}
             className="flex-1"
-            disabled={!canSendMessages}
+            disabled={sending || !isConnected}
           />
-          <Button onClick={handleSendMessage} disabled={!canSendMessages}>
+          <Button onClick={handleSendMessage} disabled={sending || !isConnected}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

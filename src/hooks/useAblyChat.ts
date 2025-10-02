@@ -34,49 +34,36 @@ export function useAblyChat({
   const attachTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Track which messages we've already loaded to prevent duplicates
-  const loadedMessagesRef = useRef<Set<string>>(new Set());
-
   // Load messages from DB (polling fallback or initial load)
   const loadMessages = useCallback(async () => {
     try {
       const messages = await chatsService.getMessages(chatId);
       messages.forEach((msg: any) => {
-        const messageId = msg.id;
-        // Only call onMessage for new messages we haven't seen yet
-        if (!loadedMessagesRef.current.has(messageId)) {
-          loadedMessagesRef.current.add(messageId);
-          onMessage({
-            id: msg.id,
-            text: msg.content,
-            senderId: msg.sender_id,
-            timestamp: new Date(msg.created_at).getTime(),
-            imageUrl: msg.image_url,
-          });
-        }
+        onMessage({
+          id: msg.id,
+          text: msg.content,
+          senderId: msg.sender_id,
+          timestamp: new Date(msg.created_at).getTime(),
+          imageUrl: msg.image_url,
+        });
       });
     } catch (err: any) {
       console.error('[useAblyChat] Failed to load messages:', err);
     }
   }, [chatId, onMessage]);
 
-  // Reset tracked messages when chatId changes
-  useEffect(() => {
-    loadedMessagesRef.current.clear();
-  }, [chatId]);
-
   // Setup Ably or polling
   useEffect(() => {
     if (!FEATURE_FLAGS.ABLY_ENABLED) {
       console.debug('[useAblyChat] Using polling mode');
       setChannelState('attached'); // Pretend attached for UI
-
+      
       // Initial load
       loadMessages();
-
+      
       // Poll every 10s
       pollingIntervalRef.current = setInterval(loadMessages, FEATURE_FLAGS.POLLING_INTERVAL);
-
+      
       return () => {
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
@@ -139,9 +126,6 @@ export function useAblyChat({
     // Subscribe to messages
     const messageListener = (msg: Ably.Message) => {
       console.debug('[useAblyChat] Received message:', msg.data);
-      const messageId = msg.data.id;
-      // Track this message to prevent duplicate on next poll
-      loadedMessagesRef.current.add(messageId);
       onMessage(msg.data);
     };
     channel.subscribe('message', messageListener);
