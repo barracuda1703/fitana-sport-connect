@@ -1,15 +1,15 @@
 /**
- * Feature flags for realtime chat
+ * Feature flags for gradual rollout and kill-switches
  */
 export const FEATURE_FLAGS = {
-  // Ably realtime chat - always enabled
-  ABLY_ENABLED: true,
+  // Ably realtime chat - set to false to use polling fallback
+  ABLY_ENABLED: false,
   
-  // Require realtime (no polling fallback)
-  ABLY_REQUIRE_REALTIME: true,
+  // Polling interval when Ably is disabled (ms)
+  POLLING_INTERVAL: 10000,
   
   // Ably channel attach timeout (ms)
-  ABLY_ATTACH_TIMEOUT: 10000, // 10 seconds timeout for channel attach
+  ABLY_ATTACH_TIMEOUT: 5000,
 } as const;
 
 export type FeatureFlags = typeof FEATURE_FLAGS;

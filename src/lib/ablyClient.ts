@@ -97,8 +97,8 @@ export function getAblyClient(): Ably.Realtime | null {
 export function reconnectAbly() {
   if (!client) return;
   console.debug('[Ably] Forcing reconnect');
-  // Only reconnect connection - Ably will call authCallback automatically when token expires
   client.connection.connect();
+  client.auth.authorize();
 }
 
 /**
