@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { reviewsService } from '@/services/supabase/reviews';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -68,9 +69,15 @@ export const TrainerProfileModal: React.FC<TrainerProfileModalProps> = ({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-accent flex items-center justify-center text-2xl">
-                {trainer.display_name ? trainer.display_name.charAt(0) : 'T'}
-              </div>
+              <Avatar className="h-16 w-16">
+                <AvatarImage 
+                  src={trainer.avatarurl || undefined} 
+                  alt={trainer.display_name || 'Trener'} 
+                />
+                <AvatarFallback className="bg-gradient-accent text-2xl">
+                  {trainer.display_name?.charAt(0) || 'T'}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-2xl font-bold">{trainer.display_name || 'Trener'}</h2>

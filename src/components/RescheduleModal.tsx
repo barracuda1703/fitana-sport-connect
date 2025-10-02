@@ -4,9 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { bookingsService, trainersService, timeOffService, manualBlocksService, type Booking } from '@/services/supabase';
+import { bookingsService, trainersService, type Booking } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface RescheduleRequest {
@@ -36,9 +36,8 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [availableSlotsMap, setAvailableSlotsMap] = useState<Map<string, string[]>>(new Map());
   const [isLoadingDates, setIsLoadingDates] = useState(false);
-  const [isLoadingHours, setIsLoadingHours] = useState(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -47,172 +46,100 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       setSelectedDate(undefined);
       setSelectedTime('');
       setAvailableDates([]);
-      setAvailableHours([]);
+      setAvailableSlotsMap(new Map());
     }
   }, [isOpen]);
 
-  // Load available dates when modal opens
+  // Load available slots using RPC when modal opens
   useEffect(() => {
-    const loadAvailableDates = async () => {
+    const loadAvailableSlots = async () => {
       if (!isOpen || !booking) return;
+      
+      // 🐛 DEBUG: Log booking details
+      console.log('[RescheduleModal] Loading slots for:', {
+        booking_id: booking.id,
+        trainer_id: booking.trainer_id,
+        service_id: booking.service_id,
+        scheduled_at: booking.scheduled_at
+      });
       
       setIsLoadingDates(true);
       try {
         const trainer = await trainersService.getByUserId(booking.trainer_id);
-        if (!trainer || !trainer.availability) {
-          setAvailableDates([]);
-          return;
+        const durationMin = 60; // Default to 60 minutes
+        const timezone = (trainer?.settings as any)?.timezone || 'Europe/Warsaw';
+        
+        // 🐛 DEBUG: Log RPC parameters
+        console.log('[RescheduleModal] Calling RPC with:', {
+          trainer_id: booking.trainer_id,
+          duration_min: durationMin,
+          window_weeks: 12,
+          timezone
+        });
+        
+        const { data, error } = await supabase.rpc('get_trainer_available_slots', {
+          p_trainer_id: booking.trainer_id,
+          p_duration_min: durationMin,
+          p_window_start: new Date().toISOString(),
+          p_window_end: new Date(Date.now() + 12 * 7 * 24 * 60 * 60 * 1000).toISOString(),
+          p_timezone: timezone
+        });
+        
+        if (error) {
+          console.error('[RescheduleModal] RPC error:', error);
+          throw error;
         }
-
-        const availability = Array.isArray(trainer.availability) ? trainer.availability : [];
-        const timeOff = await timeOffService.getByTrainerId(booking.trainer_id);
-        const dates: string[] = [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Generate next 60 days
-        for (let i = 1; i <= 60; i++) {
-          const checkDate = new Date(today);
-          checkDate.setDate(today.getDate() + i);
-          const dayOfWeek = checkDate.getDay(); // 0=Sunday, 1=Monday, etc.
-
-          // Check if trainer is available on this day
-          const dayAvailability: any = availability.find((av: any) => av.day === dayOfWeek);
-          if (!dayAvailability || !dayAvailability.available) continue;
-
-          // Check if date is in time_off
-          const dateStr = checkDate.toISOString().split('T')[0];
-          const isTimeOff = timeOff?.some((to: any) => {
-            const startDate = new Date(to.start_date).toISOString().split('T')[0];
-            const endDate = new Date(to.end_date).toISOString().split('T')[0];
-            return dateStr >= startDate && dateStr <= endDate;
+        
+        // 🐛 DEBUG: Log results
+        console.log('[RescheduleModal] RPC returned slots:', data?.length || 0);
+        
+        // Group slots by date
+        const slotsByDate = new Map<string, string[]>();
+        data?.forEach((slot: any) => {
+          const slotDate = new Date(slot.slot_start);
+          const dateKey = slotDate.toISOString().split('T')[0];
+          const timeStr = slotDate.toLocaleTimeString('pl-PL', {
+            hour: '2-digit',
+            minute: '2-digit'
           });
-
-          if (!isTimeOff) {
-            dates.push(dateStr);
+          
+          if (!slotsByDate.has(dateKey)) {
+            slotsByDate.set(dateKey, []);
           }
+          slotsByDate.get(dateKey)!.push(timeStr);
+        });
+        
+        setAvailableDates(Array.from(slotsByDate.keys()));
+        setAvailableSlotsMap(slotsByDate);
+        
+        if (slotsByDate.size === 0) {
+          console.warn('[RescheduleModal] No slots found - check trainer availability and time_off');
         }
-
-        setAvailableDates(dates);
       } catch (error) {
-        console.error('Error loading available dates:', error);
+        console.error('[RescheduleModal] Error loading slots:', error);
         setAvailableDates([]);
+        setAvailableSlotsMap(new Map());
       } finally {
         setIsLoadingDates(false);
       }
     };
 
-    loadAvailableDates();
+    loadAvailableSlots();
   }, [isOpen, booking]);
-
-  // Load available hours when date is selected
-  useEffect(() => {
-    const loadAvailableHours = async () => {
-      if (!selectedDate || !booking) return;
-      
-      setIsLoadingHours(true);
-      try {
-        const trainer = await trainersService.getByUserId(booking.trainer_id);
-        if (!trainer || !trainer.availability) {
-          setAvailableHours([]);
-          return;
-        }
-
-        const availability = Array.isArray(trainer.availability) ? trainer.availability : [];
-        const dayOfWeek = selectedDate.getDay();
-        const dayAvailability: any = availability.find((av: any) => av.day === dayOfWeek);
-        
-        if (!dayAvailability || !dayAvailability.slots || dayAvailability.slots.length === 0) {
-          setAvailableHours([]);
-          return;
-        }
-
-        // Get existing bookings for this date
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        const existingBookings = await bookingsService.getByTrainerAndDate(booking.trainer_id, dateStr);
-        
-        // Get manual blocks for this date
-        const manualBlocks = await manualBlocksService.getByTrainerId(booking.trainer_id);
-        const dayBlocks = manualBlocks?.filter((block: any) => 
-          new Date(block.date).toISOString().split('T')[0] === dateStr
-        ) || [];
-
-        const availableSlots: string[] = [];
-
-        // Process each availability slot
-        dayAvailability.slots.forEach((slot: any) => {
-          const [startHour, startMin] = slot.start.split(':').map(Number);
-          const [endHour, endMin] = slot.end.split(':').map(Number);
-          
-          // Generate 30-minute slots
-          let currentHour = startHour;
-          let currentMin = startMin;
-          
-          while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-            const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
-            const slotDateTime = new Date(selectedDate);
-            slotDateTime.setHours(currentHour, currentMin, 0, 0);
-
-            // Check if slot is in the future
-            const now = new Date();
-            if (slotDateTime <= now) {
-              currentMin += 30;
-              if (currentMin >= 60) {
-                currentMin = 0;
-                currentHour += 1;
-              }
-              continue;
-            }
-
-            // Check conflicts with existing bookings
-            const hasBookingConflict = existingBookings?.some((b: any) => {
-              if (b.id === booking.id) return false; // Exclude current booking
-              const bookingTime = new Date(b.scheduled_at);
-              const bookingHour = bookingTime.getHours();
-              const bookingMin = bookingTime.getMinutes();
-              return bookingHour === currentHour && bookingMin === currentMin;
-            });
-
-            // Check conflicts with manual blocks
-            const hasBlockConflict = dayBlocks.some((block: any) => {
-              const [blockStartH, blockStartM] = block.start_time.split(':').map(Number);
-              const [blockEndH, blockEndM] = block.end_time.split(':').map(Number);
-              const slotMinutes = currentHour * 60 + currentMin;
-              const blockStartMinutes = blockStartH * 60 + blockStartM;
-              const blockEndMinutes = blockEndH * 60 + blockEndM;
-              return slotMinutes >= blockStartMinutes && slotMinutes < blockEndMinutes;
-            });
-
-            if (!hasBookingConflict && !hasBlockConflict) {
-              availableSlots.push(timeStr);
-            }
-
-            // Move to next 30-minute slot
-            currentMin += 30;
-            if (currentMin >= 60) {
-              currentMin = 0;
-              currentHour += 1;
-            }
-          }
-        });
-
-        setAvailableHours(availableSlots);
-      } catch (error) {
-        console.error('Error loading available hours:', error);
-        setAvailableHours([]);
-      } finally {
-        setIsLoadingHours(false);
-      }
-    };
-
-    loadAvailableHours();
-  }, [selectedDate, booking]);
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
+    setSelectedTime(''); // Reset time selection
     if (date) {
       setStep('hour');
     }
+  };
+  
+  // Get available hours for selected date
+  const getAvailableHours = (): string[] => {
+    if (!selectedDate) return [];
+    const dateKey = selectedDate.toISOString().split('T')[0];
+    return availableSlotsMap.get(dateKey) || [];
   };
 
   const handleTimeSelect = (time: string) => {
@@ -340,17 +267,13 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="font-medium">Wybierz godzinę</span>
               </div>
-              {isLoadingHours ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Ładowanie dostępnych godzin...
-                </p>
-              ) : availableHours.length === 0 ? (
+              {getAvailableHours().length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Brak dostępnych godzin w tym dniu
                 </p>
               ) : (
                 <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-                  {availableHours.map((time) => (
+                  {getAvailableHours().map((time) => (
                     <Button
                       key={time}
                       variant="outline"
