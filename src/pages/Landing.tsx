@@ -6,7 +6,7 @@ import { InterfaceLanguageSelector } from '@/components/InterfaceLanguageSelecto
 import { RoleSelection } from '@/components/RoleSelection';
 import fitnessHero from '@/assets/fitness-hero.jpg';
 import { useNavigate } from 'react-router-dom';
-import fitanaLogo from '@/assets/fitana-logo.png';
+import fitanaLogo from '@/assets/fitana-logo-small.webp';
 
 export const Landing: React.FC = () => {
   const { t } = useLanguage();
@@ -36,7 +36,7 @@ export const Landing: React.FC = () => {
         {/* Header */}
         <header className="flex justify-between items-center p-4 bg-card shadow-sm">
           <div className="flex items-center gap-3">
-            <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" />
+            <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" width="32" height="32" loading="eager" />
             <span className="font-bold text-xl text-primary">Fitana</span>
           </div>
           <InterfaceLanguageSelector />
@@ -66,7 +66,7 @@ export const Landing: React.FC = () => {
       {/* Header */}
       <header className="flex justify-between items-center p-4 bg-card/50 backdrop-blur-sm sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" />
+          <img src={fitanaLogo} alt="Fitana" className="h-8 w-8" width="32" height="32" loading="eager" />
           <span className="font-bold text-xl text-primary">Fitana</span>
         </div>
         <InterfaceLanguageSelector />
