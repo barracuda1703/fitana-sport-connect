@@ -8,6 +8,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // History fallback for SPA routing (prevents 404 on deep links)
+    fs: {
+      strict: true,
+    },
+  },
+  preview: {
+    port: 8080,
+    // Ensure preview server also supports SPA routing
+    strictPort: false,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

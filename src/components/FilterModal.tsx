@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SimpleLanguageSelector } from '@/components/SimpleLanguageSelector';
 
 export interface FilterOptions {
   maxDistance: number;
@@ -16,6 +17,7 @@ export interface FilterOptions {
   showFavoritesOnly: boolean;
   trainerGender: 'all' | 'male' | 'female';
   serviceTypes: string[];
+  languages: string[];
 }
 
 interface FilterModalProps {
@@ -52,7 +54,8 @@ export const FilterModal: React.FC<FilterModalProps> = ({
       availableToday: false,
       showFavoritesOnly: false,
       trainerGender: 'all',
-      serviceTypes: []
+      serviceTypes: [],
+      languages: []
     };
     setTempFilters(defaultFilters);
     onReset();
@@ -204,6 +207,18 @@ export const FilterModal: React.FC<FilterModalProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Languages */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Języki</Label>
+            <SimpleLanguageSelector
+              selectedLanguages={tempFilters.languages}
+              onLanguagesChange={(languages) => 
+                setTempFilters(prev => ({ ...prev, languages }))
+              }
+              placeholder="Wybierz języki..."
+            />
           </div>
 
           {/* Quick Filters */}

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Send } from 'lucide-react';
+import { Star, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
-import { dataStore, Review } from '@/services/DataStore';
+import { reviewsService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface ReviewsModalProps {
@@ -19,175 +19,162 @@ interface ReviewsModalProps {
 export const ReviewsModal: React.FC<ReviewsModalProps> = ({ isOpen, onClose, trainerId }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [replyText, setReplyText] = useState('');
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isOpen && trainerId) {
-      const trainerReviews = dataStore.getReviews(trainerId);
-      setReviews(trainerReviews);
-    }
+    const loadReviews = async () => {
+      if (!isOpen || !trainerId) return;
+
+      try {
+        setLoading(true);
+        const data = await reviewsService.getByTrainerId(trainerId);
+        setReviews(data || []);
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReviews();
   }, [isOpen, trainerId]);
 
   const handleSubmitReply = async (reviewId: string) => {
     if (!replyText.trim()) return;
 
-    const updatedReview = dataStore.addTrainerReply(reviewId, replyText.trim());
-    if (updatedReview) {
-      setReviews(reviews.map(r => r.id === reviewId ? updatedReview : r));
-      setReplyText('');
-      setReplyingTo(null);
+    try {
+      await reviewsService.addTrainerReply(reviewId, replyText.trim());
+      
       toast({
         title: "Odpowiedź dodana",
-        description: "Twoja odpowiedź została pomyślnie dodana do opinii.",
+        description: "Twoja odpowiedź została opublikowana"
+      });
+
+      const updatedReviews = await reviewsService.getByTrainerId(trainerId);
+      setReviews(updatedReviews || []);
+      setReplyText('');
+      setReplyingToId(null);
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się dodać odpowiedzi",
+        variant: "destructive"
       });
     }
   };
 
   const renderStars = (rating: number) => {
-    return [...Array(5)].map((_, i) => (
-      <Star
-        key={i}
-        className={`h-4 w-4 ${i < rating ? 'fill-warning text-warning' : 'text-muted-foreground'}`}
-      />
-    ));
+    return (
+      <div className="flex">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            className={`h-4 w-4 ${
+              i < rating ? 'fill-warning text-warning' : 'text-muted'
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
-
-  const getClientName = (clientId: string) => {
-    // Mock client names based on ID
-    const names: { [key: string]: string } = {
-      'u-client1': 'Marcin K.',
-      'u-client2': 'Agata S.',
-      'u-client3': 'Tomasz L.'
-    };
-    return names[clientId] || `Klient ${clientId.slice(-4)}`;
-  };
-
-  const averageRating = reviews.length > 0 
-    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
-    : '0.0';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <span>Opinie klientów</span>
-            <Badge variant="secondary" className="bg-warning/20 text-warning">
-              ⭐ {averageRating} ({reviews.length} opinii)
-            </Badge>
+          <DialogTitle className="flex items-center gap-2">
+            <Star className="h-5 w-5 text-warning" />
+            Opinie klientów
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {reviews.length > 0 ? (
-            reviews.map((review, index) => (
-              <Card key={review.id} className="bg-gradient-card">
-                <CardContent className="p-4">
-                  {/* Review Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium">{getClientName(review.clientId)}</span>
-                      <div className="flex gap-1">
-                        {renderStars(review.rating)}
-                      </div>
+        {loading ? (
+          <p className="text-center text-muted-foreground py-8">Ładowanie opinii...</p>
+        ) : reviews.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Brak opinii</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <Card key={review.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-semibold">
+                        {review.client?.name || 'Klient'}
+                      </h4>
+                      {renderStars(review.rating)}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(review.createdAt).toLocaleDateString('pl-PL')}
+                      {new Date(review.created_at).toLocaleDateString('pl-PL')}
                     </span>
                   </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {review.comment && (
+                    <p className="text-sm text-muted-foreground">{review.comment}</p>
+                  )}
 
-                  {/* Review Comment */}
-                  <p className="text-sm text-muted-foreground mb-3">{review.comment}</p>
-
-                  {/* Photos */}
-                  {review.photos.length > 0 && (
-                    <div className="flex gap-2 mb-3">
-                      {review.photos.map((photo, photoIndex) => (
-                        <img
-                          key={photoIndex}
-                          src={photo}
-                          alt="Review photo"
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
-                      ))}
+                  {review.trainer_reply && (
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <p className="text-xs font-medium mb-1">Twoja odpowiedź:</p>
+                      <p className="text-sm">{review.trainer_reply.comment}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(review.trainer_reply.repliedAt).toLocaleDateString('pl-PL')}
+                      </p>
                     </div>
                   )}
 
-                  {/* Trainer Reply */}
-                  {review.trainerReply && (
-                    <div className="bg-primary/5 rounded-lg p-3 mt-3 border-l-2 border-primary">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-xs">Odpowiedź trenera</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(review.trainerReply.repliedAt).toLocaleDateString('pl-PL')}
-                        </span>
-                      </div>
-                      <p className="text-sm">{review.trainerReply.comment}</p>
-                    </div>
-                  )}
-
-                  {/* Reply Form */}
-                  {!review.trainerReply && user && (
-                    <div className="mt-3">
-                      {replyingTo === review.id ? (
+                  {!review.trainer_reply && user?.role === 'trainer' && (
+                    <>
+                      {replyingToId === review.id ? (
                         <div className="space-y-2">
                           <Textarea
-                            placeholder="Napisz odpowiedź na tę opinię..."
+                            placeholder="Napisz odpowiedź..."
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
-                            className="min-h-[80px]"
+                            rows={3}
                           />
                           <div className="flex gap-2">
                             <Button
-                              size="sm"
-                              onClick={() => handleSubmitReply(review.id)}
-                              disabled={!replyText.trim()}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              Wyślij odpowiedź
-                            </Button>
-                            <Button
-                              size="sm"
                               variant="outline"
+                              size="sm"
                               onClick={() => {
-                                setReplyingTo(null);
+                                setReplyingToId(null);
                                 setReplyText('');
                               }}
                             >
                               Anuluj
                             </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleSubmitReply(review.id)}
+                            >
+                              Wyślij odpowiedź
+                            </Button>
                           </div>
                         </div>
                       ) : (
                         <Button
-                          size="sm"
                           variant="outline"
-                          onClick={() => setReplyingTo(review.id)}
+                          size="sm"
+                          onClick={() => setReplyingToId(review.id)}
                         >
                           Odpowiedz na opinię
                         </Button>
                       )}
-                    </div>
+                    </>
                   )}
-
-                  {index < reviews.length - 1 && <Separator className="mt-4" />}
                 </CardContent>
               </Card>
-            ))
-          ) : (
-            <Card className="bg-gradient-card">
-              <CardContent className="p-8 text-center">
-                <div className="text-muted-foreground">
-                  <Star className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Brak opinii</p>
-                  <p className="text-sm mt-1">Gdy otrzymasz pierwsze opinie od klientów, pojawią się tutaj.</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, MapPin, Calendar as CalendarIcon, Check } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Calendar as CalendarIcon, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,8 +8,22 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { dataStore, Trainer, Service } from '@/services/DataStore';
+import { bookingsService, chatsService, availabilityService } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
+
+interface Service {
+  name: string;
+  price: number;
+  duration: number;
+  type: string;
+}
+
+interface Trainer {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+  services: any;
+}
 
 interface BookingModalProps {
   trainer: Trainer;
@@ -27,8 +41,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
   const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -43,22 +58,83 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
     }
   }, [isOpen]);
 
-  // Load available dates when service is selected
+  // Stage 4: Subscribe to real-time availability changes
   useEffect(() => {
-    if (selectedService) {
-      const dates = dataStore.getAvailableDates(trainer.id);
-      setAvailableDates(dates);
-    }
-  }, [selectedService, trainer.id]);
+    if (!isOpen || !trainer.user_id) return;
 
-  // Load available hours when date is selected
+    const unsubscribe = availabilityService.subscribeToAvailabilityChanges(
+      trainer.user_id,
+      () => {
+        // Re-fetch availability when changes occur
+        if (selectedService) {
+          fetchAvailableDates();
+        }
+        if (selectedDate) {
+          fetchAvailableHours();
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isOpen, trainer.user_id, selectedService, selectedDate]);
+
+  // Fetch available dates when service is selected
   useEffect(() => {
-    if (selectedService && selectedDate) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const hours = dataStore.getAvailableHoursWithSettings(trainer.id, dateStr, selectedService.duration);
-      setAvailableHours(hours);
+    if (selectedService && trainer.user_id) {
+      fetchAvailableDates();
     }
-  }, [selectedService, selectedDate, trainer.id]);
+  }, [selectedService, trainer.user_id]);
+
+  // Fetch available hours when date is selected
+  useEffect(() => {
+    if (selectedService && selectedDate && trainer.user_id) {
+      fetchAvailableHours();
+    }
+  }, [selectedService, selectedDate, trainer.user_id]);
+
+  const fetchAvailableDates = async () => {
+    if (!trainer.user_id) return;
+    
+    setLoadingAvailability(true);
+    try {
+      const today = new Date();
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + 30);
+      
+      const dates = await availabilityService.getAvailableDates(trainer.user_id, today, futureDate);
+      setAvailableDates(dates);
+    } catch (error) {
+      console.error('Error fetching available dates:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się pobrać dostępnych terminów",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+
+  const fetchAvailableHours = async () => {
+    if (!trainer.user_id || !selectedDate) return;
+    
+    setLoadingAvailability(true);
+    try {
+      const hours = await availabilityService.getAvailableHours(trainer.user_id, selectedDate);
+      setAvailableHours(hours);
+    } catch (error) {
+      console.error('Error fetching available hours:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się pobrać dostępnych godzin",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -85,25 +161,66 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   const handleConfirmBooking = async () => {
     if (!user || !selectedService || !selectedDate || !selectedTime) return;
 
-    const [hours, minutes] = selectedTime.split(':').map(Number);
-    const scheduledAt = new Date(selectedDate);
-    scheduledAt.setHours(hours, minutes, 0, 0);
-    
-    await dataStore.createBooking({
-      clientId: user.id,
-      trainerId: trainer.id,
-      serviceId: selectedService.id,
-      scheduledAt: scheduledAt.toISOString(),
-      status: 'pending',
-      notes: notes.trim() || undefined,
-    });
+    // Validate trainer has user_id
+    if (!trainer.user_id) {
+      toast({
+        title: "Błąd",
+        description: "Brak danych trenera. Spróbuj ponownie.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    toast({
-      title: "Rezerwacja wysłana!",
-      description: "Trener otrzymał prośbę o rezerwację. Oczekuj na potwierdzenie.",
-    });
+    try {
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const scheduledAt = new Date(selectedDate);
+      scheduledAt.setHours(hours, minutes, 0, 0);
+      
+      // Validate date is not in the past
+      if (scheduledAt <= new Date()) {
+        toast({
+          title: "Błąd walidacji",
+          description: "Nie można zarezerwować treningu w przeszłości.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Use service name as identifier since services don't have explicit IDs
+      const serviceIdentifier = selectedService.name;
+      
+      const bookingData = {
+        client_id: user.id,
+        trainer_id: trainer.user_id, // Use user_id to match profiles table
+        service_id: serviceIdentifier,
+        scheduled_at: scheduledAt.toISOString(),
+        status: 'pending',
+        notes: notes.trim() || undefined,
+        reschedule_requests: []
+      };
 
-    onClose();
+      console.log('Creating booking with data:', bookingData);
+      
+      await bookingsService.create(bookingData);
+
+      // Create chat between client and trainer using user_id
+      await chatsService.createForBooking(user.id, trainer.user_id);
+
+      toast({
+        title: "Rezerwacja wysłana!",
+        description: "Trener otrzymał prośbę o rezerwację. Oczekuj na potwierdzenie.",
+      });
+
+      onClose();
+    } catch (error) {
+      console.error('Booking creation error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Nie udało się wysłać rezerwacji';
+      toast({
+        title: "Błąd",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleBack = () => {
@@ -137,8 +254,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
   };
 
   const isDateAvailable = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return availableDates.includes(dateStr) && date > new Date();
+    if (date <= new Date()) return true; // Disable past dates
+    return !availableDates.some(availableDate => 
+      availableDate.toISOString().split('T')[0] === date.toISOString().split('T')[0]
+    );
   };
 
   return (
@@ -152,10 +271,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
               </Button>
             )}
             <div className="w-12 h-12 rounded-full bg-gradient-accent flex items-center justify-center text-xl">
-              {trainer.avatar}
+              {trainer.display_name ? trainer.display_name.charAt(0) : 'T'}
             </div>
             <div>
-              <h3 className="font-semibold">{trainer.name}</h3>
+              <h3 className="font-semibold">{trainer.display_name || 'Trener'}</h3>
               <p className="text-sm text-muted-foreground">{getStepTitle()}</p>
             </div>
           </DialogTitle>
@@ -192,9 +311,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
         {step === 'service' && (
           <div className="space-y-4">
             <div className="space-y-2">
-              {trainer.services.map((service) => (
+              {(Array.isArray(trainer.services) ? trainer.services : []).map((service: Service, index: number) => (
                 <Card 
-                  key={service.id} 
+                  key={`${service.name}-${index}`}
                   className="cursor-pointer hover:shadow-card transition-all duration-200 hover:border-primary"
                   onClick={() => handleServiceSelect(service)}
                 >
@@ -226,18 +345,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
         {/* Step 2: Date Selection */}
         {step === 'date' && selectedService && (
           <div className="space-y-4">
-            <div className="text-center">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                disabled={(date) => !isDateAvailable(date)}
-                className={cn("mx-auto pointer-events-auto")}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Dostępne terminy dla: <strong>{selectedService.name}</strong>
-            </p>
+            {loadingAvailability ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                <p className="text-sm text-muted-foreground">Ładowanie dostępnych terminów...</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-center">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    disabled={(date) => isDateAvailable(date)}
+                    className={cn("mx-auto pointer-events-auto")}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground text-center">
+                  Dostępne terminy dla: <strong>{selectedService.name}</strong>
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -255,20 +383,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
               <p className="font-medium">{selectedService.name}</p>
             </div>
             
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-              {availableHours.map((time) => (
-                <Button
-                  key={time}
-                  variant={selectedTime === time ? "default" : "outline"}
-                  onClick={() => handleTimeSelect(time)}
-                  className="h-12"
-                >
-                  {time}
-                </Button>
-              ))}
-            </div>
-            
-            {availableHours.length === 0 && (
+            {loadingAvailability ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {[...Array(9)].map((_, i) => (
+                    <div key={i} className="h-12 bg-muted animate-pulse rounded-md" />
+                  ))}
+                </div>
+              </div>
+            ) : availableHours.length === 0 ? (
               <Card className="bg-muted/50">
                 <CardContent className="p-4 text-center">
                   <p className="text-sm text-muted-foreground">
@@ -276,6 +399,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
                   </p>
                 </CardContent>
               </Card>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                {availableHours.map((time) => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? "default" : "outline"}
+                    onClick={() => handleTimeSelect(time)}
+                    className="h-12"
+                  >
+                    {time}
+                  </Button>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -360,3 +496,5 @@ export const BookingModal: React.FC<BookingModalProps> = ({ trainer, isOpen, onC
     </Dialog>
   );
 };
+
+export default BookingModal;

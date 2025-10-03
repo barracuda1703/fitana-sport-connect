@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { dataStore, Booking } from '@/services/DataStore';
+import { bookingsService, type Booking } from '@/services/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 interface ClientRescheduleModalProps {
@@ -28,36 +28,15 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
   const [step, setStep] = useState<RescheduleStep>('date');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [availableHours] = useState(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00']);
 
-  // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setStep('date');
       setSelectedDate(undefined);
       setSelectedTime('');
-      setAvailableDates([]);
-      setAvailableHours([]);
     }
   }, [isOpen]);
-
-  // Load available dates when modal opens
-  useEffect(() => {
-    if (isOpen && booking) {
-      const dates = dataStore.getAvailableDates(booking.trainerId);
-      setAvailableDates(dates);
-    }
-  }, [isOpen, booking]);
-
-  // Load available hours when date is selected
-  useEffect(() => {
-    if (selectedDate && booking) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const hours = dataStore.getAvailableHoursWithSettings(booking.trainerId, dateStr, 60);
-      setAvailableHours(hours);
-    }
-  }, [selectedDate, booking]);
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -79,11 +58,21 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
       const [hours, minutes] = selectedTime.split(':').map(Number);
       newScheduledAt.setHours(hours, minutes, 0, 0);
 
-      await dataStore.addRescheduleRequest(booking.id, 'client', newScheduledAt.toISOString());
+      // Create reschedule request in booking
+      const currentRequests = Array.isArray(booking.reschedule_requests) ? booking.reschedule_requests : [];
+      await bookingsService.update(booking.id, {
+        reschedule_requests: [...currentRequests, {
+          id: crypto.randomUUID(),
+          requestedBy: 'client',
+          newTime: newScheduledAt.toISOString(),
+          status: 'pending',
+          awaitingDecisionBy: 'trainer'
+        }]
+      });
       
       toast({
         title: "Propozycja wysłana",
-        description: `Zaproponowano nowy termin: ${newScheduledAt.toLocaleDateString('pl-PL')} o ${selectedTime}. Oczekuj na odpowiedź trenera.`,
+        description: `Zaproponowano nowy termin. Oczekuj na odpowiedź trenera.`,
       });
 
       onReschedule();
@@ -98,29 +87,7 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
   };
 
   const isDateAvailable = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return availableDates.includes(dateStr) && date >= new Date();
-  };
-
-  const getTrainerName = (trainerId: string) => {
-    const trainerMap: Record<string, string> = {
-      't-1': 'Anna Kowalska',
-      't-2': 'Marek Nowak', 
-      't-3': 'Ewa Wiśniewska'
-    };
-    return trainerMap[trainerId] || 'Trener';
-  };
-
-  const getServiceName = (serviceId: string) => {
-    const serviceMap: Record<string, string> = {
-      'srv-1': 'Trening personalny',
-      'srv-2': 'Yoga',
-      'srv-3': 'Trening boksu',
-      'srv-4': 'Crossfit',
-      'srv-5': 'Pilates',
-      'srv-6': 'Stretching'
-    };
-    return serviceMap[serviceId] || 'Trening';
+    return date >= new Date();
   };
 
   if (!booking) return null;
@@ -132,15 +99,14 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
           <DialogTitle>Zaproponuj nowy termin</DialogTitle>
         </DialogHeader>
 
-        {/* Booking Info */}
         <Card className="bg-gradient-card">
           <CardContent className="p-3">
             <div className="text-sm">
-              <p className="font-medium">{getTrainerName(booking.trainerId)}</p>
-              <p className="text-muted-foreground">{getServiceName(booking.serviceId)}</p>
+              <p className="font-medium">Trener</p>
+              <p className="text-muted-foreground">Usługa: {booking.service_id}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Obecny termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
-                {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
+                Obecny termin: {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
+                {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', { 
                   hour: '2-digit', 
                   minute: '2-digit' 
                 })}
@@ -149,7 +115,6 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
           </CardContent>
         </Card>
 
-        {/* Step Content */}
         <div className="space-y-4">
           {step === 'date' && (
             <div className="space-y-3">
@@ -180,20 +145,11 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => handleTimeSelect(time)}
-                    className={cn(
-                      "text-xs",
-                      selectedTime === time && "bg-primary text-primary-foreground"
-                    )}
                   >
                     {time}
                   </Button>
                 ))}
               </div>
-              {availableHours.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Brak dostępnych godzin w tym dniu
-                </p>
-              )}
               <Button
                 variant="outline"
                 size="sm"

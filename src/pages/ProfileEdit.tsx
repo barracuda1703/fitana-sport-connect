@@ -1,392 +1,297 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Save, Clock, Trash2, DollarSign } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { LanguageSelector } from '@/components/LanguageSelector';
-import { LocationManagement } from '@/components/LocationManagement';
-import { ServiceManagementModal } from '@/components/ServiceManagementModal';
-import { PhotoUploader } from '@/components/PhotoUploader';
-import { dataStore } from '@/services/DataStore';
+import { BottomNavigation } from '@/components/BottomNavigation';
+import { SimplePhotoUploader } from '@/components/SimplePhotoUploader';
+import { InterfaceLanguageSelector } from '@/components/InterfaceLanguageSelector';
+import { trainersService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { Location, Service } from '@/types';
 
-export const ProfileEditPage: React.FC = () => {
-  const { user, switchRole } = useAuth();
-  const { currentLanguage } = useLanguage();
+export const ProfileEdit: React.FC = () => {
+  const { user, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    surname: user?.surname || '',
-    city: user?.city || '',
-    language: user?.language || currentLanguage.code,
-    email: user?.email || '',
-    specialties: (user?.role === 'trainer' ? (user as any)?.specialties || (user as any)?.disciplines || [] : []),
-  });
+  const [activeTab, setActiveTab] = useState('profile');
+  const [loading, setLoading] = useState(true);
 
-  // Available disciplines - synchronized with ClientHome categories
-  const availableDisciplines = [
-    'Fitness',
-    'Yoga', 
-    'Bieganie',
-    'Boks',
-    'Pływanie',
-    'Tenis'
-  ];
-
-  // Mock locations data - in real app, this would come from user data
-  const [locations, setLocations] = useState<Location[]>([
-    {
-      id: 'loc-1',
-      name: 'Fitness Club Centrum',
-      address: 'ul. Marszałkowska 10, 00-001 Warszawa',
-      coordinates: { lat: 52.2297, lng: 21.0122 },
-      radius: 2
-    }
-  ]);
+  // Client-specific fields
+  const [name, setName] = useState('');
+  const [surname, setSurname] = useState('');
+  const [city, setCity] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   
-  // Services state
-  const [services, setServices] = useState<Service[]>((user as any)?.services || []);
-  
-  // Photo state
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.avatarUrl || null);
-  const [gallery, setGallery] = useState<string[]>([]);
+  // Trainer-specific fields
+  const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [newSpecialty, setNewSpecialty] = useState('');
 
-  const handleSave = () => {
-    // Update user data in dataStore
-    const updatedUserData = {
-      ...user,
-      ...formData
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+
+      try {
+        if (user.role === 'client') {
+          // Load client profile data
+          setName(user.name || '');
+          setSurname(user.surname || '');
+          setCity(user.city || '');
+          setAvatarUrl(user.avatarUrl || '');
+        } else if (user.role === 'trainer') {
+          // Load trainer profile data
+          const trainer = await trainersService.getByUserId(user.id);
+          if (trainer) {
+            setDisplayName(trainer.display_name || '');
+            setBio(trainer.bio || '');
+            setSpecialties(trainer.specialties || []);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (user?.role === 'trainer') {
-      // Sync trainer profile if user is a trainer
-      dataStore.syncTrainerProfile(user.id, updatedUserData);
-    }
+    loadProfile();
+  }, [user]);
 
-    // For trainers, validate that they have at least one location and one specialty
-    if (user?.role === 'trainer') {
-      if (locations.length === 0) {
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      if (user.role === 'client') {
+        // Update client profile in profiles table
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: name.trim(),
+            surname: surname.trim(),
+            city: city.trim(),
+            avatarurl: avatarUrl
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        await refreshUser();
+
         toast({
-          title: "Błąd walidacji",
-          description: "Musisz mieć co najmniej jedną placówkę.",
-          variant: "destructive"
+          title: "Profil zaktualizowany",
+          description: "Twoje zmiany zostały zapisane"
         });
-        return;
-      }
-      
-      if (formData.specialties.length === 0) {
+      } else if (user.role === 'trainer') {
+        // Update trainer profile in trainers table
+        await trainersService.updateByUserId(user.id, {
+          display_name: displayName,
+          bio,
+          specialties
+        });
+
         toast({
-          title: "Błąd walidacji", 
-          description: "Musisz wybrać co najmniej jedną dyscyplinę sportową.",
-          variant: "destructive"
+          title: "Profil zaktualizowany",
+          description: "Twoje zmiany zostały zapisane"
         });
-        return;
       }
-      
-      if (services.length === 0) {
-        toast({
-          title: "Błąd walidacji",
-          description: "Musisz dodać co najmniej jedną usługę.",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
 
-    toast({
-      title: "Profil zaktualizowany",
-      description: "Twoje dane zostały pomyślnie zapisane.",
-    });
-    navigate(-1);
-  };
-
-  const handleInputChange = (field: string, value: string | string[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSpecialtyToggle = (specialty: string) => {
-    const currentSpecialties = formData.specialties as string[];
-    const isSelected = currentSpecialties.includes(specialty);
-    
-    if (isSelected) {
-      handleInputChange('specialties', currentSpecialties.filter(s => s !== specialty));
-    } else {
-      handleInputChange('specialties', [...currentSpecialties, specialty]);
+      navigate('/profile');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zapisać profilu",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleAddService = (newService: Omit<Service, 'id'>) => {
-    const serviceWithId: Service = {
-      ...newService,
-      id: Date.now().toString()
-    };
-    setServices(prev => [...prev, serviceWithId]);
+  const handleAddSpecialty = () => {
+    if (newSpecialty.trim() && !specialties.includes(newSpecialty.trim())) {
+      setSpecialties([...specialties, newSpecialty.trim()]);
+      setNewSpecialty('');
+    }
   };
 
-  const handleRemoveService = (serviceId: string) => {
-    setServices(prev => prev.filter(service => service.id !== serviceId));
-    toast({
-      title: "Usługa usunięta",
-      description: "Usługa została usunięta z Twojej oferty.",
-    });
-  };
-
-  const getServiceTypeLabel = (type: string) => {
-    const labels = {
-      online: "Online",
-      gym: "Siłownia",
-      court: "Boisko/Kort",
-      home_visit: "Wizyta domowa"
-    };
-    return labels[type as keyof typeof labels] || type;
+  const handleRemoveSpecialty = (specialty: string) => {
+    setSpecialties(specialties.filter(s => s !== specialty));
   };
 
   if (!user) return null;
 
+  const isClient = user.role === 'client';
+  const isTrainer = user.role === 'trainer';
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
+    <div className="min-h-screen bg-background pb-20">
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/profile')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold">Edytuj profil</h1>
+            <h1 className="text-2xl font-bold">Edytuj profil</h1>
           </div>
-          <LanguageSelector />
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            Zapisz
-          </Button>
+          <Button onClick={handleSave}>Zapisz</Button>
         </div>
       </header>
 
-      {/* Form */}
-      <section className="p-4 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Podstawowe informacje</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Imię</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Wprowadź imię"
-              />
-            </div>
-
-            {user.role === 'trainer' && (
-              <div className="space-y-2">
-                <Label htmlFor="surname">Nazwisko</Label>
-                <Input
-                  id="surname"
-                  value={formData.surname}
-                  onChange={(e) => handleInputChange('surname', e.target.value)}
-                  placeholder="Wprowadź nazwisko"
-                />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="wprowadz@email.com"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="city">Miasto</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="Wprowadź miasto"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="language">Język</Label>
-              <div className="flex gap-2 items-center">
-                <Select value={formData.language} onValueChange={(value) => handleInputChange('language', value)}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Wybierz język" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pl">Polski</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="uk">Українська</SelectItem>
-                    <SelectItem value="ru">Русский</SelectItem>
-                  </SelectContent>
-                </Select>
-                <span className="text-sm text-muted-foreground">lub</span>
-                <LanguageSelector />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {user.role === 'trainer' && (
+      {loading ? (
+        <div className="p-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Dyscypliny sportowe</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <Label className="text-base">Wybierz dyscypliny, w których świadczysz usługi</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {availableDisciplines.map((discipline) => (
-                    <div key={discipline} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`discipline-${discipline}`}
-                        checked={(formData.specialties as string[]).includes(discipline)}
-                        onCheckedChange={() => handleSpecialtyToggle(discipline)}
-                      />
-                      <Label 
-                        htmlFor={`discipline-${discipline}`}
-                        className="text-sm font-normal cursor-pointer"
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">Ładowanie...</p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="p-4 space-y-4">
+          {isClient && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Zdjęcie profilowe</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SimplePhotoUploader
+                    currentPhoto={avatarUrl}
+                    onPhotoUploaded={setAvatarUrl}
+                    userId={user.id}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Podstawowe informacje</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Imię</Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Twoje imię"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="surname">Nazwisko</Label>
+                    <Input
+                      id="surname"
+                      value={surname}
+                      onChange={(e) => setSurname(e.target.value)}
+                      placeholder="Twoje nazwisko"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Miasto</Label>
+                    <Input
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Twoje miasto"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Język aplikacji</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <InterfaceLanguageSelector />
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {isTrainer && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Podstawowe informacje</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName">Nazwa wyświetlana</Label>
+                    <Input
+                      id="displayName"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Jak chcesz być wyświetlany?"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea
+                      id="bio"
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Opowiedz o sobie..."
+                      rows={4}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Specjalizacje</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    {specialties.map((specialty) => (
+                      <div
+                        key={specialty}
+                        className="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full"
                       >
-                        {discipline}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-                {(formData.specialties as string[]).length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Wybierz co najmniej jedną dyscyplinę, aby klienci mogli Cię znaleźć
-                  </p>
-                )}
-                {(formData.specialties as string[]).length > 0 && (
-                  <p className="text-sm text-success">
-                    ✓ Wybrano {(formData.specialties as string[]).length} {(formData.specialties as string[]).length === 1 ? 'dyscyplinę' : 'dyscyplin'}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {user.role === 'trainer' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Informacje dla trenerów</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Status konta</Label>
-                <div className="p-3 bg-success/10 rounded-lg border border-success/20">
-                  <p className="text-sm text-success">✓ Konto zweryfikowane</p>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Subskrypcja</Label>
-                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <p className="text-sm text-primary">📋 Plan Pro - aktywny</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Następne rozliczenie: 15 lutego 2024
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => navigate('/trainer-settings')}
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Ustawienia dostępności
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {user.role === 'trainer' && (
-          <PhotoUploader
-            profilePhoto={profilePhoto}
-            gallery={gallery}
-            onProfilePhotoChange={setProfilePhoto}
-            onGalleryChange={setGallery}
-          />
-        )}
-
-        {user.role === 'trainer' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Moje usługi ({services.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {services.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  Nie masz jeszcze żadnych usług. Dodaj swoją pierwszą usługę, aby klienci mogli wybrać spośród Twoich treningów.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {services.map((service) => (
-                    <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{service.name}</h4>
-                        {service.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{service.description}</p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" />
-                            {service.price} {service.currency}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {service.duration} min
-                          </span>
-                          <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs">
-                            {getServiceTypeLabel(service.type)}
-                          </span>
-                        </div>
+                        <span className="text-sm">{specialty}</span>
+                        <button
+                          onClick={() => handleRemoveSpecialty(specialty)}
+                          className="hover:bg-primary/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveService(service.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="pt-4">
-                <ServiceManagementModal onAddService={handleAddService} />
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                    ))}
+                  </div>
 
-        {user.role === 'trainer' && (
-          <LocationManagement
-            locations={locations}
-            onLocationsChange={setLocations}
-          />
-        )}
-      </section>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Dodaj specjalizację..."
+                      value={newSpecialty}
+                      onChange={(e) => setNewSpecialty(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddSpecialty()}
+                    />
+                    <Button onClick={handleAddSpecialty} size="icon">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      <BottomNavigation 
+        userRole={user.role}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, User, CheckCircle, X, Plus, ArrowLeft, List, Calendar, MapPin } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, CheckCircle, X, Plus, ArrowLeft, List, Calendar, MapPin, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { RescheduleModal } from '@/components/RescheduleModal';
 import { RescheduleNotificationModal } from '@/components/RescheduleNotificationModal';
 import { TrainerBookingModal } from '@/components/TrainerBookingModal';
-import { dataStore, Booking, ManualBlock, RescheduleRequest } from '@/services/DataStore';
+import { TimeOffModal } from '@/components/TimeOffModal';
+import { CalendarViewSwitcher, CalendarGrid, useCalendarEvents } from '@/components/calendar';
+import { bookingsService, manualBlocksService, chatsService } from '@/services/supabase';
 
 type ViewType = 'list' | 'calendar';
 
@@ -27,30 +29,19 @@ export const TrainerCalendarListPage: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('calendar');
   const [viewType, setViewType] = useState<ViewType>('list');
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [manualBlocks, setManualBlocks] = useState<ManualBlock[]>([]);
-  const [showRescheduleDialog, setShowRescheduleDialog] = useState<Booking | null>(null);
-  const [showManualBlockDialog, setShowManualBlockDialog] = useState(false);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [manualBlocks, setManualBlocks] = useState<any[]>([]);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState<any>(null);
   const [showTrainerBookingDialog, setShowTrainerBookingDialog] = useState(false);
-  const [showDayDetails, setShowDayDetails] = useState<Date | null>(null);
+  const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [newDate, setNewDate] = useState('');
-  const [newTime, setNewTime] = useState('');
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
+  const [rescheduleBooking, setRescheduleBooking] = useState<any>(null);
   const [rescheduleNotificationModalOpen, setRescheduleNotificationModalOpen] = useState(false);
-  const [selectedRescheduleRequest, setSelectedRescheduleRequest] = useState<{
-    booking: Booking;
-    request: RescheduleRequest;
-  } | null>(null);
-  const [blockForm, setBlockForm] = useState({
-    title: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-  });
+  const [selectedRescheduleRequest, setSelectedRescheduleRequest] = useState<any>(null);
 
-  // Check if we should show pending tab by default
+  const { events } = useCalendarEvents({ userId: user?.id || '', role: 'trainer' });
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('tab') === 'pending') {
@@ -60,774 +51,298 @@ export const TrainerCalendarListPage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      setBookings(dataStore.getBookings(user.id));
-      setManualBlocks(dataStore.getManualBlocks(user.id));
+      loadData();
     }
   }, [user]);
 
-  const refreshData = () => {
-    if (user) {
-      setBookings(dataStore.getBookings(user.id));
-      setManualBlocks(dataStore.getManualBlocks(user.id));
+  const loadData = async () => {
+    if (!user) return;
+    try {
+      const bookingsData = await bookingsService.getByUserId(user.id);
+      setBookings(bookingsData);
+
+      const blocksData = await manualBlocksService.getByTrainerId(user.id);
+      setManualBlocks(blocksData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się załadować danych",
+        variant: "destructive"
+      });
     }
   };
 
-  const pendingBookings = bookings.filter(booking => booking.status === 'pending');
-  const upcomingBookings = bookings.filter(booking => {
-    const bookingDate = new Date(booking.scheduledAt);
-    return bookingDate > new Date() && booking.status === 'confirmed';
-  });
-
-  // Get pending reschedule requests from clients
-  const pendingClientRescheduleRequests = bookings.flatMap(booking => 
-    (booking.rescheduleRequests || [])
-      .filter(request => request.status === 'pending' && request.requestedBy === 'client')
-      .map(request => ({ booking, request }))
-  );
-
-  // Get trainer's own reschedule requests with responses
-  const trainerRescheduleResponses = bookings.flatMap(booking => 
-    (booking.rescheduleRequests || [])
-      .filter(request => request.requestedBy === 'trainer' && request.status !== 'pending')
-      .map(request => ({ booking, request }))
-  );
-
-  // Calendar helper functions
-  const getBookingsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return bookings.filter(booking => {
-      const bookingDate = new Date(booking.scheduledAt).toISOString().split('T')[0];
-      return bookingDate === dateStr;
-    });
-  };
-
-  const getBlocksForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return manualBlocks.filter(block => block.date === dateStr);
-  };
-
-  const isDayBusy = (date: Date) => {
-    return getBookingsForDate(date).length > 0 || getBlocksForDate(date).length > 0;
-  };
-
-  const generateAvailableSlots = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const dayOfWeek = date.getDay();
-    
-    // Default working hours (can be enhanced with trainer settings)
-    const workingHours = {
-      1: { start: "09:00", end: "18:00" }, // Monday
-      2: { start: "09:00", end: "18:00" }, // Tuesday
-      3: { start: "09:00", end: "18:00" }, // Wednesday
-      4: { start: "09:00", end: "18:00" }, // Thursday
-      5: { start: "09:00", end: "18:00" }, // Friday
-      6: { start: "10:00", end: "16:00" }, // Saturday
-      0: { start: "10:00", end: "16:00" }, // Sunday
-    };
-
-    const dayHours = workingHours[dayOfWeek as keyof typeof workingHours];
-    if (!dayHours) return [];
-
-    // Generate 60-minute slots by default
-    const slots = dataStore.getAvailableHoursWithSettings(user!.id, dateStr, 60);
-    return slots;
-  };
-
   const handleAcceptBooking = async (bookingId: string) => {
-    await dataStore.updateBookingStatus(bookingId, 'confirmed');
-    refreshData();
-    toast({
-      title: "Rezerwacja zaakceptowana",
-      description: "Klient został powiadomiony o potwierdzeniu.",
-    });
+    try {
+      await bookingsService.updateStatus(bookingId, 'confirmed');
+      await loadData();
+      toast({
+        title: "Wizyta zaakceptowana",
+        description: "Klient został powiadomiony",
+      });
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaakceptować wizyty",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeclineBooking = async (bookingId: string) => {
-    await dataStore.updateBookingStatus(bookingId, 'declined');
-    refreshData();
-    toast({
-      title: "Rezerwacja odrzucona",
-      description: "Klient został powiadomiony o odrzuceniu.",
-    });
+    try {
+      await bookingsService.updateStatus(bookingId, 'declined');
+      await loadData();
+      toast({
+        title: "Wizyta odrzucona",
+        description: "Klient został powiadomiony",
+      });
+    } catch (error) {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się odrzucić wizyty",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleReschedule = (booking: Booking) => {
+  const handleProposeNewTime = (booking: any) => {
     setRescheduleBooking(booking);
     setIsRescheduleModalOpen(true);
   };
 
-  const handleRescheduleComplete = () => {
-    refreshData();
+  const handleRescheduleComplete = async () => {
+    await loadData();
     setIsRescheduleModalOpen(false);
     setRescheduleBooking(null);
   };
 
-  const handleAcceptClientReschedule = async (bookingId: string, requestId: string) => {
+  const handleOpenChat = async (booking: any) => {
     try {
-      await dataStore.acceptRescheduleRequest(bookingId, requestId);
-      toast({
-        title: "Termin zaakceptowany",
-        description: "Nowy termin został potwierdzony",
-      });
-      refreshData();
-      setRescheduleNotificationModalOpen(false);
-      setSelectedRescheduleRequest(null);
+      const chat = await chatsService.getOrCreate(booking.client_id, booking.trainer_id);
+      navigate(`/chat/${chat.id}`);
     } catch (error) {
       toast({
         title: "Błąd",
-        description: "Nie udało się zaakceptować nowego terminu",
-        variant: "destructive",
+        description: "Nie udało się otworzyć czatu",
+        variant: "destructive"
       });
     }
   };
 
-  const handleDeclineClientReschedule = async (bookingId: string, requestId: string) => {
-    try {
-      await dataStore.declineRescheduleRequest(bookingId, requestId);
-      toast({
-        title: "Termin odrzucony",
-        description: "Propozycja nowego terminu została odrzucona",
-      });
-      refreshData();
-      setRescheduleNotificationModalOpen(false);
-      setSelectedRescheduleRequest(null);
-    } catch (error) {
-      toast({
-        title: "Błąd",
-        description: "Nie udało się odrzucić propozycji",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const confirmReschedule = async () => {
-    if (!showRescheduleDialog || !newDate || !newTime) return;
-
-    toast({
-      title: "Propozycja nowego terminu wysłana",
-      description: "Klient otrzymał propozycję zmiany terminu.",
-    });
-    setShowRescheduleDialog(null);
-  };
-
-  const handleAddTraining = () => {
-    setShowTrainerBookingDialog(true);
-  };
-
-  const handleTrainingAdded = () => {
-    refreshData();
-    setShowTrainerBookingDialog(false);
-  };
-
-  const confirmAddManualBlock = () => {
-    if (!blockForm.title || !blockForm.date || !blockForm.startTime || !blockForm.endTime) return;
-
-    dataStore.addManualBlock({
-      trainerId: user!.id,
-      title: blockForm.title,
-      date: blockForm.date,
-      startTime: blockForm.startTime,
-      endTime: blockForm.endTime,
-    });
-
-    refreshData();
-    setShowManualBlockDialog(false);
-    toast({
-      title: "Blokada dodana",
-      description: "Czas został zablokowany w kalendarzu.",
-    });
-  };
-
-  const handleRemoveBlock = (blockId: string) => {
-    dataStore.removeManualBlock(blockId);
-    refreshData();
-    toast({
-      title: "Blokada usunięta",
-      description: "Czas został odblokowany w kalendarzu.",
-    });
-  };
-
-  const getClientName = (clientId: string) => {
-    return clientId === 'u-client1' ? 'Kasia' : 'Klient';
-  };
-
-  const getServiceName = (serviceId: string) => {
-    const serviceMap: Record<string, string> = {
-      'srv-1': 'Trening personalny',
-      'srv-2': 'Yoga',
-      'srv-3': 'Trening boksu',
-      'srv-4': 'Crossfit',
-      'srv-5': 'Pilates',
-      'srv-6': 'Stretching'
-    };
-    return serviceMap[serviceId] || 'Trening';
-  };
-
-  const formatDateTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return {
-      date: date.toLocaleDateString('pl-PL', { 
-        weekday: 'long', 
-        month: 'long', 
-        day: 'numeric' 
-      }),
-      time: date.toLocaleTimeString('pl-PL', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
-    };
-  };
-
-  const BookingCard: React.FC<{ booking: Booking; showActions?: boolean }> = ({ booking, showActions = false }) => {
-    const { date, time } = formatDateTime(booking.scheduledAt);
-    
-    // Check if trainer has proposed a reschedule
-    const trainerRescheduleRequest = (booking.rescheduleRequests || []).find(
-      request => request.requestedBy === 'trainer' && request.status === 'pending'
-    );
-    
-    const getBookingStatusInfo = () => {
-      if (booking.status !== 'pending') return null;
-      
-      if (trainerRescheduleRequest) {
-        return {
-          label: 'Zaproponowano nowy termin',
-          variant: 'default' as const,
-          className: 'bg-blue-500/20 text-blue-600 border-blue-500/30'
-        };
-      }
-      
-      return {
-        label: 'Oczekuje',
-        variant: 'secondary' as const,
-        className: 'bg-warning/20 text-warning'
-      };
-    };
-
-    const statusInfo = getBookingStatusInfo();
-    
-    return (
-      <Card className="booking-card">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-              <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <User className="h-3 w-3" />
-                {getClientName(booking.clientId)}
-              </p>
-            </div>
-            {statusInfo && (
-              <Badge variant={statusInfo.variant} className={statusInfo.className}>
-                <div className="flex items-center gap-1">
-                  {trainerRescheduleRequest && <CalendarIcon className="h-3 w-3" />}
-                  {statusInfo.label}
-                </div>
-              </Badge>
-            )}
-          </div>
-          
-          <div className="space-y-2 text-sm text-muted-foreground mb-3">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4" />
-              <span>{date}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span>{time}</span>
-            </div>
-            
-            {/* Show proposed new time if trainer has made a reschedule request */}
-            {trainerRescheduleRequest && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mt-2">
-                <p className="text-xs font-medium text-blue-700 mb-1">Zaproponowany nowy termin:</p>
-                <div className="flex items-center gap-2 text-blue-600">
-                  <CalendarIcon className="h-3 w-3" />
-                  <span className="text-xs font-medium">
-                    {formatDateTime(trainerRescheduleRequest.newTime.toString()).date} o {formatDateTime(trainerRescheduleRequest.newTime.toString()).time}
-                  </span>
-                </div>
-              </div>
-            )}
-            
-            {booking.notes && (
-              <div className="flex items-start gap-2">
-                <span className="text-xs">💬</span>
-                <span className="text-xs">{booking.notes}</span>
-              </div>
-            )}
-          </div>
-
-          {showActions && booking.status === 'pending' && (
-            <div className="card-actions">
-              <div className="button-grid">
-                <Button 
-                  size="sm" 
-                  className="bg-success hover:bg-success/80"
-                  onClick={() => handleAcceptBooking(booking.id)}
-                >
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Akceptuj
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleDeclineBooking(booking.id)}
-                >
-                  <X className="h-3 w-3 mr-1" />
-                  Odrzuć
-                </Button>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="w-full"
-                onClick={() => handleReschedule(booking)}
-              >
-                <Clock className="h-3 w-3 mr-1" />
-                Zaproponuj nowy termin
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const ManualBlockCard: React.FC<{ block: ManualBlock }> = ({ block }) => {
-    return (
-      <Card className="bg-gradient-card border-l-4 border-l-warning">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold">{block.title}</h3>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                Wydarzenie prywatne
-              </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                <Clock className="h-4 w-4" />
-                <span>{block.startTime} - {block.endTime}</span>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleRemoveBlock(block.id)}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const DayDetailsPanel: React.FC<{ date: Date }> = ({ date }) => {
-    const dayBookings = getBookingsForDate(date);
-    const dayBlocks = getBlocksForDate(date);
-    const availableSlots = generateAvailableSlots(date);
-    const pendingForDay = dayBookings.filter(b => b.status === 'pending');
-    const confirmedForDay = dayBookings.filter(b => b.status === 'confirmed');
-
-    return (
-      <Dialog open={!!showDayDetails} onOpenChange={() => setShowDayDetails(null)}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {date.toLocaleDateString('pl-PL', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long' 
-              })}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Pending bookings */}
-            {pendingForDay.length > 0 && (
-              <div>
-                <h4 className="font-medium text-warning mb-2">Do zatwierdzenia ({pendingForDay.length})</h4>
-                <div className="space-y-2">
-                  {pendingForDay.map(booking => (
-                    <BookingCard key={booking.id} booking={booking} showActions={true} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Confirmed bookings */}
-            {confirmedForDay.length > 0 && (
-              <div>
-                <h4 className="font-medium text-success mb-2">Potwierdzone ({confirmedForDay.length})</h4>
-                <div className="space-y-2">
-                  {confirmedForDay.map(booking => (
-                    <BookingCard key={booking.id} booking={booking} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Manual blocks */}
-            {dayBlocks.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Prywatne blokady ({dayBlocks.length})</h4>
-                <div className="space-y-2">
-                  {dayBlocks.map(block => (
-                    <ManualBlockCard key={block.id} block={block} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Available slots */}
-            {availableSlots.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Dostępne terminy ({availableSlots.length})</h4>
-                <div className="flex flex-wrap gap-2">
-                  {availableSlots.map(slot => (
-                    <Badge key={slot} variant="outline" className="bg-success/10">
-                      {slot}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  if (!user) return null;
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
       <header className="bg-card shadow-sm p-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">Kalendarz</h1>
-            <p className="text-muted-foreground">Zarządzaj rezerwacjami</p>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">Kalendarz</h1>
+              <p className="text-sm text-muted-foreground">Zarządzaj terminami</p>
+            </div>
           </div>
           <div className="flex gap-2">
-            {/* View Toggle */}
-            <div className="flex rounded-lg border bg-muted p-1">
-              <Button
-                variant={viewType === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewType('list')}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewType === 'calendar' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewType('calendar')}
-              >
-                <Calendar className="h-4 w-4" />
-              </Button>
-            </div>
-            {/* Add Training Button */}
-            <Button variant="outline" size="sm" onClick={handleAddTraining}>
-              <Plus className="h-4 w-4 mr-2" />
-              Dodaj trening do kalendarza
+            <Button 
+              variant={viewType === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewType('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant={viewType === 'calendar' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewType('calendar')}
+            >
+              <Calendar className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Content */}
-      {viewType === 'list' ? (
-        <div className="space-y-4">
-          {/* Client Reschedule Requests Section */}
-          {pendingClientRescheduleRequests.length > 0 && (
-            <section className="p-4 space-y-4">
-              <h2 className="text-xl font-semibold text-warning">Propozycje nowych terminów od klientów ({pendingClientRescheduleRequests.length})</h2>
-              {pendingClientRescheduleRequests.map(({ booking, request }) => (
-                <Card key={request.id} className="bg-warning/10 border-warning/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Stary termin: {new Date(booking.scheduledAt).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(booking.scheduledAt).toLocaleTimeString('pl-PL', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </p>
-                        <p className="text-xs font-medium text-warning mt-1">
-                          Nowy termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="bg-warning/20 text-warning">Nowa propozycja</Badge>
-                    </div>
-                    
-                    <div className="mt-3 pt-3 border-t flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleDeclineClientReschedule(booking.id, request.id)}
-                      >
-                        Odrzuć
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleAcceptClientReschedule(booking.id, request.id)}
-                      >
-                        Zaakceptuj
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </section>
-          )}
+      <div className="p-4 space-y-4">
+        <div className="flex gap-2">
+          <Button 
+            variant="default"
+            className="flex-1"
+            onClick={() => setShowTrainerBookingDialog(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Dodaj trening
+          </Button>
+          <Button 
+            variant="outline"
+            className="flex-1"
+            onClick={() => setShowTimeOffDialog(true)}
+          >
+            <Clock className="h-4 w-4 mr-2" />
+            Czas wolny
+          </Button>
+        </div>
 
-          {/* Trainer Reschedule Responses */}
-          {trainerRescheduleResponses.length > 0 && (
-            <section className="p-4 space-y-4">
-              <h2 className="text-xl font-semibold">Odpowiedzi na Twoje propozycje ({trainerRescheduleResponses.length})</h2>
-              {trainerRescheduleResponses.map(({ booking, request }) => (
-                <Card key={request.id} className={request.status === 'accepted' ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{getServiceName(booking.serviceId)}</h3>
-                        <p className="text-sm text-muted-foreground">{getClientName(booking.clientId)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Zaproponowany termin: {new Date(request.newTime).toLocaleDateString('pl-PL')} o{' '}
-                          {new Date(request.newTime).toLocaleTimeString('pl-PL', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </p>
-                      </div>
-                      <Badge 
-                        variant="secondary" 
-                        className={request.status === 'accepted' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}
-                      >
-                        {request.status === 'accepted' ? 'Zaakceptowane' : 'Odrzucone'}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </section>
-          )}
-
-          {/* Pending Bookings */}
-          <section className="p-4 space-y-4">
-            <h2 className="text-xl font-semibold text-warning">
-              Do zatwierdzenia ({pendingBookings.length})
-            </h2>
-            {pendingBookings.length > 0 ? (
+        {viewType === 'list' ? (
+          <div className="space-y-6">
+            {pendingBookings.length > 0 && (
               <div className="space-y-3">
-                {pendingBookings.map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} showActions={true} />
+                <h2 className="text-lg font-semibold">Oczekujące ({pendingBookings.length})</h2>
+                {pendingBookings.map(booking => (
+                  <Card key={booking.id} className="bg-gradient-card">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium">
+                              {booking.client?.name} {booking.client?.surname}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
+                              {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{booking.service_id}</p>
+                          </div>
+                          <Badge variant="secondary">Oczekuje</Badge>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="flex-1"
+                              onClick={() => handleAcceptBooking(booking.id)}
+                            >
+                              Akceptuj
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => handleDeclineBooking(booking.id)}
+                            >
+                              Odrzuć
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="flex-1"
+                              onClick={() => handleProposeNewTime(booking)}
+                            >
+                              Nowy termin
+                            </Button>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => handleOpenChat(booking)}
+                          >
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Czat z klientem
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
-            ) : (
+            )}
+
+            {confirmedBookings.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-lg font-semibold">Potwierdzone ({confirmedBookings.length})</h2>
+                {confirmedBookings.map(booking => (
+                  <Card key={booking.id} className="bg-gradient-card">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium">
+                              {booking.client?.name} {booking.client?.surname}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(booking.scheduled_at).toLocaleDateString('pl-PL')} o{' '}
+                              {new Date(booking.scheduled_at).toLocaleTimeString('pl-PL', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{booking.service_id}</p>
+                          </div>
+                          <Badge className="bg-success/20 text-success">Potwierdzone</Badge>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleOpenChat(booking)}
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Czat z klientem
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {bookings.length === 0 && (
               <Card className="bg-gradient-card">
-                <CardContent className="p-4 text-center text-muted-foreground">
-                  Brak oczekujących rezerwacji
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Brak zaplanowanych treningów</p>
                 </CardContent>
               </Card>
             )}
-          </section>
-
-          <Separator className="mx-4" />
-
-          {/* Upcoming Bookings */}
-          <section className="p-4 space-y-4">
-            <h2 className="text-xl font-semibold text-success">
-              Nadchodzące ({upcomingBookings.length})
-            </h2>
-            {upcomingBookings.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingBookings.map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} />
-                ))}
-              </div>
-            ) : (
-              <Card className="bg-gradient-card">
-                <CardContent className="p-4 text-center text-muted-foreground">
-                  Brak nadchodzących treningów
-                </CardContent>
-              </Card>
-            )}
-          </section>
-        </div>
-      ) : (
-        /* Calendar View */
-        <div className="p-4">
-          <Card>
-            <CardContent className="p-4">
-              <CalendarComponent
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                className="w-full"
-                modifiers={{
-                  busy: (date) => isDayBusy(date),
-                }}
-                modifiersStyles={{
-                  busy: {
-                    backgroundColor: 'hsl(var(--warning) / 0.2)',
-                    color: 'hsl(var(--warning))',
-                    fontWeight: 'bold',
-                  },
-                }}
-                onDayClick={(date) => {
-                  setSelectedDate(date);
-                  setShowDayDetails(date);
-                }}
-              />
-              <div className="mt-4 flex gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-warning/20 border border-warning/50"></div>
-                  <span>Zajęte dni</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-muted border"></div>
-                  <span>Wolne dni</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Day Details Modal */}
-      {showDayDetails && <DayDetailsPanel date={showDayDetails} />}
-
-      {/* Reschedule Dialog */}
-      <Dialog open={!!showRescheduleDialog} onOpenChange={() => setShowRescheduleDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Zaproponuj nowy termin</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Nowa data:</Label>
-              <Input
-                type="date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Nowa godzina:</Label>
-              <Select value={newTime} onValueChange={setNewTime}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(time => (
-                    <SelectItem key={time} value={time}>{time}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setShowRescheduleDialog(null)}>
-                Anuluj
-              </Button>
-              <Button className="flex-1" onClick={confirmReschedule}>
-                Wyślij propozycję
-              </Button>
-            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : (
+          <CalendarGrid
+            events={events}
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            onEventClick={(event) => {
+              if (event.type === 'booking') {
+                const booking = bookings.find(b => b.id === event.id);
+                if (booking) {
+                  setShowRescheduleDialog(booking);
+                }
+              }
+            }}
+          />
+        )}
+      </div>
 
-      {/* Manual Block Dialog */}
-      <Dialog open={showManualBlockDialog} onOpenChange={setShowManualBlockDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Dodaj blokadę czasu</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Tytuł:</Label>
-              <Input
-                value={blockForm.title}
-                onChange={(e) => setBlockForm({ ...blockForm, title: e.target.value })}
-                placeholder="np. Przerwa obiadowa"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Data:</Label>
-              <Input
-                type="date"
-                value={blockForm.date}
-                onChange={(e) => setBlockForm({ ...blockForm, date: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium">Od:</Label>
-                <Select 
-                  value={blockForm.startTime} 
-                  onValueChange={(value) => setBlockForm({ ...blockForm, startTime: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }, (_, i) => {
-                      const hour = i.toString().padStart(2, '0');
-                      return [`${hour}:00`, `${hour}:30`];
-                    }).flat().map(time => (
-                      <SelectItem key={time} value={time}>{time}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Do:</Label>
-                <Select 
-                  value={blockForm.endTime} 
-                  onValueChange={(value) => setBlockForm({ ...blockForm, endTime: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }, (_, i) => {
-                      const hour = i.toString().padStart(2, '0');
-                      return [`${hour}:00`, `${hour}:30`];
-                    }).flat().map(time => (
-                      <SelectItem key={time} value={time}>{time}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setShowManualBlockDialog(false)}>
-                Anuluj
-              </Button>
-              <Button className="flex-1" onClick={confirmAddManualBlock}>
-                Dodaj blokadę
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <BottomNavigation
+        userRole="trainer"
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-      {/* Modals */}
+      <TrainerBookingModal
+        isOpen={showTrainerBookingDialog}
+        onClose={() => setShowTrainerBookingDialog(false)}
+        onBookingCreated={loadData}
+      />
+
+      <TimeOffModal
+        isOpen={showTimeOffDialog}
+        onClose={() => setShowTimeOffDialog(false)}
+        onTimeOffAdded={loadData}
+        trainerId={user?.id || ''}
+      />
+
       {rescheduleBooking && (
         <RescheduleModal
           isOpen={isRescheduleModalOpen}
@@ -837,31 +352,24 @@ export const TrainerCalendarListPage: React.FC = () => {
         />
       )}
 
-      <RescheduleNotificationModal
-        isOpen={rescheduleNotificationModalOpen}
-        onClose={() => {
-          setRescheduleNotificationModalOpen(false);
-          setSelectedRescheduleRequest(null);
-        }}
-        booking={selectedRescheduleRequest?.booking || null}
-        rescheduleRequest={selectedRescheduleRequest?.request || null}
-        onAccept={(bookingId, requestId) => handleAcceptClientReschedule(bookingId, requestId)}
-        onDecline={(bookingId, requestId) => handleDeclineClientReschedule(bookingId, requestId)}
-      />
-
-      {/* Trainer Booking Modal */}
-      <TrainerBookingModal
-        isOpen={showTrainerBookingDialog}
-        onClose={() => setShowTrainerBookingDialog(false)}
-        onBookingCreated={handleTrainingAdded}
-      />
-
-      {/* Bottom Navigation */}
-      <BottomNavigation 
-        userRole={user.role}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      {selectedRescheduleRequest && (
+        <RescheduleNotificationModal
+          isOpen={rescheduleNotificationModalOpen}
+          onClose={() => setRescheduleNotificationModalOpen(false)}
+          booking={selectedRescheduleRequest.booking}
+          request={selectedRescheduleRequest.request}
+          onAccept={async () => {
+            await loadData();
+            setRescheduleNotificationModalOpen(false);
+            setSelectedRescheduleRequest(null);
+          }}
+          onDecline={async () => {
+            await loadData();
+            setRescheduleNotificationModalOpen(false);
+            setSelectedRescheduleRequest(null);
+          }}
+        />
+      )}
     </div>
   );
 };

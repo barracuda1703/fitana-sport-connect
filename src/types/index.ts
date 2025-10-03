@@ -1,38 +1,6 @@
 // Fitana App Types
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'client' | 'trainer';
-  avatar?: string;
-  language: string;
-  createdAt: Date;
-}
-
-export interface Client extends User {
-  role: 'client';
-  city: string;
-  sports: string[];
-  achievements: Achievement[];
-  favoriteTrainers: string[];
-}
-
-export interface Trainer extends User {
-  role: 'trainer';
-  surname: string;
-  gender: 'male' | 'female' | 'other';
-  bio: string;
-  disciplines: string[];
-  locations: Location[];
-  services: Service[];
-  certificates: Certificate[];
-  introVideo?: string;
-  rating: number;
-  reviewCount: number;
-  isVerified: boolean;
-  subscriptionStatus: 'active' | 'inactive' | 'pending';
-}
+// Note: Booking, User, Trainer, Review, and Message types are now in @/services/supabase
+// This file contains only UI-specific types that are not in the database
 
 export interface Location {
   id: string;
@@ -71,54 +39,8 @@ export interface Achievement {
   unlockedAt: Date;
 }
 
-export interface Booking {
-  id: string;
-  clientId: string;
-  trainerId: string;
-  serviceId: string;
-  locationId: string;
-  scheduledAt: Date;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'rescheduled';
-  notes?: string;
-  rescheduleRequests: RescheduleRequest[];
-}
-
-export interface RescheduleRequest {
-  id: string;
-  requestedAt: Date;
-  requestedBy: 'client' | 'trainer';
-  newTime: Date;
-  status: 'pending' | 'accepted' | 'declined';
-}
-
-export interface Review {
-  id: string;
-  bookingId: string;
-  clientId: string;
-  trainerId: string;
-  rating: number;
-  comment: string;
-  photos: string[];
-  createdAt: Date;
-  trainerReply?: {
-    comment: string;
-    repliedAt: Date;
-  };
-}
-
-export interface Message {
-  id: string;
-  chatId: string;
-  senderId: string;
-  content: string;
-  type: 'text' | 'image' | 'file' | 'video_link';
-  attachments: string[];
-  sentAt: Date;
-  readAt?: Date;
-}
-
 export interface Language {
-  code: 'pl' | 'en' | 'uk' | 'ru';
+  code: 'pl' | 'en-GB' | 'uk' | 'ru';
   name: string;
   nativeName: string;
 }

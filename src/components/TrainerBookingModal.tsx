@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, Calendar as CalendarIcon, Check, User, Plus } from 'lucide-react';
+import { ArrowLeft, User, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,11 +8,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { dataStore, Service } from '@/services/DataStore';
+import { bookingsService, chatsService, trainersService, invitationsService } from '@/services/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+  type: string;
+}
 
 interface Client {
   id: string;
@@ -44,64 +51,83 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [availableHours] = useState<string[]>(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00']);
+  
+  const [existingClients, setExistingClients] = useState<Client[]>([]);
+  const [trainerServices, setTrainerServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isNewClient, setIsNewClient] = useState(false);
 
-  // Mock clients data - in real app would come from backend
-  const [existingClients] = useState<Client[]>([
-    { id: 'u-client1', name: 'Kasia Nowak', email: 'kasia@example.com' },
-    { id: 'u-client2', name: 'Marek Kowalski', email: 'marek@example.com' },
-    { id: 'u-client3', name: 'Anna Wiśniewska', email: 'anna@example.com' }
-  ]);
-
-  // Mock trainer services - in real app would come from user profile
-  const [trainerServices] = useState<Service[]>([
-    {
-      id: 'srv-1',
-      name: 'Trening personalny',
-      price: 90,
-      duration: 60,
-      type: 'gym'
-    },
-    {
-      id: 'srv-2', 
-      name: 'Trening boksu',
-      price: 100,
-      duration: 75,
-      type: 'gym'
-    },
-    {
-      id: 'srv-3',
-      name: 'Yoga online',
-      price: 65,
-      duration: 45,
-      type: 'online'
-    }
-  ]);
-
-  // Reset form when modal opens/closes
   useEffect(() => {
-    if (isOpen) {
-      setStep('client');
-      setSelectedClient(null);
-      setNewClientMode(false);
-      setNewClientName('');
-      setNewClientEmail('');
-      setSelectedService(null);
-      setSelectedDate(undefined);
-      setSelectedTime('');
-      setNotes('');
-      setAvailableHours([]);
+    if (isOpen && user) {
+      loadTrainerData();
+      resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
-  // Load available hours when date and service are selected
-  useEffect(() => {
-    if (selectedService && selectedDate && user) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const hours = dataStore.getAvailableHoursWithSettings(user.id, dateStr, selectedService.duration);
-      setAvailableHours(hours);
+  const loadTrainerData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Fetch trainer's services
+      const trainerData = await trainersService.getByUserId(user.id);
+      if (trainerData?.services && Array.isArray(trainerData.services)) {
+        const services = (trainerData.services as any[]).map((s: any) => ({
+          id: s.id || crypto.randomUUID(),
+          name: s.name || '',
+          price: s.price || 0,
+          duration: s.duration || 60,
+          type: s.type || 'gym'
+        }));
+        setTrainerServices(services);
+      } else {
+        setTrainerServices([]);
+      }
+
+      // Fetch existing clients from bookings
+      const bookings = await bookingsService.getByUserId(user.id);
+      const clientIds = new Set<string>();
+      const clientsMap = new Map<string, Client>();
+      
+      bookings?.forEach((booking: any) => {
+        if (booking.client_id !== user.id && !clientIds.has(booking.client_id)) {
+          clientIds.add(booking.client_id);
+          if (booking.profiles) {
+            clientsMap.set(booking.client_id, {
+              id: booking.client_id,
+              name: `${booking.profiles.name || ''} ${booking.profiles.surname || ''}`.trim() || 'Klient',
+              email: booking.profiles.email || ''
+            });
+          }
+        }
+      });
+      
+      setExistingClients(Array.from(clientsMap.values()));
+    } catch (error) {
+      console.error('Error loading trainer data:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się załadować danych",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [selectedService, selectedDate, user]);
+  };
+
+  const resetForm = () => {
+    setStep('client');
+    setSelectedClient(null);
+    setNewClientMode(false);
+    setNewClientName('');
+    setNewClientEmail('');
+    setSelectedService(null);
+    setSelectedDate(undefined);
+    setSelectedTime('');
+    setNotes('');
+    setIsNewClient(false);
+  };
 
   const handleClientSelect = (clientId: string) => {
     const client = existingClients.find(c => c.id === clientId);
@@ -111,7 +137,7 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     }
   };
 
-  const handleNewClient = () => {
+  const handleNewClient = async () => {
     if (!newClientName.trim() || !newClientEmail.trim()) {
       toast({
         title: "Błąd walidacji",
@@ -121,13 +147,17 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
       return;
     }
 
+    // Generate a proper UUID for new client
+    const clientId = crypto.randomUUID();
+    
     const newClient: Client = {
-      id: `new-${Date.now()}`,
+      id: clientId,
       name: newClientName.trim(),
       email: newClientEmail.trim()
     };
     
     setSelectedClient(newClient);
+    setIsNewClient(true);
     setNewClientMode(false);
     setStep('service');
   };
@@ -161,38 +191,67 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
     const scheduledAt = new Date(selectedDate);
     scheduledAt.setHours(hours, minutes, 0, 0);
     
-    // Check for conflicts
-    const existingBookings = dataStore.getBookings(user.id);
-    const hasConflict = existingBookings.some(booking => 
-      booking.status === 'confirmed' && 
-      booking.scheduledAt === scheduledAt.toISOString()
-    );
-
-    if (hasConflict) {
+    // Validate date is not in the past
+    if (scheduledAt <= new Date()) {
       toast({
-        title: "Konflikt terminów",
-        description: "Masz już trening zaplanowany w tym czasie.",
+        title: "Błąd walidacji",
+        description: "Nie można zarezerwować treningu w przeszłości.",
         variant: "destructive"
       });
       return;
     }
     
-    await dataStore.createBooking({
-      clientId: selectedClient.id,
-      trainerId: user.id,
-      serviceId: selectedService.id,
-      scheduledAt: scheduledAt.toISOString(),
-      status: 'confirmed', // Trainer-created bookings are automatically confirmed
-      notes: notes.trim() || undefined,
-    });
+    setLoading(true);
+    try {
+      // Create booking - use service name as service_id per schema
+      const booking = await bookingsService.create({
+        client_id: selectedClient.id,
+        trainer_id: user.id,
+        service_id: selectedService.name,
+        scheduled_at: scheduledAt.toISOString(),
+        status: 'confirmed',
+        notes: notes.trim() || undefined,
+      });
 
-    toast({
-      title: "Trening dodany!",
-      description: `Trening z ${selectedClient.name} został dodany do kalendarza.`,
-    });
+      // For new clients, create invitation record (profile will be created when they sign up)
+      if (isNewClient) {
+        await invitationsService.create({
+          trainer_id: user.id,
+          client_email: selectedClient.email,
+          client_name: selectedClient.name,
+          booking_id: booking.id,
+          status: 'sent',
+          invitation_data: {
+            client_id: selectedClient.id,
+            service: selectedService.name,
+            date: scheduledAt.toISOString(),
+            notes: notes
+          }
+        });
+      } else {
+        // Only create chat for existing clients (who already have profiles)
+        await chatsService.createForBooking(selectedClient.id, user.id);
+      }
 
-    onBookingCreated();
-    onClose();
+      toast({
+        title: "Trening dodany!",
+        description: isNewClient 
+          ? `Trening z ${selectedClient.name} został dodany. Klient otrzyma zaproszenie.`
+          : `Trening z ${selectedClient.name} został dodany do kalendarza.`,
+      });
+
+      onBookingCreated();
+      onClose();
+    } catch (error: any) {
+      console.error('Booking error:', error);
+      toast({
+        title: "Błąd",
+        description: error.message || "Nie udało się dodać treningu",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -243,281 +302,224 @@ export const TrainerBookingModal: React.FC<TrainerBookingModalProps> = ({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center text-xl">
-              📅
-            </div>
-            <div>
-              <h3 className="font-semibold">Dodaj trening</h3>
-              <p className="text-sm text-muted-foreground">{getStepTitle()}</p>
-            </div>
+            {getStepTitle()}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Step Progress Indicator */}
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center gap-2">
-            {['client', 'service', 'date', 'hour', 'notes', 'summary'].map((stepName, index) => (
-              <div key={stepName} className="flex items-center">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-                  step === stepName ? "bg-primary text-primary-foreground" :
-                  ['client', 'service', 'date', 'hour', 'notes', 'summary'].indexOf(step) > index ? "bg-success text-white" :
-                  "bg-muted text-muted-foreground"
-                )}>
-                  {['client', 'service', 'date', 'hour', 'notes', 'summary'].indexOf(step) > index ? 
-                    <Check className="h-4 w-4" /> : 
-                    index + 1
-                  }
-                </div>
-                {index < 5 && (
-                  <div className={cn(
-                    "w-4 h-0.5 mx-1",
-                    ['client', 'service', 'date', 'hour', 'notes', 'summary'].indexOf(step) > index ? "bg-success" : "bg-muted"
-                  )} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Step 1: Client Selection */}
-        {step === 'client' && (
-          <div className="space-y-4">
-            {!newClientMode ? (
-              <>
-                <div className="space-y-2">
-                  {existingClients.map((client) => (
-                    <Card 
-                      key={client.id} 
-                      className="cursor-pointer hover:shadow-card transition-all duration-200 hover:border-primary"
-                      onClick={() => handleClientSelect(client.id)}
-                    >
+        <div className="space-y-4">
+          {loading && step === 'client' && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          )}
+          
+          {!loading && step === 'client' && (
+            <div className="space-y-3">
+              {!newClientMode ? (
+                <>
+                  {trainerServices.length === 0 && (
+                    <Card className="bg-muted">
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <h5 className="font-medium">{client.name}</h5>
-                            <p className="text-sm text-muted-foreground">{client.email}</p>
-                          </div>
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Dodaj usługi w ustawieniach profilu, aby móc dodawać treningi.
+                        </p>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => setNewClientMode(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Dodaj nowego klienta
-                </Button>
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clientName">Imię i nazwisko</Label>
-                  <Input
-                    id="clientName"
-                    placeholder="Np. Jan Kowalski"
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientEmail">Email</Label>
-                  <Input
-                    id="clientEmail"
-                    type="email"
-                    placeholder="jan@example.com"
-                    value={newClientEmail}
-                    onChange={(e) => setNewClientEmail(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setNewClientMode(false)}>
-                    Anuluj
+                  )}
+                  <div className="space-y-2">
+                    {existingClients.length > 0 && <Label>Istniejący klienci</Label>}
+                    {existingClients.map(client => (
+                      <Card 
+                        key={client.id}
+                        className="cursor-pointer hover:bg-accent transition-colors"
+                        onClick={() => handleClientSelect(client.id)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-3">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{client.name}</p>
+                              <p className="text-xs text-muted-foreground">{client.email}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setNewClientMode(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Dodaj nowego klienta
                   </Button>
-                  <Button onClick={handleNewClient} className="flex-1">
-                    Dodaj klienta
-                  </Button>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Imię i nazwisko</Label>
+                    <Input
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      placeholder="np. Jan Kowalski"
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      placeholder="jan@example.com"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setNewClientMode(false)}
+                    >
+                      Anuluj
+                    </Button>
+                    <Button 
+                      className="flex-1"
+                      onClick={handleNewClient}
+                    >
+                      Dodaj
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {/* Step 2: Service Selection */}
-        {step === 'service' && (
-          <div className="space-y-4">
+          {step === 'service' && (
             <div className="space-y-2">
-              {trainerServices.map((service) => (
+              {trainerServices.length === 0 ? (
+                <Card className="bg-muted">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">
+                      Brak dostępnych usług. Dodaj usługi w ustawieniach profilu.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                trainerServices.map(service => (
                 <Card 
-                  key={service.id} 
-                  className="cursor-pointer hover:shadow-card transition-all duration-200 hover:border-primary"
+                  key={service.id}
+                  className="cursor-pointer hover:bg-accent transition-colors"
                   onClick={() => handleServiceSelect(service)}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h5 className="font-medium">{service.name}</h5>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                          <Clock className="h-3 w-3" />
-                          {service.duration} min
-                          <Badge variant="outline" className="ml-2">
-                            {service.type === 'online' ? 'Online' : 
-                             service.type === 'gym' ? 'Siłownia' :
-                             service.type === 'court' ? 'Kort' : 'Dojazd'}
-                          </Badge>
+                        <p className="font-medium">{service.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {service.duration} min • {service.type}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-primary">{service.price} zł</div>
-                      </div>
+                      <Badge>{service.price} zł</Badge>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 3: Date Selection */}
-        {step === 'date' && selectedService && (
-          <div className="space-y-4">
-            <div className="text-center">
+          {step === 'date' && (
+            <div className="space-y-3">
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={handleDateSelect}
                 disabled={(date) => !isDateAvailable(date)}
-                className={cn("mx-auto pointer-events-auto")}
+                className="w-full"
               />
             </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Wybierz datę dla: <strong>{selectedService.name}</strong>
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* Step 4: Hour Selection */}
-        {step === 'hour' && selectedService && selectedDate && (
-          <div className="space-y-4">
-            <div className="text-center mb-4">
-              <p className="text-sm text-muted-foreground">
-                {selectedDate.toLocaleDateString('pl-PL', { 
-                  weekday: 'long', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
-              <p className="font-medium">{selectedService.name}</p>
+          {step === 'hour' && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                {availableHours.map((time) => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleTimeSelect(time)}
+                  >
+                    {time}
+                  </Button>
+                ))}
+              </div>
             </div>
-            
-            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-              {availableHours.map((time) => (
-                <Button
-                  key={time}
-                  variant={selectedTime === time ? "default" : "outline"}
-                  onClick={() => handleTimeSelect(time)}
-                  className="h-12"
-                >
-                  {time}
-                </Button>
-              ))}
+          )}
+
+          {step === 'notes' && (
+            <div className="space-y-3">
+              <div>
+                <Label>Notatki (opcjonalne)</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Dodaj uwagi do tego treningu..."
+                  rows={4}
+                />
+              </div>
+              <Button 
+                className="w-full"
+                onClick={handleNotesNext}
+              >
+                Dalej
+              </Button>
             </div>
-            
-            {availableHours.length === 0 && (
-              <Card className="bg-muted/50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Brak dostępnych godzin na wybrany dzień
-                  </p>
+          )}
+
+          {step === 'summary' && (
+            <div className="space-y-4">
+              <Card className="bg-gradient-card">
+                <CardContent className="p-4 space-y-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Klient</p>
+                    <p className="font-medium">{selectedClient?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Usługa</p>
+                    <p className="font-medium">{selectedService?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data i godzina</p>
+                    <p className="font-medium">
+                      {selectedDate?.toLocaleDateString('pl-PL')} o {selectedTime}
+                    </p>
+                  </div>
+                  {notes && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Notatki</p>
+                      <p className="text-sm">{notes}</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
-          </div>
-        )}
-
-        {/* Step 5: Notes */}
-        {step === 'notes' && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Notatki (opcjonalne):</label>
-              <Textarea
-                placeholder="Np. Pierwszy trening, skupić się na technice, klient ma kontuzję..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="mt-2"
-                rows={4}
-              />
-            </div>
-            
-            <Button onClick={handleNotesNext} className="w-full">
-              Dalej
-            </Button>
-          </div>
-        )}
-
-        {/* Step 6: Summary */}
-        {step === 'summary' && selectedClient && selectedService && selectedDate && (
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{selectedClient.name}</p>
-                    <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
-                    💪
-                  </div>
-                  <div>
-                    <p className="font-medium">{selectedService.name}</p>
-                    <p className="text-sm text-muted-foreground">{selectedService.duration} min</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    {selectedDate.toLocaleDateString('pl-PL', { 
-                      weekday: 'long', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })} o {selectedTime}
-                  </span>
-                </div>
-                
-                {notes && (
-                  <div className="pt-2 border-t">
-                    <p className="text-sm font-medium mb-1">Notatki:</p>
-                    <p className="text-sm text-muted-foreground">{notes}</p>
-                  </div>
+              <Button 
+                className="w-full"
+                onClick={handleConfirmBooking}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Tworzenie...
+                  </>
+                ) : (
+                  'Potwierdź rezerwację'
                 )}
-                
-                <div className="pt-2 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Koszt:</span>
-                    <span className="text-lg font-bold text-primary">{selectedService.price} zł</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Button onClick={handleConfirmBooking} className="w-full" size="lg">
-              Dodaj trening do kalendarza
-            </Button>
-          </div>
-        )}
+              </Button>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
