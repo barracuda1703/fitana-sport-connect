@@ -21,6 +21,7 @@ import {
   dedupeById, 
   getLatestTimestamp 
 } from '@/services/realtime/chatRealtime';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChatMessage {
   id: string;
@@ -50,6 +51,7 @@ export const ChatPage: React.FC = () => {
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sinceTsRef = useRef<string | null>(null);
+  const pendingByClient = useRef<Map<string, string>>(new Map());
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,7 +82,7 @@ export const ChatPage: React.FC = () => {
         }
 
         // Load existing messages
-        const existingMessages = await chatsService.getMessages(chatId);
+        const existingMessages = await chatsService.listMessages(chatId);
         const formattedMessages: ChatMessage[] = existingMessages.map(msg => ({
           id: msg.id,
           text: msg.content,
@@ -96,7 +98,11 @@ export const ChatPage: React.FC = () => {
         await chatsService.markChatAsRead(chatId, user.id);
       } catch (error) {
         console.error('[Chat] Error loading chat:', error);
-        setConnectionState('failed');
+        toast({
+          title: "Błąd",
+          description: "Nie udało się załadować czatu",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
@@ -115,18 +121,40 @@ export const ChatPage: React.FC = () => {
       chatId,
       onInsert: (message) => {
         console.log('[Chat] Received INSERT message:', message);
-        const formattedMessage: ChatMessage = {
-          id: message.id,
-          text: message.content,
-          senderId: message.sender_id,
-          timestamp: new Date(message.created_at).getTime(),
-          imageUrl: undefined // TODO: Add image support
-        };
         
-        setMessages(prev => {
-          const updated = [...prev, formattedMessage];
-          return dedupeById(updated).sort((a, b) => a.timestamp - b.timestamp);
-        });
+        // Check if this is our pending message
+        const messageTimestampFloor = Math.floor(new Date(message.created_at).getTime() / 1000) * 1000;
+        const messageFingerprint = `${message.sender_id}:${message.content}:${messageTimestampFloor}`;
+        const pendingTempId = pendingByClient.current.get(messageFingerprint);
+        
+        if (pendingTempId) {
+          // Replace temp message with real one
+          setMessages(prev => {
+            const updated = prev.map(m => m.id === pendingTempId ? {
+              id: message.id,
+              text: message.content,
+              senderId: message.sender_id,
+              timestamp: new Date(message.created_at).getTime(),
+              imageUrl: undefined // TODO: Add image support
+            } : m);
+            return dedupeById(updated).sort((a, b) => a.timestamp - b.timestamp);
+          });
+          pendingByClient.current.delete(messageFingerprint);
+        } else {
+          // Normal insert for other user's message
+          const formattedMessage: ChatMessage = {
+            id: message.id,
+            text: message.content,
+            senderId: message.sender_id,
+            timestamp: new Date(message.created_at).getTime(),
+            imageUrl: undefined // TODO: Add image support
+          };
+          
+          setMessages(prev => {
+            const updated = [...prev, formattedMessage];
+            return dedupeById(updated).sort((a, b) => a.timestamp - b.timestamp);
+          });
+        }
       },
       onUpdate: (message) => {
         console.log('[Chat] Received UPDATE message:', message);
@@ -157,6 +185,71 @@ export const ChatPage: React.FC = () => {
       }
     };
   }, [chatId, user]);
+
+  // Presence tracking - bezpieczna wersja z guardami
+  const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    // TWARDY GUARD: bez kompletu danych nic nie rób
+    const chatIdSafe = chatId ?? null;
+    const meId = user?.id ?? null;
+    const otherId = otherUser?.id ?? null;
+    if (!chatIdSafe || !meId || !otherId) return;
+
+    // ZAMKNIJ poprzedni kanał (jeśli był)
+    try {
+      if (presenceRef.current) {
+        supabase.removeChannel(presenceRef.current);
+        presenceRef.current = null;
+      }
+    } catch {}
+
+    try {
+      const channel = supabase.channel(`presence:chat:${chatIdSafe}`, {
+        config: { presence: { key: meId } },
+      });
+      presenceRef.current = channel;
+
+      // Rejestruj sync PRZED subscribe (bezpiecznie)
+      channel.on('presence', { event: 'sync' }, () => {
+        try {
+          const state = channel.presenceState ? channel.presenceState() : {};
+          // presenceState zwraca obiekt: { key: PresenceState[] }
+          const all = Object.values(state).flat() as Array<any>;
+          const isOnline = !!all.find((u) => u?.userId === otherId);
+          setIsOtherUserOnline(!!isOnline);
+          if (import.meta.env.DEV) console.log('[presence] sync ok, otherOnline=', !!isOnline);
+        } catch (e) {
+          console.warn('[presence] sync parse error', e);
+          setIsOtherUserOnline(false);
+        }
+      });
+
+      // Subskrypcja i track — cicho, bez bannerów
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          try {
+            await channel.track({ userId: meId, status: 'online' });
+          } catch (e) {
+            console.warn('[presence] track failed', e);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[presence] init error', e);
+      setIsOtherUserOnline(false);
+    }
+
+    return () => {
+      try {
+        if (presenceRef.current) {
+          supabase.removeChannel(presenceRef.current);
+          presenceRef.current = null;
+        }
+      } catch {}
+    };
+    // ZALEŻNOŚCI po ID (nie po całych obiektach!)
+  }, [chatId, user?.id, otherUser?.id]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -204,40 +297,33 @@ export const ChatPage: React.FC = () => {
       }
 
       // Send message via Supabase with optimistic UI
+      const content = newMessage.trim() || (imageUrl ? '📷' : '');
+      const timestampFloor = Math.floor(Date.now() / 1000) * 1000; // Floor to second
+      const fingerprint = `${user.id}:${content}:${timestampFloor}`;
       const tempId = `temp-${Date.now()}-${Math.random()}`;
+      
       const tempMessage: ChatMessage = {
         id: tempId,
-        text: newMessage.trim() || (imageUrl ? '📷' : ''),
+        text: content,
         senderId: user.id,
         timestamp: Date.now(),
         imageUrl
       };
       
-      // Add optimistically
+      // Add optimistically and track pending
       setMessages(prev => [...prev, tempMessage].sort((a, b) => a.timestamp - b.timestamp));
+      pendingByClient.current.set(fingerprint, tempId);
       
       // Send to server
       const message = await sendMessage({
-        chatId,
-        senderId: user.id,
-        content: newMessage.trim() || (imageUrl ? '📷' : '')
-      });
-      
-      // Replace temp message with real one
-      setMessages(prev => {
-        const updated = prev.map(m => m.id === tempId ? {
-          id: message.id,
-          text: message.content,
-          senderId: message.sender_id,
-          timestamp: new Date(message.created_at).getTime(),
-          imageUrl
-        } : m);
-        return dedupeById(updated).sort((a, b) => a.timestamp - b.timestamp);
-      });
-      
+      chatId,
+      senderId: user.id,
+        content
+    });
+
       console.log('[Chat] Message sent via Supabase');
 
-      setNewMessage('');
+    setNewMessage('');
       setSelectedImage(null);
       setImagePreview(null);
 
@@ -292,37 +378,18 @@ export const ChatPage: React.FC = () => {
                 {otherUser?.name?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex items-center gap-2">
               <h2 className="font-semibold">
                 {`${otherUser?.name || ''} ${otherUser?.surname || ''}`.trim() || 'Użytkownik'}
               </h2>
+              {otherUser?.id ? (
+                <div className={`w-2 h-2 rounded-full ${isOtherUserOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+              ) : null}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Show error message only when connection permanently failed */}
-      {connectionState === 'failed' && (
-        <div className="p-4 bg-destructive/10 border-b">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-destructive">
-                Nie można połączyć z czatem
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Sprawdź połączenie internetowe
-              </p>
-            </div>
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => window.location.reload()}
-            >
-              Odśwież aplikację
-            </Button>
-          </div>
-        </div>
-      )}
 
       <div className="flex-1 p-4 overflow-y-auto space-y-3">
         {loading ? (
@@ -362,10 +429,10 @@ export const ChatPage: React.FC = () => {
 
                     <p className="text-xs opacity-70 mt-1">
                       {new Date(msg.timestamp).toLocaleTimeString('pl-PL', {
-                        hour: '2-digit',
+                  hour: '2-digit',
                         minute: '2-digit'
-                      })}
-                    </p>
+                })}
+              </p>
                   </div>
                 </div>
               </div>

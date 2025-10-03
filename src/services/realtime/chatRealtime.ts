@@ -23,6 +23,7 @@ export function subscribeChat(options: ChatRealtimeOptions): () => void {
   const { chatId, onInsert, onUpdate, getSinceTs, setSinceTs } = options;
   
   console.log('[ChatRealtime] Subscribing to chat:', chatId);
+  let hasInitialSubscribed = false;
   
   const channel = supabase
     .channel(`chat:${chatId}`)
@@ -36,6 +37,14 @@ export function subscribeChat(options: ChatRealtimeOptions): () => void {
       },
       (payload) => {
         console.log('[ChatRealtime] INSERT event:', payload);
+        
+        // DEV: Log lag_ms for performance monitoring
+        if (import.meta.env.DEV) {
+          const now = Date.now();
+          const ts = Date.parse((payload.new as any)?.updated_at ?? (payload.new as any)?.created_at ?? new Date().toISOString());
+          console.log('[chat-rt]', payload.eventType, 'id=', (payload.new as any)?.id, 'lag_ms=', now - ts);
+        }
+        
         const message = payload.new as Message;
         onInsert(message);
         setSinceTs(message.created_at);
@@ -51,6 +60,14 @@ export function subscribeChat(options: ChatRealtimeOptions): () => void {
       },
       (payload) => {
         console.log('[ChatRealtime] UPDATE event:', payload);
+        
+        // DEV: Log lag_ms for performance monitoring
+        if (import.meta.env.DEV) {
+          const now = Date.now();
+          const ts = Date.parse((payload.new as any)?.updated_at ?? (payload.new as any)?.created_at ?? new Date().toISOString());
+          console.log('[chat-rt]', payload.eventType, 'id=', (payload.new as any)?.id, 'lag_ms=', now - ts);
+        }
+        
         const message = payload.new as Message;
         onUpdate(message);
         setSinceTs(message.updated_at || message.created_at);
@@ -59,8 +76,12 @@ export function subscribeChat(options: ChatRealtimeOptions): () => void {
     .subscribe((status) => {
       console.log('[ChatRealtime] Subscription status:', status);
       
-      // On reconnect, perform gap-fill
+      // On reconnect, perform gap-fill (not on first SUBSCRIBED)
       if (status === 'SUBSCRIBED') {
+        if (!hasInitialSubscribed) {
+          hasInitialSubscribed = true;
+          return; // First SUBSCRIBED - do nothing
+        }
         const sinceTs = getSinceTs();
         if (sinceTs) {
           console.log('[ChatRealtime] Performing gap-fill since:', sinceTs);
@@ -95,7 +116,7 @@ export async function fetchMessagesSince(chatId: string, sinceIso: string): Prom
     .from('messages')
     .select('*')
     .eq('chat_id', chatId)
-    .gt('created_at', sinceIso)
+    .or(`created_at.gt.${sinceIso},updated_at.gt.${sinceIso}`)
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -133,17 +154,18 @@ export async function sendMessage(input: {
 }
 
 /**
- * Deduplicate messages by ID
+ * Deduplicate messages by ID - generic version
  */
-export function dedupeById(messages: Message[]): Message[] {
+export function dedupeById<T extends { id: string }>(list: T[]): T[] {
   const seen = new Set<string>();
-  return messages.filter(message => {
-    if (seen.has(message.id)) {
-      return false;
+  const out: T[] = [];
+  for (const item of list) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      out.push(item);
     }
-    seen.add(message.id);
-    return true;
-  });
+  }
+  return out;
 }
 
 /**

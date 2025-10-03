@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,7 +26,6 @@ import { ClientManagement } from "@/pages/ClientManagement";
 import { ProfileSetup } from "@/pages/ProfileSetup";
 import { ChatListPage } from "@/pages/ChatList";
 import { ChatPage } from "@/pages/Chat";
-import { ChatSafePage } from "@/pages/ChatSafe";
 import { ProfilePage } from "@/pages/Profile";
 import { ProfileEdit } from "@/pages/ProfileEdit";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -167,7 +167,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/chat/:chatId" element={
           <ProtectedRoute>
             <ErrorBoundary>
-              <ChatSafePage />
+              <ChatPage />
             </ErrorBoundary>
           </ProtectedRoute>
         } />
@@ -196,7 +196,9 @@ function App() {
             <HashRouter>
               <AuthProvider>
                 <LocationProvider>
-                  <AppRoutes />
+                  <Suspense fallback={<div style={{padding:12}} />}>
+                    <AppRoutes />
+                  </Suspense>
                 </LocationProvider>
               </AuthProvider>
             </HashRouter>
