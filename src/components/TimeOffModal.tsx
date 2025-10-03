@@ -154,13 +154,14 @@ export const TimeOffModal: React.FC<TimeOffModalProps> = ({
     }
 
     try {
+      // Save dates without UTC "Z" - use local time
       const startDateTime = mode === 'allDay' 
-        ? startDate + 'T00:00:00Z'
-        : startDate + 'T' + startTime + ':00Z';
+        ? startDate + 'T00:00:00'
+        : startDate + 'T' + startTime + ':00';
       
       const endDateTime = mode === 'allDay'
-        ? endDate + 'T23:59:59Z'
-        : endDate + 'T' + endTime + ':00Z';
+        ? endDate + 'T23:59:59'
+        : endDate + 'T' + endTime + ':00';
 
       await timeOffService.create({
         trainer_id: trainerId,

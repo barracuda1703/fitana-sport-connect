@@ -69,13 +69,14 @@ export const isTimeSlotAvailable = async (
     }
   }
   
-  // Check time off periods
+  // Check time off periods - compare dates without time zones
   for (const timeOff of timeOffs) {
-    const offStart = new Date(timeOff.start_date);
-    const offEnd = new Date(timeOff.end_date);
-    offEnd.setHours(23, 59, 59, 999); // Include the entire end day
+    const slotDate = datetime.toISOString().split('T')[0];
+    const startYMD = new Date(timeOff.start_date).toISOString().split('T')[0];
+    const endYMD = new Date(timeOff.end_date).toISOString().split('T')[0];
     
-    if (datetime >= offStart && datetime <= offEnd) {
+    // Check if the slot date falls within the time off range
+    if (slotDate >= startYMD && slotDate <= endYMD) {
       return false;
     }
   }

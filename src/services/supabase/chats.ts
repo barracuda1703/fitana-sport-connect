@@ -115,6 +115,49 @@ export const chatsService = {
     return data;
   },
 
+  async listMessages(chatId: string, options: { limit?: number; sinceIso?: string } = {}) {
+    let query = supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: true });
+
+    if (options.sinceIso) {
+      query = query.gt('created_at', options.sinceIso);
+    }
+
+    if (options.limit) {
+      query = query.limit(options.limit);
+    }
+
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async createMessage(input: { chatId: string; senderId: string; content: string }) {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: input.chatId,
+        sender_id: input.senderId,
+        content: input.content,
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+
+    // Update chat updated_at
+    await supabase
+      .from('chats')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', input.chatId);
+
+    return data;
+  },
+
   async sendMessage(chatId: string, senderId: string, content: string) {
     const { data, error } = await supabase
       .from('messages')

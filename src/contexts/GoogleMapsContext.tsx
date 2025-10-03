@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { supabase } from '@/integrations/supabase/client';
 
 interface GoogleMapsContextType {
   isLoaded: boolean;
@@ -28,21 +27,24 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setIsRetrying(retryCount > 0);
 
       if (!apiKey) {
+        console.error('VITE_GOOGLE_MAPS_API_KEY not found in environment variables');
         throw new Error('VITE_GOOGLE_MAPS_API_KEY not found in environment variables. Please add it to your .env file.');
       }
+      
+      console.log('Loading Google Maps API...');
       
       // Singleton pattern - create loader only once
       if (!loaderRef.current) {
         loaderRef.current = new Loader({
           apiKey: apiKey,
           version: 'weekly',
-          libraries: ['places', 'marker']
+          libraries: ['places'] // Remove unused 'marker' library
         });
       }
 
-      // @ts-ignore - Loader.load() exists but TS types may be outdated
       await loaderRef.current.load();
       setIsLoaded(true);
+      setRetryCount(0); // Reset retry count on success
       
       console.log('Google Maps loaded successfully');
     } catch (err) {
@@ -59,6 +61,10 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         userFriendlyMessage = 'Google Maps API nie jest włączone';
       } else if (error.message.includes('BillingNotEnabled')) {
         userFriendlyMessage = 'Rozliczenia Google Cloud nie są włączone';
+      } else if (error.message.includes('QuotaExceeded')) {
+        userFriendlyMessage = 'Przekroczono limit zapytań Google Maps API';
+      } else if (error.message.includes('RequestDenied')) {
+        userFriendlyMessage = 'Żądanie zostało odrzucone przez Google Maps API';
       }
       
       setError(new Error(userFriendlyMessage));
@@ -71,6 +77,8 @@ export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
         }, delay);
+      } else {
+        console.error('Max retries reached for Google Maps loading');
       }
     }
   };

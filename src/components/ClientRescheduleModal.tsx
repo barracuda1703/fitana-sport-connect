@@ -7,6 +7,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { bookingsService, type Booking } from '@/services/supabase';
+import { availabilityService } from '@/services/supabase/availability';
 import { useToast } from '@/hooks/use-toast';
 
 interface ClientRescheduleModalProps {
@@ -28,7 +29,8 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
   const [step, setStep] = useState<RescheduleStep>('date');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [availableHours] = useState(['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00']);
+  const [availableHours, setAvailableHours] = useState<string[]>([]);
+  const [loadingHours, setLoadingHours] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -38,10 +40,25 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleDateSelect = (date: Date | undefined) => {
+  const handleDateSelect = async (date: Date | undefined) => {
     setSelectedDate(date);
-    if (date) {
-      setStep('hour');
+    if (date && booking?.trainer_id) {
+      setLoadingHours(true);
+      try {
+        // Get available hours for the selected date
+        const hours = await availabilityService.getAvailableHours(booking.trainer_id, date);
+        setAvailableHours(hours);
+        setStep('hour');
+      } catch (error) {
+        console.error('Error loading available hours:', error);
+        toast({
+          title: "Błąd",
+          description: "Nie udało się załadować dostępnych godzin",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingHours(false);
+      }
     }
   };
 
@@ -69,6 +86,11 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
           awaitingDecisionBy: 'trainer'
         }]
       });
+      
+      // Clear availability cache for the trainer
+      if (booking.trainer_id) {
+        availabilityService.clearAvailabilityCache(booking.trainer_id);
+      }
       
       toast({
         title: "Propozycja wysłana",
@@ -138,18 +160,38 @@ export const ClientRescheduleModal: React.FC<ClientRescheduleModalProps> = ({
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="font-medium">Wybierz godzinę</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-                {availableHours.map((time) => (
+              
+              {loadingHours ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">Ładowanie dostępnych godzin...</p>
+                </div>
+              ) : availableHours.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">Brak dostępnych godzin w tym dniu</p>
                   <Button
-                    key={time}
                     variant="outline"
                     size="sm"
-                    onClick={() => handleTimeSelect(time)}
+                    onClick={() => setStep('date')}
+                    className="mt-2"
                   >
-                    {time}
+                    Wybierz inną datę
                   </Button>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                  {availableHours.map((time) => (
+                    <Button
+                      key={time}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTimeSelect(time)}
+                    >
+                      {time}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              
               <Button
                 variant="outline"
                 size="sm"

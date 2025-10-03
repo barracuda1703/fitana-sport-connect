@@ -29,7 +29,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     { id: 'dashboard', icon: BarChart3, label: t('nav.dashboard'), route: '/trainer' },
     { id: 'calendar', icon: Calendar, label: t('nav.calendar'), route: '/trainer/calendar' },
     { id: 'chat', icon: MessageCircle, label: t('nav.chat'), route: '/chat' },
-    { id: 'profile', icon: User, label: t('nav.profile'), route: '/trainer/settings' },
+    { id: 'profile', icon: User, label: t('nav.profile'), route: '/trainer/profile-settings' },
   ];
 
   const tabs = userRole === 'client' ? clientTabs : trainerTabs;

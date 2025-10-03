@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { ReviewsModal } from '@/components/ReviewsModal';
+import { InterfaceLanguageSelector } from '@/components/InterfaceLanguageSelector';
 import { RescheduleModal } from '@/components/RescheduleModal';
 import { ConflictResolutionModal } from '@/components/ConflictResolutionModal';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -176,9 +177,12 @@ export const TrainerDashboard: React.FC = () => {
               <p className="text-muted-foreground">Zarządzaj swoimi treningami</p>
             </div>
           </div>
-          <Button variant="outline" size="icon" onClick={() => navigate('/trainer/settings')}>
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <InterfaceLanguageSelector />
+            <Button variant="outline" size="icon" onClick={() => navigate('/trainer/settings')}>
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </header>
 

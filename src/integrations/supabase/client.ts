@@ -5,13 +5,30 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Validate environment variables
+if (!SUPABASE_URL) {
+  console.error('VITE_SUPABASE_URL not found in environment variables');
+  throw new Error('VITE_SUPABASE_URL is required');
+}
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  console.error('VITE_SUPABASE_PUBLISHABLE_KEY not found in environment variables');
+  throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is required');
+}
+
+console.log('Supabase client initialized with URL:', SUPABASE_URL);
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  realtime: {
+    params: { eventsPerSecond: 20 }
+  },
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true
   }
 });
